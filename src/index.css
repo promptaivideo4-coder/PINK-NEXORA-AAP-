@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  
+  --color-primary: #b90064;
+  --color-primary-container: #e6007e;
+  --color-on-primary-container: #ffffff;
+  --color-primary-fixed: #ffd9e2;
+  --color-primary-fixed-dim: #ffb0c9;
+  --color-on-primary-fixed: #3e001e;
+  --color-on-primary-fixed-variant: #8e004b;
+
+  --color-secondary: #b50061;
+  --color-secondary-container: #db227b;
+  --color-secondary-fixed: #ffd9e2;
+  --color-secondary-fixed-dim: #ffb0c8;
+  --color-on-secondary-container: #fffbff;
+  
+  --color-tertiary: #0052da;
+  --color-tertiary-container: #336df5;
+  --color-tertiary-fixed: #dbe1ff;
+  --color-tertiary-fixed-dim: #b4c5ff;
+
+  --color-background: #fcf9f8;
+  --color-on-background: #1c1b1b;
+  
+  --color-surface: #fcf9f8;
+  --color-surface-dim: #dcd9d9;
+  --color-surface-bright: #fcf9f8;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f3f2;
+  --color-surface-container: #f0edec;
+  --color-surface-container-high: #ebe7e7;
+  --color-surface-container-highest: #e5e2e1;
+  
+  --color-on-surface: #1c1b1b;
+  --color-surface-variant: #e5e2e1;
+  --color-on-surface-variant: #5a3f47;
+
+  --color-outline: #8e6f77;
+  --color-outline-variant: #e2bdc7;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+}
