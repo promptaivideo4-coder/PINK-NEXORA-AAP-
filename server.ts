@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import multer from "multer";
+import helmet from "helmet";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 
@@ -10,6 +11,26 @@ async function startServer() {
 
   // Enable JSON body parsing for API endpoints
   app.use(express.json());
+
+  // Security headers with custom CSP to allow Google AI Studio workers and Monaco editor
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          "default-src": ["'self'"],
+          "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://studio.google.com", "https://*.google.com", "https://cdn.jsdelivr.net"],
+          "worker-src": ["'self'", "blob:", "https://studio.google.com", "https://*.google.com"],
+          "connect-src": ["'self'", "https:", "wss:", "https://*.google.com", "https://*.googleapis.com", "https://*.supabase.co"],
+          "img-src": ["'self'", "data:", "blob:", "https://*.google.com", "https://*.googleusercontent.com"],
+          "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://studio.google.com"],
+          "font-src": ["'self'", "https://fonts.gstatic.com"],
+          "frame-ancestors": ["'self'", "https://studio.google.com", "https://*.google.com"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    })
+  );
 
   // Use memory storage to process image with Gemini before doing anything else
   const upload = multer({ storage: multer.memoryStorage() });
@@ -104,7 +125,7 @@ Requirements:
 4. Return ONLY a raw JSON object with the structure: { "suggestions": ["option 1", "option 2", "option 3"] }. No markdown syntax, no extra text outside JSON.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           temperature: 0.7,
@@ -230,7 +251,7 @@ Provide a JSON object with the following properties:
 Return ONLY the raw JSON object, without markdown formatting or code blocks.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-3.1-flash-lite-image",
         contents: [
           prompt,
           {

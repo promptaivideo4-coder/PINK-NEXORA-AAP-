@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
+import { supabase } from '../lib/supabase';
 import { 
   Palette, 
   Sliders, 
@@ -387,7 +388,10 @@ export default function Settings({ navigate }: NavigationProps) {
           {/* Logout Action */}
           <div className="pt-2 space-y-3">
             <button 
-              onClick={() => navigate('welcome')}
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate('welcome');
+              }}
               className="w-full py-4 rounded-2xl bg-error/10 text-error font-bold text-sm flex items-center justify-center gap-2 hover:bg-error/20 transition-colors active:scale-[0.98] duration-200 border border-error/20 shadow-xs"
             >
               <LogOut className="w-5 h-5" />

@@ -1,12 +1,46 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, ChevronDown, ArrowRight } from 'lucide-react';
+import { X, ChevronDown, ArrowRight, AlertCircle } from 'lucide-react';
 import { NavigationProps } from '../types';
+import { supabase } from '../lib/supabase';
 
 export default function RegistrationStepper({ navigate }: NavigationProps) {
-  const handleNext = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [businessCategory, setBusinessCategory] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
+
+  const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('theme-selection');
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            business_name: businessName,
+            business_category: businessCategory,
+            contact_number: contactNumber,
+          },
+        },
+      });
+
+      if (signUpError) throw signUpError;
+
+      if (data.user) {
+        navigate('theme-selection');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign up.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -79,12 +113,48 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
           className="bg-white rounded-[18px] p-6 border border-surface-variant shadow-[0px_4px_20px_rgba(0,0,0,0.03)] flex-1"
         >
           <form onSubmit={handleNext} id="reg-form" className="space-y-4">
+            {error && (
+              <div className="p-3 rounded-xl bg-error/10 border border-error/20 flex items-center gap-3 text-error text-sm font-medium">
+                <AlertCircle className="w-4 h-4" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="email" className="block text-[13px] font-medium text-on-surface-variant mb-1">Email Address</label>
+                <input 
+                  type="email" 
+                  id="email" 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com" 
+                  className="w-full bg-surface-container-low border border-surface-variant rounded-[14px] px-4 py-3 text-base text-on-background focus:border-primary-container focus:ring-4 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50 outline-none"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-[13px] font-medium text-on-surface-variant mb-1">Password</label>
+                <input 
+                  type="password" 
+                  id="password" 
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                  className="w-full bg-surface-container-low border border-surface-variant rounded-[14px] px-4 py-3 text-base text-on-background focus:border-primary-container focus:ring-4 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50 outline-none"
+                />
+              </div>
+            </div>
+
             <div>
               <label htmlFor="business_name" className="block text-[13px] font-medium text-on-surface-variant mb-1">Business Name</label>
               <input 
                 type="text" 
                 id="business_name" 
                 required
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
                 placeholder="e.g. Bella Salon" 
                 className="w-full bg-surface-container-low border border-surface-variant rounded-[14px] px-4 py-3 text-base text-on-background focus:border-primary-container focus:ring-4 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50 outline-none"
               />
@@ -95,7 +165,8 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
               <div className="relative">
                 <select 
                   id="business_category" 
-                  defaultValue=""
+                  value={businessCategory}
+                  onChange={(e) => setBusinessCategory(e.target.value)}
                   required
                   className="w-full bg-surface-container-low border border-surface-variant rounded-[14px] px-4 py-3 text-base text-on-background focus:border-primary-container focus:ring-4 focus:ring-primary-fixed-dim transition-all appearance-none pr-10 outline-none"
                 >
@@ -115,6 +186,8 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
                 type="tel" 
                 id="contact_number" 
                 required
+                value={contactNumber}
+                onChange={(e) => setContactNumber(e.target.value)}
                 placeholder="(555) 123-4567" 
                 className="w-full bg-surface-container-low border border-surface-variant rounded-[14px] px-4 py-3 text-base text-on-background focus:border-primary-container focus:ring-4 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50 outline-none"
               />
@@ -128,9 +201,10 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
             <button 
               type="submit"
               form="reg-form"
-              className="w-full bg-primary-container text-white rounded-[16px] py-4 text-base font-semibold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
+              disabled={loading}
+              className="w-full bg-primary-container text-white rounded-[16px] py-4 text-base font-semibold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-50"
             >
-              Next Step
+              {loading ? 'Creating Account...' : 'Next Step'}
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>

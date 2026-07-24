@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
+import { supabase } from '../lib/supabase';
 import { 
   Building2, 
   User, 
@@ -930,8 +931,9 @@ export default function Profile({ navigate }: NavigationProps) {
 
             {/* Logout */}
             <button 
-              onClick={() => {
+              onClick={async () => {
                 triggerToast('Logging out...');
+                await supabase.auth.signOut();
                 setTimeout(() => navigate('welcome'), 800);
               }}
               className="w-full bg-error/10 text-error border border-error/20 py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-error/20 transition-colors active:scale-95"
