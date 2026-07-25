@@ -5,6 +5,7 @@ import CustomerDetailModal from '../components/CustomerDetailModal';
 import { Search, Plus, X, UserPlus, User, RotateCcw, Upload, Check, Mail, Phone, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import BannerAd from '../components/BannerAd';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type FilterType = 'All' | 'VIP' | 'Members' | 'New';
 
@@ -91,6 +92,7 @@ const INITIAL_CUSTOMERS: Customer[] = [
 ];
 
 export default function Customers({ navigate }: NavigationProps) {
+  const { t } = useLanguage();
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
@@ -187,7 +189,7 @@ export default function Customers({ navigate }: NavigationProps) {
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-sans flex flex-col pb-24 md:pb-0 relative overflow-hidden">
-      <TopBar showBack onBack={() => navigate('dashboard')} navigate={navigate} title="Customers" />
+      <TopBar showBack onBack={() => navigate('dashboard')} navigate={navigate} title={t('customers')} />
 
       <main className="w-full max-w-[800px] mx-auto px-5 md:px-10 pt-6 pb-12 flex-grow space-y-6 flex flex-col">
         
@@ -196,8 +198,8 @@ export default function Customers({ navigate }: NavigationProps) {
         {/* Top Header Actions */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight">Client Directory</h1>
-            <p className="text-xs text-on-surface-variant">Manage customer profiles, history, and invitations</p>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight">{t('client_directory')}</h1>
+            <p className="text-xs text-on-surface-variant">{t('client_directory_desc')}</p>
           </div>
           <div className="flex items-center gap-2">
             {customers.length > 0 ? (
@@ -205,7 +207,7 @@ export default function Customers({ navigate }: NavigationProps) {
                 onClick={handleClearAll}
                 className="px-3 py-1.5 text-xs font-semibold text-on-surface-variant border border-outline-variant/40 hover:text-error hover:border-error/40 rounded-full transition-colors"
               >
-                Clear Directory
+                {t('clear_directory')}
               </button>
             ) : (
               <button
@@ -213,7 +215,7 @@ export default function Customers({ navigate }: NavigationProps) {
                 className="px-3 py-1.5 text-xs font-semibold text-primary border border-primary/30 hover:bg-primary-fixed/20 rounded-full transition-colors flex items-center gap-1"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Restore Directory</span>
+                <span>{t('restore_directory')}</span>
               </button>
             )}
           </div>
@@ -228,7 +230,7 @@ export default function Customers({ navigate }: NavigationProps) {
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, phone or email..." 
+                placeholder={t('search_placeholder_customers')} 
                 className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-3 pl-12 pr-10 focus:outline-none focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 transition-all text-base placeholder:text-on-surface-variant/60 shadow-xs"
               />
               {searchQuery && (
@@ -253,7 +255,7 @@ export default function Customers({ navigate }: NavigationProps) {
                       : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant/50 hover:bg-surface-variant'
                   }`}
                 >
-                  {filter}
+                  {filter === 'All' ? t('all_label') : filter === 'VIP' ? t('vip_label') : filter === 'Members' ? t('members_label') : t('new_label')}
                 </button>
               ))}
             </div>
@@ -316,7 +318,7 @@ export default function Customers({ navigate }: NavigationProps) {
                         </span>
                       )}
                       <span className="text-on-surface-variant/70 text-xs font-medium">
-                        {customer.lastVisit ? `Last visit: ${customer.lastVisit}` : `Upcoming: ${customer.upcomingVisit}`}
+                        {customer.lastVisit ? `${t('last_visit')}: ${customer.lastVisit}` : `${t('upcoming')}: ${customer.upcomingVisit}`}
                       </span>
                     </div>
                   </div>
@@ -326,7 +328,7 @@ export default function Customers({ navigate }: NavigationProps) {
                     {customer.spend || customer.visits || '--'}
                   </div>
                   <div className="text-xs font-medium text-on-surface-variant/70">
-                    {customer.spend ? 'YTD Spend' : customer.visits ? 'Visits' : 'First Visit'}
+                    {customer.spend ? t('ytd_spend') : customer.visits ? t('visits_label') : t('first_visit')}
                   </div>
                 </div>
               </div>
@@ -366,7 +368,7 @@ export default function Customers({ navigate }: NavigationProps) {
               {/* Typography */}
               <div className="space-y-3 relative z-10">
                 <h2 className="text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight">
-                  No Customers Found
+                  {t('no_customers_found')}
                 </h2>
                 <p className="text-xs sm:text-sm text-on-surface-variant max-w-[280px] mx-auto leading-relaxed">
                   Your client list is empty. Start adding customers to track their history.
@@ -380,7 +382,7 @@ export default function Customers({ navigate }: NavigationProps) {
                   className="w-full bg-primary-container text-on-primary-container font-bold text-sm py-4 px-8 rounded-2xl hover:opacity-90 active:scale-95 transition-all duration-200 shadow-md flex items-center justify-center gap-2 group"
                 >
                   <UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span>Invite Customer</span>
+                  <span>{t('invite_customer')}</span>
                 </button>
 
                 <button 
@@ -388,7 +390,7 @@ export default function Customers({ navigate }: NavigationProps) {
                   className="w-full bg-transparent text-on-surface-variant font-semibold text-xs py-3 px-8 rounded-2xl border border-outline-variant/50 hover:bg-surface-container-low active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
                 >
                   <Upload className="w-4 h-4 text-primary" />
-                  <span>Import from Contacts</span>
+                  <span>{t('import_from_contacts')}</span>
                 </button>
               </div>
 
@@ -436,7 +438,7 @@ export default function Customers({ navigate }: NavigationProps) {
                     <UserPlus className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-extrabold text-on-surface">Invite Customer</h3>
+                    <h3 className="text-lg font-extrabold text-on-surface">{t('invite_customer')}</h3>
                     <p className="text-xs text-on-surface-variant">Send a Nexora booking invitation</p>
                   </div>
                 </div>
@@ -450,7 +452,7 @@ export default function Customers({ navigate }: NavigationProps) {
 
               <form onSubmit={handleAddInvite} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">Full Name *</label>
+                  <label className="block text-xs font-bold text-on-surface mb-1">{t('full_name')} *</label>
                   <input
                     type="text"
                     required
@@ -462,7 +464,7 @@ export default function Customers({ navigate }: NavigationProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">Phone Number</label>
+                  <label className="block text-xs font-bold text-on-surface mb-1">{t('phone_number')}</label>
                   <div className="relative">
                     <Phone className="w-4 h-4 text-on-surface-variant/50 absolute left-3.5 top-3.5" />
                     <input
@@ -476,7 +478,7 @@ export default function Customers({ navigate }: NavigationProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">Email Address</label>
+                  <label className="block text-xs font-bold text-on-surface mb-1">{t('email_address')}</label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-on-surface-variant/50 absolute left-3.5 top-3.5" />
                     <input
@@ -490,13 +492,13 @@ export default function Customers({ navigate }: NavigationProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">Client Tier</label>
+                  <label className="block text-xs font-bold text-on-surface mb-1">{t('client_tier')}</label>
                   <select
                     value={inviteType}
                     onChange={(e) => setInviteType(e.target.value as Customer['type'])}
                     className="w-full h-11 px-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container"
                   >
-                    <option value="New">New Client</option>
+                    <option value="New">{t('new_label')}</option>
                     <option value="Standard">Standard</option>
                     <option value="Gold Member">Gold Member</option>
                     <option value="VIP">VIP</option>
@@ -509,13 +511,13 @@ export default function Customers({ navigate }: NavigationProps) {
                     onClick={() => setShowInviteModal(false)}
                     className="flex-1 py-3 border border-outline-variant/40 rounded-xl text-xs font-bold text-on-surface-variant hover:bg-surface-container transition-colors"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button
                     type="submit"
                     className="flex-1 py-3 bg-primary-container text-white rounded-xl text-xs font-bold hover:bg-primary transition-colors shadow-md shadow-primary-container/20"
                   >
-                    Send Invitation
+                    {t('send_invitation')}
                   </button>
                 </div>
               </form>

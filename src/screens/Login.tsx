@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Flower2, Mail, Lock, Eye, EyeOff, Check, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Login({ navigate }: NavigationProps) {
+  const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +34,7 @@ export default function Login({ navigate }: NavigationProps) {
         navigate('dashboard');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to login. Please check your credentials.');
+      setError(err.message || t('failed_login'));
     } finally {
       setLoading(false);
     }
@@ -45,13 +47,13 @@ export default function Login({ navigate }: NavigationProps) {
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${window.location.origin}/#/app/owner/reset-password`,
       });
 
       if (resetError) throw resetError;
       setForgotSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to send reset link.');
+      setError(err.message || t('failed_reset_link'));
     } finally {
       setForgotLoading(false);
     }
@@ -77,8 +79,8 @@ export default function Login({ navigate }: NavigationProps) {
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-container to-secondary-container text-white flex items-center justify-center shadow-lg shadow-primary-container/20 mb-2">
               <Flower2 className="w-8 h-8" />
             </div>
-            <h1 className="text-[32px] font-bold text-on-surface leading-tight tracking-tight">Login to Nexora</h1>
-            <p className="text-base text-on-surface-variant">Manage your luxury salon with ease.</p>
+            <h1 className="text-[32px] font-bold text-on-surface leading-tight tracking-tight">{t('login_title')}</h1>
+            <p className="text-base text-on-surface-variant">{t('login_subtitle')}</p>
           </header>
 
           {/* Form */}
@@ -97,7 +99,7 @@ export default function Login({ navigate }: NavigationProps) {
 
             {/* Email Field */}
             <div className="flex flex-col gap-2 group">
-              <label className="text-[13px] font-medium text-on-surface-variant ml-1">Email Address</label>
+              <label className="text-[13px] font-medium text-on-surface-variant ml-1">{t('email_label')}</label>
               <div className="relative rounded-[18px] bg-surface-container-low border border-outline-variant/30 transition-all duration-300 focus-within:border-primary-container focus-within:ring-4 focus-within:ring-primary-fixed-dim">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/60 pointer-events-none" />
                 <input 
@@ -114,13 +116,13 @@ export default function Login({ navigate }: NavigationProps) {
             {/* Password Field */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center ml-1">
-                <label className="text-[13px] font-medium text-on-surface-variant">Password</label>
+                <label className="text-[13px] font-medium text-on-surface-variant">{t('password_label')}</label>
                 <button 
                   type="button" 
                   onClick={() => setShowForgotModal(true)}
                   className="text-[13px] font-medium text-primary-container hover:text-primary transition-colors"
                 >
-                  Forgot Password?
+                  {t('forgot_password')}
                 </button>
               </div>
               <div className="relative rounded-[18px] bg-surface-container-low border border-outline-variant/30 transition-all duration-300 focus-within:border-primary-container focus-within:ring-4 focus-within:ring-primary-fixed-dim">
@@ -152,7 +154,7 @@ export default function Login({ navigate }: NavigationProps) {
                     <Check className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity scale-50 peer-checked:scale-100" strokeWidth={3} />
                   </div>
                 </div>
-                <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">Remember Me</span>
+                <span className="text-base text-on-surface-variant group-hover:text-on-surface transition-colors">{t('remember_me')}</span>
               </label>
             </div>
 
@@ -162,15 +164,15 @@ export default function Login({ navigate }: NavigationProps) {
               disabled={loading}
               className="mt-6 w-full bg-primary-container hover:bg-primary text-white text-xl font-semibold py-4 rounded-[18px] shadow-[0_8px_24px_rgba(230,0,126,0.25)] hover:shadow-[0_12px_32px_rgba(230,0,126,0.35)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? t('logging_in') : t('login')}
             </button>
           </form>
 
           {/* Sign Up Prompt */}
           <div className="text-center mt-4">
             <p className="text-base text-on-surface-variant">
-              Don't have an account?{' '}
-              <button onClick={() => navigate('register-stepper')} className="text-primary-container font-semibold hover:text-primary transition-colors">Request Access</button>
+              {t('dont_have_account')}{' '}
+              <button onClick={() => navigate('register-stepper')} className="text-primary-container font-semibold hover:text-primary transition-colors">{t('request_access')}</button>
             </p>
           </div>
         </motion.div>
@@ -195,7 +197,7 @@ export default function Login({ navigate }: NavigationProps) {
               className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6"
             >
               <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-bold text-on-surface">Reset Password</h3>
+                <h3 className="text-2xl font-bold text-on-surface">{t('reset_password_title')}</h3>
                 <button 
                   onClick={() => {
                     setShowForgotModal(false);
@@ -210,10 +212,10 @@ export default function Login({ navigate }: NavigationProps) {
               {!forgotSuccess ? (
                 <form onSubmit={handleForgotPassword} className="space-y-4">
                   <p className="text-sm text-on-surface-variant">
-                    Enter your email address and we'll send you a link to reset your password.
+                    {t('reset_password_desc')}
                   </p>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-on-surface uppercase tracking-wider ml-1">Email Address</label>
+                    <label className="text-xs font-bold text-on-surface uppercase tracking-wider ml-1">{t('email_label')}</label>
                     <input 
                       type="email"
                       required
@@ -228,7 +230,7 @@ export default function Login({ navigate }: NavigationProps) {
                     disabled={forgotLoading}
                     className="w-full h-12 bg-primary text-white rounded-xl text-sm font-bold uppercase tracking-wider shadow-lg hover:brightness-110 transition-all disabled:opacity-50"
                   >
-                    {forgotLoading ? 'Sending...' : 'Send Reset Link'}
+                    {forgotLoading ? t('sending') : t('send_reset_link')}
                   </button>
                 </form>
               ) : (
@@ -236,15 +238,15 @@ export default function Login({ navigate }: NavigationProps) {
                   <div className="w-16 h-16 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle2 className="w-10 h-10" />
                   </div>
-                  <h4 className="text-xl font-bold text-on-surface">Email Sent!</h4>
+                  <h4 className="text-xl font-bold text-on-surface">{t('email_sent')}</h4>
                   <p className="text-sm text-on-surface-variant">
-                    Check your inbox for instructions on how to reset your password.
+                    {t('email_sent_desc')}
                   </p>
                   <button 
                     onClick={() => setShowForgotModal(false)}
                     className="w-full h-12 bg-primary text-white rounded-xl text-sm font-bold uppercase tracking-wider"
                   >
-                    Done
+                    {t('done')}
                   </button>
                 </div>
               )}

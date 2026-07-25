@@ -49,8 +49,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatPrice } from '../utils/currency';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Marketing({ navigate }: NavigationProps) {
+  const { t } = useLanguage();
   const [selectedSubModule, setSelectedSubModule] = useState<string | null>(null);
 
   // Offers module specific states
@@ -210,59 +212,59 @@ export default function Marketing({ navigate }: NavigationProps) {
   const marketingModules = [
     {
       id: 'offers',
-      title: 'Offers & Discounts',
-      desc: 'Create and manage service packages, coupon codes, and seasonal discounts.',
+      title: t('offers_discounts'),
+      desc: t('offers_management_desc'),
       icon: Tag,
       color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-      badge: 'Active Campaigns'
+      badge: t('active_campaigns')
     },
     {
       id: 'ai-offer-creator',
-      title: 'AI Offer Creator',
-      desc: 'Let Gemini model craft personalized luxury promotional offers for your clients.',
+      title: t('ai_offer_creator'),
+      desc: t('ai_offer_creator_desc'),
       icon: Sparkles,
       color: 'bg-primary/10 text-primary border-primary/20',
-      badge: 'Powered by AI'
+      badge: t('powered_by_ai')
     },
     {
       id: 'festival-templates',
-      title: 'Festival Templates',
-      desc: 'Stunning ready-to-use celebration banners for Diwali, Eid, Christmas, and more.',
+      title: t('festival_templates'),
+      desc: t('festival_templates_desc'),
       icon: PartyPopper,
       color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-      badge: 'Seasonal'
+      badge: t('seasonal')
     },
     {
       id: 'poster-creator',
-      title: 'Poster Creator',
-      desc: 'Generate gorgeous social media stories and print posters for your salon display.',
+      title: t('poster_creator'),
+      desc: t('poster_creator_desc'),
       icon: Palette,
       color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
-      badge: 'Custom Canvas'
+      badge: t('custom_canvas')
     },
     {
       id: 'whatsapp-campaign',
-      title: 'WhatsApp Campaign',
-      desc: 'Send fast promotional, festive, or greetings lists directly to customer phones.',
+      title: t('whatsapp_campaign'),
+      desc: t('whatsapp_campaign_desc'),
       icon: MessageSquare,
       color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-      badge: 'Direct Connect'
+      badge: t('direct_connect')
     },
     {
       id: 'auto-reminder',
-      title: 'Auto Reminder',
-      desc: 'Automate greeting emails and smart reminders for inactive clients after 30 days.',
+      title: t('auto_reminder'),
+      desc: t('auto_reminder_desc'),
       icon: Clock,
       color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
-      badge: 'Smart Trigger'
+      badge: t('smart_trigger')
     },
     {
       id: 'campaign-history',
-      title: 'Campaign History',
-      desc: 'Track analytical open rates, message delivery stats, and absolute booking revenues.',
+      title: t('campaign_history'),
+      desc: t('campaign_history_desc'),
       icon: History,
       color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
-      badge: 'Analytics'
+      badge: t('analytics')
     }
   ];
 
@@ -316,7 +318,7 @@ export default function Marketing({ navigate }: NavigationProps) {
   };
 
   return (
-    <Layout currentScreen="marketing" navigate={navigate} title={selectedSubModule === 'offers' ? "Offers & Discounts" : "Marketing Studio"}>
+    <Layout currentScreen="marketing" navigate={navigate} title={selectedSubModule === 'offers' ? t('offers_discounts') : t('marketing_studio')}>
       
       {selectedSubModule === 'offers' ? (
         /* Full Offers SubModule Screen mapped beautifully from standard HTML blueprint */
@@ -328,13 +330,13 @@ export default function Marketing({ navigate }: NavigationProps) {
               <button 
                 onClick={() => setSelectedSubModule(null)} 
                 className="p-2 rounded-xl text-primary hover:bg-primary/5 border border-primary/10 transition-colors"
-                title="Back to Marketing Studio"
+                title={t('back_to_marketing')}
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h2 className="text-xl font-bold text-on-surface tracking-tight">Offers Management</h2>
-                <p className="text-xs text-on-surface-variant">Configure coupons, deals, and active promotions</p>
+                <h2 className="text-xl font-bold text-on-surface tracking-tight">{t('offers_management')}</h2>
+                <p className="text-xs text-on-surface-variant">{t('offers_management_desc')}</p>
               </div>
             </div>
 
@@ -343,7 +345,7 @@ export default function Marketing({ navigate }: NavigationProps) {
               className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white hover:bg-primary/90 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Create Offer</span>
+              <span>{t('create_offer')}</span>
             </button>
           </div>
 

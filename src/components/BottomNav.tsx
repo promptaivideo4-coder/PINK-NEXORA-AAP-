@@ -1,6 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, Calendar, Wallet, BarChart2, Menu } from 'lucide-react';
 import { ScreenName } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface BottomNavProps {
   currentScreen: ScreenName;
@@ -8,12 +9,13 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ currentScreen, navigate }: BottomNavProps) {
+  const { t } = useLanguage();
   const navItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'bookings', icon: Calendar, label: 'Bookings' },
-    { id: 'wallet', icon: Wallet, label: 'Wallet' },
-    { id: 'revenue-analytics', icon: BarChart2, label: 'Analytics' },
-    { id: 'help-center', icon: Menu, label: 'More' },
+    { id: 'dashboard', icon: LayoutDashboard, label: t('dashboard') },
+    { id: 'bookings', icon: Calendar, label: t('bookings') },
+    { id: 'wallet', icon: Wallet, label: t('wallet') },
+    { id: 'revenue-analytics', icon: BarChart2, label: t('analytics') },
+    { id: 'help-center', icon: Menu, label: t('more') },
   ];
 
   return (

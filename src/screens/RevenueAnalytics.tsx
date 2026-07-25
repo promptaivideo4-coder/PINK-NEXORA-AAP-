@@ -39,6 +39,7 @@ import {
   Bar,
   Legend
 } from 'recharts';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type AnalyticsTab = 'insights' | 'retention' | 'revenue-kpi';
 type TimeframeOption = '30-days' | '90-days' | 'year';
@@ -120,6 +121,7 @@ const ACQUISITION_CHANNELS = [
 ];
 
 export default function RevenueAnalytics({ navigate }: NavigationProps) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('insights');
   const [timeframe, setTimeframe] = useState<TimeframeOption>('30-days');
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
@@ -171,10 +173,10 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-on-surface tracking-tight">
-              Insights &amp; Analytics
+              {t('analytics_header')}
             </h1>
             <p className="text-sm text-on-surface-variant font-medium mt-1">
-              Comprehensive overview of your salon's performance.
+              {t('analytics_subheader')}
             </p>
           </div>
 
@@ -187,7 +189,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   timeframe === '30-days' ? 'bg-surface-container-lowest text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                Last 30 Days
+                {t('last_30_days')}
               </button>
               <button 
                 onClick={() => setTimeframe('90-days')}
@@ -195,7 +197,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   timeframe === '90-days' ? 'bg-surface-container-lowest text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                Last 90 Days
+                {t('last_90_days')}
               </button>
               <button 
                 onClick={() => setTimeframe('year')}
@@ -203,7 +205,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   timeframe === 'year' ? 'bg-surface-container-lowest text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                YTD
+                {t('ytd')}
               </button>
             </div>
 
@@ -213,7 +215,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
               className="px-4 py-2 rounded-[16px] bg-primary text-white text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm"
             >
               <Download className="w-4 h-4" />
-              <span>Export Report</span>
+              <span>{t('export_report')}</span>
             </button>
           </div>
         </div>
@@ -227,7 +229,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
             }`}
           >
             <BarChart2 className="w-4 h-4" />
-            <span>Overview &amp; Charts</span>
+            <span>{t('overview_charts')}</span>
             {activeTab === 'insights' && (
               <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
             )}
@@ -240,7 +242,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Client Retention &amp; Segments</span>
+            <span>{t('client_retention_segments')}</span>
             {activeTab === 'retention' && (
               <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
             )}
@@ -253,7 +255,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
             }`}
           >
             <TrendingUp className="w-4 h-4" />
-            <span>Financial KPIs</span>
+            <span>{t('financial_kpis')}</span>
             {activeTab === 'revenue-kpi' && (
               <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
             )}
@@ -275,8 +277,8 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
               <div className="col-span-12 bg-white/80 backdrop-blur-md rounded-[24px] p-6 border border-surface-variant shadow-xs hover:shadow-md transition-shadow relative overflow-hidden">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4 mb-6 z-10 relative">
                   <div>
-                    <h3 className="text-lg font-extrabold text-on-surface mb-0.5">Revenue Growth</h3>
-                    <p className="text-xs font-medium text-on-surface-variant">Monthly revenue trajectory over the past year.</p>
+                    <h3 className="text-lg font-extrabold text-on-surface mb-0.5">{t('revenue_growth')}</h3>
+                    <p className="text-xs font-medium text-on-surface-variant">{t('monthly_revenue_trajectory')}</p>
                   </div>
                   <div className="flex flex-col sm:items-end">
                     <span className="text-2xl sm:text-3xl font-black text-primary tracking-tight">₹12,45,000</span>
@@ -340,8 +342,8 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
               {/* 2. Service Distribution Donut Chart (Left Half) */}
               <div className="col-span-12 md:col-span-6 bg-white/80 backdrop-blur-md rounded-[24px] p-6 border border-surface-variant shadow-xs flex flex-col justify-between">
                 <div className="mb-4">
-                  <h3 className="text-lg font-extrabold text-on-surface mb-0.5">Service Distribution</h3>
-                  <p className="text-xs font-medium text-on-surface-variant">Breakdown of revenue by service category.</p>
+                  <h3 className="text-lg font-extrabold text-on-surface mb-0.5">{t('service_distribution')}</h3>
+                  <p className="text-xs font-medium text-on-surface-variant">{t('revenue_by_category')}</p>
                 </div>
 
                 <div className="h-64 w-full flex items-center justify-center relative">
@@ -384,8 +386,8 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
               <div className="col-span-12 md:col-span-6 bg-white/80 backdrop-blur-md rounded-[24px] p-6 border border-surface-variant shadow-xs flex flex-col justify-between">
                 <div className="mb-4 flex justify-between items-start">
                   <div>
-                    <h3 className="text-lg font-extrabold text-on-surface mb-0.5">Client Bookings</h3>
-                    <p className="text-xs font-medium text-on-surface-variant">New vs. Returning clients per month.</p>
+                    <h3 className="text-lg font-extrabold text-on-surface mb-0.5">{t('client_bookings')}</h3>
+                    <p className="text-xs font-medium text-on-surface-variant">{t('new_returning_clients')}</p>
                   </div>
                 </div>
 
@@ -411,7 +413,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   <div className="w-10 h-10 rounded-full bg-primary-fixed mx-auto mb-3 flex items-center justify-center text-primary">
                     <Users className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-medium text-on-surface-variant mb-1">Total Clients</p>
+                  <p className="text-xs font-medium text-on-surface-variant mb-1">{t('total_clients')}</p>
                   <p className="text-xl font-black text-on-surface">3,240</p>
                 </div>
 
@@ -419,7 +421,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   <div className="w-10 h-10 rounded-full bg-tertiary-fixed mx-auto mb-3 flex items-center justify-center text-tertiary">
                     <Star className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-medium text-on-surface-variant mb-1">Avg Rating</p>
+                  <p className="text-xs font-medium text-on-surface-variant mb-1">{t('avg_rating')}</p>
                   <p className="text-xl font-black text-on-surface">4.9 / 5.0</p>
                 </div>
 
@@ -427,7 +429,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   <div className="w-10 h-10 rounded-full bg-secondary-fixed mx-auto mb-3 flex items-center justify-center text-secondary">
                     <Clock className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-medium text-on-surface-variant mb-1">Utilization</p>
+                  <p className="text-xs font-medium text-on-surface-variant mb-1">{t('utilization')}</p>
                   <p className="text-xl font-black text-on-surface">82%</p>
                 </div>
 
@@ -435,7 +437,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   <div className="w-10 h-10 rounded-full bg-primary-container/20 mx-auto mb-3 flex items-center justify-center text-primary-container">
                     <IndianRupee className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-medium text-on-surface-variant mb-1">Avg Ticket</p>
+                  <p className="text-xs font-medium text-on-surface-variant mb-1">{t('avg_ticket')}</p>
                   <p className="text-xl font-black text-on-surface">₹2,500.00</p>
                 </div>
               </div>
@@ -458,7 +460,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
               <div className="md:col-span-2 bg-surface rounded-[24px] border border-surface-variant p-6 shadow-xs flex flex-col justify-between gap-6">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-lg font-extrabold text-on-surface">Client Retention &amp; Repeat Visits</h3>
+                    <h3 className="text-lg font-extrabold text-on-surface">{t('client_retention_segments')}</h3>
                     <p className="text-xs font-medium text-on-surface-variant">Repeat visit performance vs churn metrics</p>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary">
@@ -468,7 +470,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-surface-container-low p-4 rounded-[16px] border border-surface-variant">
-                    <p className="text-xs font-medium text-on-surface-variant mb-1">Repeat Customer Rate</p>
+                    <p className="text-xs font-medium text-on-surface-variant mb-1">{t('repeat_customer_rate')}</p>
                     <div className="flex items-end justify-between">
                       <span className="text-3xl font-black text-on-surface">68%</span>
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
@@ -478,7 +480,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   </div>
 
                   <div className="bg-surface-container-low p-4 rounded-[16px] border border-surface-variant">
-                    <p className="text-xs font-medium text-on-surface-variant mb-1">Churn Risk Rate</p>
+                    <p className="text-xs font-medium text-on-surface-variant mb-1">{t('churn_risk_rate')}</p>
                     <div className="flex items-end justify-between">
                       <span className="text-3xl font-black text-on-surface">12%</span>
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
@@ -490,7 +492,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
 
                 {/* Top Clients List */}
                 <div>
-                  <h4 className="text-sm font-bold text-on-surface mb-3">Top VIP Clients</h4>
+                  <h4 className="text-sm font-bold text-on-surface mb-3">{t('top_vip_clients')}</h4>
                   <div className="space-y-3">
                     {TOP_CLIENTS.map((client, idx) => (
                       <div 
@@ -517,7 +519,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
               {/* Acquisition Channels */}
               <div className="bg-surface rounded-[24px] border border-surface-variant p-6 shadow-xs flex flex-col justify-between gap-6">
                 <div>
-                  <h3 className="text-lg font-extrabold text-on-surface mb-1">Acquisition Channels</h3>
+                  <h3 className="text-lg font-extrabold text-on-surface mb-1">{t('acquisition_channels')}</h3>
                   <p className="text-xs font-medium text-on-surface-variant">Where new clients discover your salon</p>
                 </div>
 
@@ -562,7 +564,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                 </span>
               </div>
               <div>
-                <p className="text-xs text-on-surface-variant font-medium mb-1">Average Ticket Size</p>
+                <p className="text-xs text-on-surface-variant font-medium mb-1">{t('average_ticket_size')}</p>
                 <h4 className="text-3xl font-black text-on-surface">₹2,500.00</h4>
               </div>
             </div>
@@ -577,7 +579,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                 </span>
               </div>
               <div>
-                <p className="text-xs text-on-surface-variant font-medium mb-1">Client Lifetime Value</p>
+                <p className="text-xs text-on-surface-variant font-medium mb-1">{t('client_lifetime_value')}</p>
                 <h4 className="text-3xl font-black text-on-surface">₹25,000.00</h4>
               </div>
             </div>
@@ -592,7 +594,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                 </span>
               </div>
               <div>
-                <p className="text-xs text-on-surface-variant font-medium mb-1">Refund Rate</p>
+                <p className="text-xs text-on-surface-variant font-medium mb-1">{t('refund_rate')}</p>
                 <h4 className="text-3xl font-black text-on-surface">0.8%</h4>
               </div>
             </div>
@@ -629,7 +631,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                 <Download className="w-6 h-6" />
               </div>
 
-              <h3 className="text-lg font-black text-on-surface tracking-tight">Export Insights Report</h3>
+              <h3 className="text-lg font-black text-on-surface tracking-tight">{t('export_insights_report')}</h3>
               <p className="text-xs text-on-surface-variant mt-1">Select your preferred export format and date range.</p>
 
               <div className="my-6 space-y-4">
@@ -670,7 +672,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   onClick={() => setShowExportModal(false)}
                   className="flex-1 py-3 bg-surface-container-high text-on-surface rounded-xl text-xs font-bold hover:bg-surface-variant transition-colors"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   onClick={handleExport}
@@ -678,11 +680,11 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                   className="flex-1 py-3 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                 >
                   {exporting ? (
-                    <span>Generating...</span>
+                    <span>{t('generating')}</span>
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
-                      <span>Download</span>
+                      <span>{t('download')}</span>
                     </>
                   )}
                 </button>

@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
 import { Search, Clock, Scissors, User, Sparkles, Plus, Calendar, ArrowLeft, X } from 'lucide-react';
 import BookingDetailDrawer from '../components/BookingDetailDrawer';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface BookingItem {
   id: string;
@@ -54,11 +55,20 @@ const initialBookings: BookingItem[] = [
 ];
 
 export default function Bookings({ navigate }: NavigationProps) {
+  const { t } = useLanguage();
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<null | any>(null);
 
   const filters = ['All', 'Confirmed', 'In-Progress', 'Pending', 'Completed'];
+
+  const filterLabels: Record<string, string> = {
+    'All': t('all'),
+    'Confirmed': t('confirmed'),
+    'In-Progress': t('in_progress'),
+    'Pending': t('pending'),
+    'Completed': t('completed'),
+  };
 
   const filteredBookings = initialBookings.filter(item => {
     const matchesFilter = activeFilter === 'All' || item.status === activeFilter;
@@ -79,14 +89,14 @@ export default function Bookings({ navigate }: NavigationProps) {
         
         {/* Header & Search */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
-          <h2 className="text-[28px] md:text-[32px] font-bold text-on-surface tracking-tight">Today's Bookings</h2>
+          <h2 className="text-[28px] md:text-[32px] font-bold text-on-surface tracking-tight">{t('today_bookings')}</h2>
           <div className="relative w-full md:w-96">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant w-5 h-5" />
             <input 
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search customer, service, or stylist..." 
+              placeholder={t('search_placeholder')} 
               className="w-full h-12 pl-12 pr-10 bg-surface-container rounded-full border-none focus:ring-2 focus:ring-primary-container focus:bg-surface transition-all text-base text-on-surface placeholder-on-surface-variant shadow-xs outline-none"
             />
             {searchQuery && (
@@ -112,7 +122,7 @@ export default function Bookings({ navigate }: NavigationProps) {
                   : 'bg-surface-container text-on-surface-variant border-outline-variant/30 hover:bg-surface-variant'
               }`}
             >
-              {f}
+              {filterLabels[f]}
             </button>
           ))}
         </div>
@@ -154,7 +164,7 @@ export default function Bookings({ navigate }: NavigationProps) {
                       </div>
                     </div>
                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${style.tagBg} ${style.tagText}`}>
-                      {item.status}
+                      {filterLabels[item.status]}
                     </span>
                   </div>
 
@@ -166,7 +176,7 @@ export default function Bookings({ navigate }: NavigationProps) {
                       <span className="text-base font-medium text-on-surface">{item.service}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-on-surface-variant">Stylist: {item.stylist}</span>
+                      <span className="text-on-surface-variant">{t('stylist_label')}: {item.stylist}</span>
                       <span className="font-semibold text-on-surface">{item.price}</span>
                     </div>
                   </div>
@@ -174,17 +184,17 @@ export default function Bookings({ navigate }: NavigationProps) {
                   <div className="flex gap-2 ml-2">
                     {item.status === 'Confirmed' && (
                       <>
-                        <button className="flex-1 py-2.5 rounded-lg border border-outline-variant text-[13px] font-medium text-on-surface hover:bg-surface-variant transition-colors">Reschedule</button>
-                        <button className="flex-1 py-2.5 rounded-lg bg-surface-container text-[13px] font-medium text-primary hover:bg-primary/5 transition-colors">Details</button>
+                        <button className="flex-1 py-2.5 rounded-lg border border-outline-variant text-[13px] font-medium text-on-surface hover:bg-surface-variant transition-colors">{t('reschedule')}</button>
+                        <button className="flex-1 py-2.5 rounded-lg bg-surface-container text-[13px] font-medium text-primary hover:bg-primary/5 transition-colors">{t('details')}</button>
                       </>
                     )}
                     {item.status === 'In-Progress' && (
-                      <button className="flex-1 py-2.5 rounded-lg bg-primary-container text-white text-[13px] font-medium hover:opacity-90 transition-colors shadow-xs">Checkout</button>
+                      <button className="flex-1 py-2.5 rounded-lg bg-primary-container text-white text-[13px] font-medium hover:opacity-90 transition-colors shadow-xs">{t('checkout')}</button>
                     )}
                     {item.status === 'Pending' && (
                       <>
-                        <button className="flex-1 py-2.5 rounded-lg bg-surface-container text-[13px] font-medium text-primary hover:bg-primary/5 transition-colors">Approve</button>
-                        <button className="flex-1 py-2.5 rounded-lg border border-outline-variant text-[13px] font-medium text-error hover:bg-error/5 transition-colors">Decline</button>
+                        <button className="flex-1 py-2.5 rounded-lg bg-surface-container text-[13px] font-medium text-primary hover:bg-primary/5 transition-colors">{t('approve')}</button>
+                        <button className="flex-1 py-2.5 rounded-lg border border-outline-variant text-[13px] font-medium text-error hover:bg-error/5 transition-colors">{t('decline')}</button>
                       </>
                     )}
                   </div>
@@ -213,10 +223,10 @@ export default function Bookings({ navigate }: NavigationProps) {
 
               {/* Typography */}
               <h2 className="text-xl md:text-2xl font-bold text-on-surface mb-2">
-                No Bookings Yet
+                {t('no_bookings')}
               </h2>
               <p className="text-xs sm:text-sm text-on-surface-variant max-w-[280px] leading-relaxed mb-6">
-                Your schedule is clear. New appointments will appear here once booked.
+                {t('clear_schedule')}
               </p>
 
               {/* CTA Buttons */}
@@ -226,7 +236,7 @@ export default function Bookings({ navigate }: NavigationProps) {
                   className="w-full bg-primary-container text-on-primary-container rounded-[16px] py-3.5 px-6 font-bold text-sm shadow-[0px_4px_20px_rgba(230,0,126,0.2)] hover:opacity-90 hover:shadow-[0px_6px_25px_rgba(230,0,126,0.3)] transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   <Plus className="w-5 h-5" />
-                  <span>Create Booking</span>
+                  <span>{t('create_booking')}</span>
                 </button>
 
                 {(activeFilter !== 'All' || searchQuery !== '') && (
@@ -234,7 +244,7 @@ export default function Bookings({ navigate }: NavigationProps) {
                     onClick={() => { setActiveFilter('All'); setSearchQuery(''); }}
                     className="text-xs font-semibold text-primary hover:underline py-1"
                   >
-                    Reset Filters
+                    {t('reset_filters')}
                   </button>
                 )}
               </div>

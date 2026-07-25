@@ -1,6 +1,7 @@
 import React from 'react';
 import { Bell, ArrowLeft, Settings, MoreVertical, Megaphone } from 'lucide-react';
 import { ScreenName } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TopBarProps {
   title?: string;
@@ -21,6 +22,8 @@ export default function TopBar({
   navigate,
   transparent = false
 }: TopBarProps) {
+  const { t } = useLanguage();
+  
   return (
     <header className={`sticky top-0 w-full z-50 border-b flex justify-between items-center px-5 h-16 transition-colors ${
       transparent 
@@ -53,7 +56,7 @@ export default function TopBar({
             className="flex items-center gap-1.5 text-primary bg-primary/10 hover:bg-primary/20 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all md:hidden cursor-pointer"
           >
             <Megaphone className="w-3.5 h-3.5" />
-            <span>Marketing</span>
+            <span>{t('marketing')}</span>
           </button>
         )}
 
@@ -75,15 +78,15 @@ export default function TopBar({
         {/* Desktop Nav Links (Hidden on mobile) */}
         {!showBack && (
           <div className="hidden md:flex gap-8 items-center ml-4">
-            <button onClick={() => navigate('dashboard')} className="text-on-surface-variant hover:opacity-80 text-sm font-medium cursor-pointer">Dashboard</button>
-            <button onClick={() => navigate('bookings')} className="text-on-surface-variant hover:opacity-80 text-sm font-medium cursor-pointer">Bookings</button>
-            <button onClick={() => navigate('services')} className="text-on-surface-variant hover:opacity-80 text-sm font-medium cursor-pointer">Services</button>
+            <button onClick={() => navigate('dashboard')} className="text-on-surface-variant hover:opacity-80 text-sm font-medium cursor-pointer">{t('dashboard')}</button>
+            <button onClick={() => navigate('bookings')} className="text-on-surface-variant hover:opacity-80 text-sm font-medium cursor-pointer">{t('bookings')}</button>
+            <button onClick={() => navigate('services')} className="text-on-surface-variant hover:opacity-80 text-sm font-medium cursor-pointer">{t('services')}</button>
             <button 
               onClick={() => navigate('marketing')} 
               className="text-primary hover:opacity-85 text-sm font-bold flex items-center gap-1.5 px-3 py-1 bg-primary/10 rounded-full transition-all cursor-pointer"
             >
               <Megaphone className="w-4 h-4" />
-              <span>Marketing</span>
+              <span>{t('marketing')}</span>
             </button>
           </div>
         )}

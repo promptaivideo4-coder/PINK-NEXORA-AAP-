@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatPrice, getCurrencySymbol } from '../utils/currency';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Transaction {
   id: string;
@@ -161,6 +162,7 @@ const initialTransactions: Transaction[] = [
 ];
 
 export default function Wallet({ navigate }: NavigationProps) {
+  const { t } = useLanguage();
   const [balance, setBalance] = useState(425000.00);
   const [pendingSettlement, setPendingSettlement] = useState(85000.00);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
@@ -372,8 +374,8 @@ export default function Wallet({ navigate }: NavigationProps) {
 
         {/* Screen Header */}
         <div id="wallet-screen-header" className="flex flex-col gap-1">
-          <h1 className="text-3xl md:text-4xl font-bold text-on-surface tracking-tight">Wallet</h1>
-          <p className="text-base text-on-surface-variant">Manage your earnings and settlements</p>
+          <h1 className="text-3xl md:text-4xl font-bold text-on-surface tracking-tight">{t('wallet_header')}</h1>
+          <p className="text-base text-on-surface-variant">{t('wallet_subheader')}</p>
         </div>
 
         {/* Main Balance Card */}
@@ -382,7 +384,7 @@ export default function Wallet({ navigate }: NavigationProps) {
           <div className="absolute -top-20 -right-20 w-48 h-48 bg-primary-container/10 rounded-full blur-3xl pointer-events-none"></div>
           
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Current Balance</span>
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{t('current_balance')}</span>
             <div className="text-[42px] sm:text-[48px] leading-[52px] font-bold text-on-surface tracking-tight">
               {formatPrice(balance, true)}
             </div>
@@ -394,14 +396,14 @@ export default function Wallet({ navigate }: NavigationProps) {
               onClick={() => setIsWithdrawOpen(true)}
               className="bg-primary-container text-on-primary-container font-semibold text-base px-6 py-3 rounded-[16px] flex-1 hover:bg-primary-container/90 transition-colors active:scale-95 shadow-sm text-center"
             >
-              Withdraw
+              {t('withdraw')}
             </button>
             <button 
               id="btn-details-main"
               onClick={() => setIsDetailsOpen(true)}
               className="bg-surface-container-low text-on-surface font-semibold text-base px-6 py-3 rounded-[16px] hover:bg-surface-container transition-colors active:scale-95 border border-surface-variant"
             >
-              Details
+              {t('details')}
             </button>
           </div>
         </div>
@@ -411,7 +413,7 @@ export default function Wallet({ navigate }: NavigationProps) {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2 text-primary">
               <Clock className="w-5 h-5" />
-              <h3 className="font-semibold text-lg text-on-surface">Pending Settlement</h3>
+              <h3 className="font-semibold text-lg text-on-surface">{t('pending_settlement')}</h3>
             </div>
             <span className="font-semibold text-lg text-on-surface">{formatPrice(pendingSettlement, true)}</span>
           </div>
@@ -421,14 +423,14 @@ export default function Wallet({ navigate }: NavigationProps) {
           </div>
 
           <p className="text-xs sm:text-sm text-on-surface-variant">
-            Estimated arrival: <strong className="text-on-surface font-medium">Oct 24, 2026</strong> · Bank ending in 4921
+            {t('estimated_arrival')}: <strong className="text-on-surface font-medium">Oct 24, 2026</strong> · Bank ending in 4921
           </p>
         </div>
 
         {/* Recent Transactions Section */}
         <div id="wallet-recent-transactions-section" className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-on-surface">Recent Transactions</h2>
+            <h2 className="text-xl font-semibold text-on-surface">{t('recent_transactions')}</h2>
             
             <div className="flex flex-wrap items-center gap-2">
               {/* Export CSV Button */}
@@ -439,7 +441,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                 title="Export Payout History to CSV"
               >
                 <Download className="w-3.5 h-3.5 text-primary" />
-                <span>Export CSV</span>
+                <span>{t('export_csv')}</span>
               </button>
 
               {/* Date Range Picker Trigger Button */}
@@ -456,7 +458,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                 <span>
                   {startDate || endDate 
                     ? `${startDate || 'Start'} to ${endDate || 'End'}`
-                    : 'All Dates'
+                    : t('all_dates')
                   }
                 </span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDatePickerOpen ? 'rotate-180' : ''}`} />
@@ -474,7 +476,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                         : 'text-on-surface-variant hover:text-on-surface'
                     }`}
                   >
-                    {tab}
+                    {tab === 'All' ? t('all') : tab === 'Completed' ? t('completed') : t('refunded')}
                   </button>
                 ))}
               </div>
@@ -568,7 +570,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                       </button>
                     )}
                     <h3 className="text-xl font-bold text-on-surface">
-                      {isAddingMethod ? 'Add Payout Method' : 'Withdraw Funds'}
+                      {isAddingMethod ? t('add_payout_method') : t('withdraw')}
                     </h3>
                   </div>
                   <button 
@@ -586,7 +588,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                   <form onSubmit={handleWithdraw} className="space-y-4">
                     <div>
                       <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
-                        Amount to Withdraw
+                        {t('amount_to_withdraw')}
                       </label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-on-surface-variant">{getCurrencySymbol()}</span>
@@ -601,7 +603,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                         />
                       </div>
                       <p className="text-xs text-on-surface-variant mt-1">
-                        Available: {formatPrice(balance, true)}
+                        {t('available')}: {formatPrice(balance, true)}
                       </p>
                     </div>
 
@@ -653,13 +655,13 @@ export default function Wallet({ navigate }: NavigationProps) {
                         onClick={() => setIsWithdrawOpen(false)}
                         className="flex-1 py-3 px-4 rounded-xl border border-surface-variant font-semibold text-on-surface hover:bg-surface-container transition-colors"
                       >
-                        Cancel
+                        {t('cancel')}
                       </button>
                       <button 
                         type="submit" 
                         className="flex-1 py-3 px-4 rounded-xl bg-primary-container text-white font-semibold hover:opacity-90 transition-colors shadow-sm"
                       >
-                        Confirm Payout
+                        {t('confirm_payout')}
                       </button>
                     </div>
                   </form>
@@ -690,7 +692,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                       {newMethodType === 'bank' ? (
                         <>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">Account Holder Name</label>
+                            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">{t('account_holder_name')}</label>
                             <input 
                               type="text"
                               value={newMethodData.accountName}
@@ -700,7 +702,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">Bank Name</label>
+                            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">{t('bank_name')}</label>
                             <input 
                               type="text"
                               value={newMethodData.bankName}
@@ -711,7 +713,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">Account Number</label>
+                              <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">{t('account_number')}</label>
                               <input 
                                 type="text"
                                 value={newMethodData.accountNumber}
@@ -721,7 +723,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">IFSC Code</label>
+                              <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">{t('ifsc_code')}</label>
                               <input 
                                 type="text"
                                 value={newMethodData.ifsc}
@@ -734,7 +736,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                         </>
                       ) : (
                         <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">UPI ID (VPA)</label>
+                          <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider ml-1">{t('upi_id')}</label>
                           <input 
                             type="text"
                             value={newMethodData.upiId}
@@ -752,7 +754,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                         type="submit" 
                         className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-md"
                       >
-                        Save & Select Method
+                        {t('save_select_method')}
                       </button>
                     </div>
                   </form>
@@ -785,12 +787,12 @@ export default function Wallet({ navigate }: NavigationProps) {
 
                 <div className="space-y-3 text-sm">
                   <div className="p-3.5 bg-surface-container-low rounded-xl flex justify-between items-center">
-                    <span className="text-on-surface-variant">Available for Payout</span>
+                    <span className="text-on-surface-variant">{t('available_for_payout')}</span>
                     <span className="font-bold text-on-surface text-base">{formatPrice(balance, true)}</span>
                   </div>
 
                   <div className="p-3.5 bg-surface-container-low rounded-xl flex justify-between items-center">
-                    <span className="text-on-surface-variant">Pending Settlements</span>
+                    <span className="text-on-surface-variant">{t('pending_settlement')}</span>
                     <span className="font-semibold text-on-surface">{formatPrice(pendingSettlement, true)}</span>
                   </div>
 
@@ -802,7 +804,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                   <hr className="border-surface-variant my-2" />
 
                   <div className="flex justify-between items-center text-base font-bold text-on-surface pt-1">
-                    <span>Total Salon Assets</span>
+                    <span>{t('total_salon_assets')}</span>
                     <span className="text-primary">{formatPrice(balance + pendingSettlement, true)}</span>
                   </div>
                 </div>
@@ -811,7 +813,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                   onClick={() => setIsDetailsOpen(false)}
                   className="w-full py-3 rounded-xl bg-primary-container text-white font-semibold hover:opacity-90 transition-colors"
                 >
-                  Close
+                  {t('close')}
                 </button>
               </motion.div>
             </div>

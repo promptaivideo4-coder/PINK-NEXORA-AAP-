@@ -4,16 +4,19 @@ import { NavigationProps } from '../types';
 import { TrendingUp, TrendingDown, ArrowUp, ArrowDown, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard } from 'lucide-react';
 import BannerAd from '../components/BannerAd';
 import { formatPrice } from '../utils/currency';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Dashboard({ navigate }: NavigationProps) {
+  const { t } = useLanguage();
+
   return (
     <Layout currentScreen="dashboard" navigate={navigate} title="NEXORA SALONOS">
       <div className="px-5 md:px-10 py-8 flex flex-col gap-8">
         
         {/* Welcome Section */}
         <section className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold text-on-surface tracking-tight">Good morning, Ananya</h2>
-          <p className="text-base text-on-surface-variant">Here's what's happening at Nexora today.</p>
+          <h2 className="text-3xl font-bold text-on-surface tracking-tight">{t('welcome_greeting')}</h2>
+          <p className="text-base text-on-surface-variant">{t('nexora_today')}</p>
         </section>
 
         <BannerAd />
@@ -27,7 +30,7 @@ export default function Dashboard({ navigate }: NavigationProps) {
           >
             <div className="flex justify-between items-start z-10">
               <div className="flex flex-col">
-                <span className="text-[13px] font-medium text-on-surface-variant uppercase tracking-wider">Today's Revenue</span>
+                <span className="text-[13px] font-medium text-on-surface-variant uppercase tracking-wider">{t('today_revenue')}</span>
                 <span className="text-[32px] font-bold text-on-surface mt-1 tracking-tight">{formatPrice(45800, true)}</span>
               </div>
               <div className="bg-emerald-500/10 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1 text-[12px] font-bold shadow-xs">
@@ -44,9 +47,12 @@ export default function Dashboard({ navigate }: NavigationProps) {
           </div>
 
           {/* Bookings */}
-          <div className="bg-white/85 backdrop-blur-[20px] border border-surface-variant rounded-[18px] md:col-span-3 lg:col-span-3 p-4 flex flex-col justify-between min-h-[160px] shadow-[0px_4px_20px_rgba(0,0,0,0.03)] hover:-translate-y-0.5 transition-transform">
+          <div 
+            onClick={() => navigate('bookings')}
+            className="bg-white/85 backdrop-blur-[20px] border border-surface-variant rounded-[18px] md:col-span-3 lg:col-span-3 p-4 flex flex-col justify-between min-h-[160px] shadow-[0px_4px_20px_rgba(0,0,0,0.03)] hover:-translate-y-0.5 transition-transform cursor-pointer group"
+          >
             <div className="flex justify-between items-start">
-              <span className="text-[13px] font-medium text-on-surface-variant uppercase tracking-wider">Bookings</span>
+              <span className="text-[13px] font-medium text-on-surface-variant uppercase tracking-wider group-hover:text-primary transition-colors">{t('bookings')}</span>
               <div className="flex items-center gap-1.5">
                 <span className="bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-full text-[11px] font-bold border border-emerald-500/20 flex items-center gap-0.5">
                   <TrendingUp className="w-3 h-3 stroke-[2.5]" />
@@ -59,7 +65,7 @@ export default function Dashboard({ navigate }: NavigationProps) {
             </div>
             <div className="flex items-baseline gap-2 mt-auto">
               <span className="text-[32px] font-bold text-on-surface tracking-tight">24</span>
-              <span className="text-[13px] font-medium text-on-surface-variant">/ 30 slots</span>
+              <span className="text-[13px] font-medium text-on-surface-variant">/ 30 {t('slots')}</span>
             </div>
             <div className="w-full bg-surface-container h-1.5 rounded-full mt-3 overflow-hidden">
               <div className="bg-primary h-full rounded-full" style={{ width: '80%' }}></div>
@@ -67,9 +73,12 @@ export default function Dashboard({ navigate }: NavigationProps) {
           </div>
 
           {/* Customers */}
-          <div className="bg-white/85 backdrop-blur-[20px] border border-surface-variant rounded-[18px] md:col-span-3 lg:col-span-4 p-4 flex flex-col justify-between min-h-[160px] shadow-[0px_4px_20px_rgba(0,0,0,0.03)] hover:-translate-y-0.5 transition-transform">
+          <div 
+            onClick={() => navigate('customers')}
+            className="bg-white/85 backdrop-blur-[20px] border border-surface-variant rounded-[18px] md:col-span-3 lg:col-span-4 p-4 flex flex-col justify-between min-h-[160px] shadow-[0px_4px_20px_rgba(0,0,0,0.03)] hover:-translate-y-0.5 transition-transform cursor-pointer group"
+          >
             <div className="flex justify-between items-start">
-              <span className="text-[13px] font-medium text-on-surface-variant uppercase tracking-wider">Customers</span>
+              <span className="text-[13px] font-medium text-on-surface-variant uppercase tracking-wider group-hover:text-primary transition-colors">{t('customers')}</span>
               <div className="flex items-center gap-1.5">
                 <span className="bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-full text-[11px] font-bold border border-emerald-500/20 flex items-center gap-0.5">
                   <TrendingUp className="w-3 h-3 stroke-[2.5]" />
@@ -82,7 +91,7 @@ export default function Dashboard({ navigate }: NavigationProps) {
             </div>
             <div className="flex items-baseline gap-2 mt-auto">
               <span className="text-[32px] font-bold text-on-surface tracking-tight">18</span>
-              <span className="text-[13px] font-medium text-on-surface-variant">Today</span>
+              <span className="text-[13px] font-medium text-on-surface-variant">{t('today')}</span>
             </div>
             <div className="flex -space-x-2 mt-3">
               <div className="w-7 h-7 rounded-full border-2 border-surface bg-surface-container overflow-hidden">
@@ -109,13 +118,13 @@ export default function Dashboard({ navigate }: NavigationProps) {
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <Wallet className="w-6 h-6 text-primary fill-primary/20" />
-                <span className="text-[18px] font-semibold text-on-surface">Wallet</span>
+                <span className="text-[18px] font-semibold text-on-surface">{t('wallet')}</span>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); navigate('wallet'); }} className="text-primary text-[13px] font-medium hover:underline">Withdraw</button>
+              <button onClick={(e) => { e.stopPropagation(); navigate('wallet'); }} className="text-primary text-[13px] font-medium hover:underline">{t('withdraw')}</button>
             </div>
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span className="text-[13px] font-medium text-on-surface-variant">Available Balance</span>
+                <span className="text-[13px] font-medium text-on-surface-variant">{t('available_balance')}</span>
                 <span className="bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-full text-[11px] font-bold border border-emerald-500/20 flex items-center gap-0.5">
                   <TrendingUp className="w-3 h-3 stroke-[2.5]" />
                   +18.4% MoM
@@ -132,13 +141,13 @@ export default function Dashboard({ navigate }: NavigationProps) {
           >
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <span className="text-[18px] font-semibold text-on-surface group-hover:text-primary transition-colors">Salon Rating</span>
+                <span className="text-[18px] font-semibold text-on-surface group-hover:text-primary transition-colors">{t('salon_rating')}</span>
                 <span className="bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-full text-[11px] font-bold border border-emerald-500/20 flex items-center gap-0.5">
                   <TrendingUp className="w-3 h-3 stroke-[2.5]" />
                   +0.2
                 </span>
               </div>
-              <span className="text-[13px] font-medium text-on-surface-variant group-hover:underline">Based on 1.2k reviews</span>
+              <span className="text-[13px] font-medium text-on-surface-variant group-hover:underline">{t('based_on_reviews')}</span>
             </div>
             <div className="flex flex-col items-end gap-1">
               <div className="flex items-center gap-1">
@@ -158,32 +167,32 @@ export default function Dashboard({ navigate }: NavigationProps) {
 
         {/* Quick Actions */}
         <section className="flex flex-col gap-2">
-          <h3 className="text-xl font-semibold text-on-surface">Quick Actions</h3>
+          <h3 className="text-xl font-semibold text-on-surface">{t('quick_actions')}</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <button 
               onClick={() => navigate('new-appointment')}
               className="bg-primary-container text-white rounded-[16px] p-3 flex flex-col items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-sm"
             >
               <PlusCircle className="w-6 h-6" />
-              <span className="text-[13px] font-semibold">New Booking</span>
+              <span className="text-[13px] font-semibold">{t('new_booking')}</span>
             </button>
             <button onClick={() => navigate('customers')} className="bg-[#FDE7F3] text-primary rounded-[16px] p-3 flex flex-col items-center justify-center gap-2 hover:bg-primary-fixed/80 active:scale-95 transition-all">
               <Users className="w-6 h-6" />
-              <span className="text-[13px] font-semibold">Customers</span>
+              <span className="text-[13px] font-semibold">{t('customers')}</span>
             </button>
             <button 
                onClick={() => navigate('new-service')}
                className="bg-surface border border-outline-variant text-on-surface rounded-[16px] p-3 flex flex-col items-center justify-center gap-2 hover:bg-surface-container active:scale-95 transition-all shadow-sm"
             >
               <Scissors className="w-6 h-6" />
-              <span className="text-[13px] font-semibold">New Service</span>
+              <span className="text-[13px] font-semibold">{t('new_service')}</span>
             </button>
             <button 
                onClick={() => navigate('website-dashboard')}
                className="bg-surface border border-outline-variant text-on-surface rounded-[16px] p-3 flex flex-col items-center justify-center gap-2 hover:bg-surface-container active:scale-95 transition-all shadow-sm"
             >
               <Star className="w-6 h-6 text-on-surface-variant" />
-              <span className="text-[13px] font-semibold">Website</span>
+              <span className="text-[13px] font-semibold">{t('website')}</span>
             </button>
           </div>
         </section>
@@ -191,8 +200,8 @@ export default function Dashboard({ navigate }: NavigationProps) {
         {/* Recent Activity Feed */}
         <section className="flex flex-col gap-2 mb-8">
           <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold text-on-surface">Recent Activity</h3>
-            <button className="text-primary text-[13px] font-medium hover:underline">View All</button>
+            <h3 className="text-xl font-semibold text-on-surface">{t('recent_activity')}</h3>
+            <button className="text-primary text-[13px] font-medium hover:underline">{t('view_all')}</button>
           </div>
           
           <div className="bg-white/85 backdrop-blur-[20px] border border-surface-variant rounded-[18px] flex flex-col divide-y divide-outline-variant/30 shadow-[0px_4px_20px_rgba(0,0,0,0.03)]">
@@ -202,10 +211,10 @@ export default function Dashboard({ navigate }: NavigationProps) {
                 <CalendarCheck className="w-5 h-5" />
               </div>
               <div className="flex flex-col flex-grow">
-                <span className="text-base text-on-surface"><span className="font-semibold">Priya S.</span> booked Full Balayage</span>
-                <span className="text-[13px] font-medium text-on-surface-variant">Today at 2:30 PM</span>
+                <span className="text-base text-on-surface"><span className="font-semibold">Priya S.</span> {t('booked_label')} Full Balayage</span>
+                <span className="text-[13px] font-medium text-on-surface-variant">{t('today_at')} 2:30 PM</span>
               </div>
-              <div className="text-[13px] font-medium text-primary bg-primary-fixed/20 px-2 py-1 rounded-md">New</div>
+              <div className="text-[13px] font-medium text-primary bg-primary-fixed/20 px-2 py-1 rounded-md">{t('new_label')}</div>
             </div>
             
             {/* Activity 2 */}
@@ -214,8 +223,8 @@ export default function Dashboard({ navigate }: NavigationProps) {
                 <CreditCard className="w-5 h-5" />
               </div>
               <div className="flex flex-col flex-grow">
-                <span className="text-base text-on-surface">Payment received from <span className="font-semibold">Rohan V.</span></span>
-                <span className="text-[13px] font-medium text-on-surface-variant">2 hours ago</span>
+                <span className="text-base text-on-surface">{t('payment_received_from')} <span className="font-semibold">Rohan V.</span></span>
+                <span className="text-[13px] font-medium text-on-surface-variant">2 {t('hours_ago')}</span>
               </div>
               <div className="text-base font-semibold text-on-surface">+{formatPrice(2500, true)}</div>
             </div>
@@ -226,8 +235,8 @@ export default function Dashboard({ navigate }: NavigationProps) {
                 <Star className="w-5 h-5" />
               </div>
               <div className="flex flex-col flex-grow">
-                <span className="text-base text-on-surface"><span className="font-semibold">Ananya S.</span> left a 5-star review</span>
-                <span className="text-[13px] font-medium text-on-surface-variant">Yesterday</span>
+                <span className="text-base text-on-surface"><span className="font-semibold">Ananya S.</span> {t('left_review')}</span>
+                <span className="text-[13px] font-medium text-on-surface-variant">{t('yesterday')}</span>
               </div>
             </div>
           </div>

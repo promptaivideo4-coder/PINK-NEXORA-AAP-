@@ -31,6 +31,7 @@ import ServerError from './screens/ServerError';
 import ComponentLibrary from './screens/ComponentLibrary';
 import ResponsiveTables from './screens/ResponsiveTables';
 import SkeletonShowcase from './screens/SkeletonShowcase';
+import ResetPassword from './screens/ResetPassword';
 import Marketing from './screens/Marketing';
 import { ScreenName } from './types';
 import { supabase } from './lib/supabase';
@@ -46,10 +47,42 @@ export default function App() {
   }, [currentScreen]);
 
   useEffect(() => {
+    // Apply theme on boot
+    const savedTheme = localStorage.getItem('nexora-theme');
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else if (savedTheme === 'light') {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
+
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
+
+    // Handle initial hash routing and hash changes
+    const handleHashRouting = () => {
+      const hash = window.location.hash;
+      
+      // Handle Supabase recovery flow (password reset)
+      // Usually format is #access_token=...&type=recovery
+      if (hash.includes('type=recovery') || hash.includes('error_description=Email+link+is+invalid+or+has+expired')) {
+        setCurrentScreen('reset-password');
+        return;
+      }
+
+      // Handle custom owner paths
+      if (hash.includes('/app/owner/login')) {
+        setCurrentScreen('login');
+      } else if (hash.includes('/app/owner/reset-password')) {
+        setCurrentScreen('reset-password');
+      }
+    };
+
+    handleHashRouting();
+    window.addEventListener('hashchange', handleHashRouting);
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -58,17 +91,20 @@ export default function App() {
       
       if (!session) {
         // Only force welcome if we are on a protected screen
-        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper'];
+        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection'];
         if (!authScreens.includes(activeScreen)) {
           setCurrentScreen('welcome');
         }
-      } else if (['splash', 'login', 'register-stepper', 'welcome'].includes(activeScreen)) {
-        // If logged in from auth screens, go to dashboard
+      } else if (['splash', 'welcome', 'login'].includes(activeScreen)) {
+        // Automatically go to dashboard if logged in from these entry screens
         setCurrentScreen('dashboard');
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('hashchange', handleHashRouting);
+    };
   }, []);
 
   const navigate = (screen: ScreenName) => {
@@ -81,6 +117,7 @@ export default function App() {
       {currentScreen === 'splash' && <Splash navigate={navigate} />}
       {currentScreen === 'welcome' && <Welcome navigate={navigate} />}
       {currentScreen === 'login' && <Login navigate={navigate} />}
+      {currentScreen === 'reset-password' && <ResetPassword navigate={navigate} />}
       {currentScreen === 'register-stepper' && <RegistrationStepper navigate={navigate} />}
       {currentScreen === 'dashboard' && <Dashboard navigate={navigate} />}
       {currentScreen === 'bookings' && <Bookings navigate={navigate} />}

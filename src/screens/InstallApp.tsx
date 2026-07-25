@@ -9,6 +9,9 @@ import {
   Share, 
   Check, 
   ArrowLeft,
+  X,
+  Info,
+  Smartphone,
   Battery,
   BatteryCharging,
   BatteryFull,
@@ -124,6 +127,8 @@ export default function InstallApp({ navigate }: NavigationProps) {
   const [isInstalled, setIsInstalled] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [helpTab, setHelpTab] = useState<'ios' | 'android'>('ios');
 
   // Install Animation State
   const [isAnimating, setIsAnimating] = useState(false);
@@ -593,6 +598,14 @@ export default function InstallApp({ navigate }: NavigationProps) {
             >
               Maybe Later
             </button>
+
+            <button
+              onClick={() => setShowHelp(true)}
+              className="w-full mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-primary hover:underline transition-all"
+            >
+              <Info className="w-3 h-3" />
+              How to Install manually?
+            </button>
           </div>
 
           {/* Instructions fallback hint */}
@@ -601,6 +614,138 @@ export default function InstallApp({ navigate }: NavigationProps) {
           </p>
         </motion.div>
       </div>
+
+      {/* Manual Installation Help Modal */}
+      <AnimatePresence>
+        {showHelp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setShowHelp(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="w-full max-w-lg bg-surface-container-lowest rounded-[28px] shadow-2xl border border-outline-variant/40 overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 flex flex-col gap-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary">
+                      <Smartphone className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-on-surface">Install Instructions</h2>
+                      <p className="text-xs text-on-surface-variant">Get Nexora on your home screen</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowHelp(false)}
+                    className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex p-1 bg-surface-container-low rounded-2xl border border-outline-variant/20">
+                  <button
+                    onClick={() => setHelpTab('ios')}
+                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                      helpTab === 'ios' 
+                        ? 'bg-white shadow-sm text-primary' 
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    iOS (Safari)
+                  </button>
+                  <button
+                    onClick={() => setHelpTab('android')}
+                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                      helpTab === 'android' 
+                        ? 'bg-white shadow-sm text-primary' 
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    Android (Chrome)
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex flex-col gap-4">
+                  <div className="aspect-video w-full rounded-2xl bg-surface-container-high overflow-hidden border border-outline-variant/10 relative">
+                    {helpTab === 'ios' ? (
+                      <img 
+                        src="/src/assets/images/ios_pwa_install_steps_1784952049729.jpg" 
+                        alt="iOS Install Steps" 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <img 
+                        src="/src/assets/images/android_pwa_install_steps_1784952063366.jpg" 
+                        alt="Android Install Steps" 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-3 px-1">
+                    <h3 className="text-sm font-bold text-on-surface">Steps for {helpTab === 'ios' ? 'iOS Safari' : 'Android Chrome'}:</h3>
+                    <ul className="space-y-2.5">
+                      {helpTab === 'ios' ? (
+                        <>
+                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
+                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold">1</span>
+                            <span>Open this website in the <strong className="text-on-surface">Safari browser</strong>.</span>
+                          </li>
+                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
+                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold">2</span>
+                            <span>Tap the <strong className="text-on-surface">Share button</strong> (square with upward arrow) at the bottom.</span>
+                          </li>
+                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
+                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold">3</span>
+                            <span>Scroll down and select <strong className="text-on-surface">'Add to Home Screen'</strong>.</span>
+                          </li>
+                        </>
+                      ) : (
+                        <>
+                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
+                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold">1</span>
+                            <span>Open this website in <strong className="text-on-surface">Google Chrome</strong>.</span>
+                          </li>
+                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
+                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold">2</span>
+                            <span>Tap the <strong className="text-on-surface">Three Dots menu</strong> in the top right corner.</span>
+                          </li>
+                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
+                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold">3</span>
+                            <span>Select <strong className="text-on-surface">'Install app'</strong> or <strong className="text-on-surface">'Add to Home Screen'</strong>.</span>
+                          </li>
+                        </>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-surface-container-low border-t border-outline-variant/10 flex justify-end">
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="px-6 py-2 bg-primary-container text-on-primary-container rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all"
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -2,6 +2,7 @@ export type ScreenName =
   | 'splash' 
   | 'welcome' 
   | 'login' 
+  | 'reset-password'
   | 'register-stepper' 
   | 'dashboard' 
   | 'bookings' 

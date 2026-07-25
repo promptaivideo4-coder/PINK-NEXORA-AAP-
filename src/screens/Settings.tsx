@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
 import { 
   Palette, 
   Sliders, 
@@ -29,20 +30,37 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Settings({ navigate }: NavigationProps) {
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light');
+  const { language, setLanguage, t } = useLanguage();
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    return (localStorage.getItem('nexora-theme') as 'light' | 'dark' | 'system') || 'light';
+  });
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [activeLegalModal, setActiveLegalModal] = useState<'privacy' | 'terms' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    // Check Supabase connection
+    const checkConnection = async () => {
+      try {
+        const { data, error } = await supabase.from('services').select('id').limit(1);
+        if (error) throw error;
+        setIsSupabaseConnected(true);
+      } catch (err) {
+        // Fallback check if services table doesn't exist yet
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsSupabaseConnected(!!session || !import.meta.env.VITE_SUPABASE_URL?.includes('placeholder'));
+      }
+    };
+    checkConnection();
+  }, []);
 
   const languages = [
     { code: 'en', name: 'English', native: 'English (US)' },
-    { code: 'es', name: 'Spanish', native: 'Español' },
-    { code: 'fr', name: 'French', native: 'Français' },
-    { code: 'de', name: 'German', native: 'Deutsch' },
-    { code: 'ja', name: 'Japanese', native: '日本語' },
-    { code: 'ar', name: 'Arabic', native: 'العربية' },
+    { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
+    { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
+    { code: 'te', name: 'Telugu', native: 'తెలుగు' },
   ];
 
   const showToast = (msg: string) => {
@@ -52,6 +70,8 @@ export default function Settings({ navigate }: NavigationProps) {
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     setTheme(newTheme);
+    localStorage.setItem('nexora-theme', newTheme);
+    
     if (newTheme === 'dark') {
       document.documentElement.classList.add('dark');
       document.documentElement.classList.remove('light');
@@ -60,6 +80,8 @@ export default function Settings({ navigate }: NavigationProps) {
       document.documentElement.classList.remove('dark');
     } else {
       document.documentElement.classList.remove('dark', 'light');
+      // If system, we might want to check preference immediately or just let CSS media queries handle it
+      // Standard approach for 'system' is to remove classes and let @media (prefers-color-scheme) work
     }
     showToast(`App theme set to ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)}`);
   };
@@ -70,11 +92,14 @@ export default function Settings({ navigate }: NavigationProps) {
     showToast(nextState ? 'Push notifications enabled' : 'Push notifications disabled');
   };
 
-  const handleSelectLanguage = (langName: string) => {
-    setSelectedLanguage(langName);
+  const handleSelectLanguage = (langCode: any) => {
+    setLanguage(langCode);
     setIsLanguageModalOpen(false);
+    const langName = languages.find(l => l.code === langCode)?.name || langCode;
     showToast(`Language changed to ${langName}`);
   };
+
+  const selectedLanguageName = languages.find(l => l.code === language)?.name || 'English';
 
   return (
     <Layout currentScreen="settings" navigate={navigate} title="Nexora Salonos" showBack={false}>
@@ -82,8 +107,8 @@ export default function Settings({ navigate }: NavigationProps) {
         
         {/* Page Title Header */}
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-on-surface tracking-tight">Settings</h2>
-          <p className="text-xs text-on-surface-variant font-medium">Manage your app preferences and configuration.</p>
+          <h2 className="text-2xl font-bold text-on-surface tracking-tight">{t('settings')}</h2>
+          <p className="text-xs text-on-surface-variant font-medium">{t('manage_preferences')}</p>
         </div>
 
         {/* Toast Notification */}
@@ -107,14 +132,14 @@ export default function Settings({ navigate }: NavigationProps) {
           <section className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest/80 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] overflow-hidden transition-shadow hover:shadow-[0px_8px_30px_rgba(0,0,0,0.06)] duration-300">
             <div className="px-6 py-4 border-b border-surface-container-highest/60 bg-surface-bright/50 flex items-center gap-2.5">
               <Palette className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-bold text-on-surface">Appearance</h3>
+              <h3 className="text-sm font-bold text-on-surface">{t('appearance')}</h3>
             </div>
             
             <div className="p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h4 className="text-sm font-bold text-on-surface">Theme</h4>
-                  <p className="text-xs text-on-surface-variant mt-0.5">Select your preferred app visual mode</p>
+                  <h4 className="text-sm font-bold text-on-surface">{t('theme')}</h4>
+                  <p className="text-xs text-on-surface-variant mt-0.5">{t('theme_desc')}</p>
                 </div>
 
                 <div className="flex bg-surface-container p-1 rounded-xl border border-outline-variant/30 self-start sm:self-auto">
@@ -127,7 +152,7 @@ export default function Settings({ navigate }: NavigationProps) {
                     }`}
                   >
                     <Sun className="w-3.5 h-3.5" />
-                    <span>Light</span>
+                    <span>{t('light')}</span>
                   </button>
 
                   <button 
@@ -139,7 +164,7 @@ export default function Settings({ navigate }: NavigationProps) {
                     }`}
                   >
                     <Moon className="w-3.5 h-3.5" />
-                    <span>Dark</span>
+                    <span>{t('dark')}</span>
                   </button>
 
                   <button 
@@ -151,7 +176,7 @@ export default function Settings({ navigate }: NavigationProps) {
                     }`}
                   >
                     <Laptop className="w-3.5 h-3.5" />
-                    <span>System</span>
+                    <span>{t('system')}</span>
                   </button>
                 </div>
               </div>
@@ -160,9 +185,25 @@ export default function Settings({ navigate }: NavigationProps) {
 
           {/* App Settings Group */}
           <section className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest/80 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] overflow-hidden transition-shadow hover:shadow-[0px_8px_30px_rgba(0,0,0,0.06)] duration-300">
-            <div className="px-6 py-4 border-b border-surface-container-highest/60 bg-surface-bright/50 flex items-center gap-2.5">
-              <Sliders className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-bold text-on-surface">App Settings</h3>
+            <div className="px-6 py-4 border-b border-surface-container-highest/60 bg-surface-bright/50 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Sliders className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-bold text-on-surface">{t('app_settings')}</h3>
+              </div>
+              
+              {/* Connection Status Badge */}
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                isSupabaseConnected === true 
+                  ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' 
+                  : isSupabaseConnected === false 
+                    ? 'bg-error/10 text-error border-error/20'
+                    : 'bg-surface-container text-on-surface-variant border-outline-variant/30 animate-pulse'
+              }`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${
+                  isSupabaseConnected === true ? 'bg-emerald-500' : isSupabaseConnected === false ? 'bg-error' : 'bg-on-surface-variant/40'
+                }`} />
+                {isSupabaseConnected === true ? t('connected') : isSupabaseConnected === false ? t('disconnected') : t('checking')}
+              </div>
             </div>
 
             <div className="divide-y divide-surface-container-highest/60">
@@ -177,8 +218,8 @@ export default function Settings({ navigate }: NavigationProps) {
                     <Globe className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Language</h4>
-                    <p className="text-xs text-on-surface-variant mt-0.5">{selectedLanguage}</p>
+                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{t('language')}</h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{selectedLanguageName}</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
@@ -191,8 +232,8 @@ export default function Settings({ navigate }: NavigationProps) {
                     <Bell className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-on-surface">Push Notifications</h4>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Stay updated with appointments and reviews</p>
+                    <h4 className="text-sm font-bold text-on-surface">{t('push_notifications')}</h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t('notifications_desc')}</p>
                   </div>
                 </div>
 
@@ -221,8 +262,8 @@ export default function Settings({ navigate }: NavigationProps) {
                     <Smartphone className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Install Home Screen App</h4>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Faster access, offline support, & instant alerts</p>
+                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{t('install_app')}</h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t('install_app_desc')}</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
@@ -238,8 +279,8 @@ export default function Settings({ navigate }: NavigationProps) {
                     <WifiOff className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Offline Status & Data Cache</h4>
-                    <p className="text-xs text-on-surface-variant mt-0.5">View cached schedule and network connection status</p>
+                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{t('offline_status')}</h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t('offline_status_desc')}</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
@@ -256,10 +297,10 @@ export default function Settings({ navigate }: NavigationProps) {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Check for App Updates</h4>
+                      <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{t('check_updates')}</h4>
                       <span className="px-2 py-0.5 bg-primary-container text-on-primary-container text-[10px] font-extrabold rounded-full">v2.5.0</span>
                     </div>
-                    <p className="text-xs text-on-surface-variant mt-0.5">New features & performance improvements available</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t('check_updates_desc')}</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
@@ -275,8 +316,8 @@ export default function Settings({ navigate }: NavigationProps) {
                     <Users className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Staff & Team Members</h4>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Manage stylists, schedules, roles, and empty states</p>
+                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{t('staff_management')}</h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t('staff_management_desc')}</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
@@ -357,7 +398,7 @@ export default function Settings({ navigate }: NavigationProps) {
           <section className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest/80 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] overflow-hidden transition-shadow hover:shadow-[0px_8px_30px_rgba(0,0,0,0.06)] duration-300">
             <div className="px-6 py-4 border-b border-surface-container-highest/60 bg-surface-bright/50 flex items-center gap-2.5">
               <Shield className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-bold text-on-surface">Legal & Compliance</h3>
+              <h3 className="text-sm font-bold text-on-surface">{t('privacy_policy')} & {t('terms_of_service')}</h3>
             </div>
 
             <div className="divide-y divide-surface-container-highest/60">
@@ -367,7 +408,7 @@ export default function Settings({ navigate }: NavigationProps) {
               >
                 <div className="flex items-center gap-4">
                   <Shield className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
-                  <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Privacy Policy</h4>
+                  <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{t('privacy_policy')}</h4>
                 </div>
                 <ExternalLink className="w-4 h-4 text-on-surface-variant group-hover:text-primary transition-colors" />
               </button>
@@ -378,7 +419,7 @@ export default function Settings({ navigate }: NavigationProps) {
               >
                 <div className="flex items-center gap-4">
                   <FileText className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
-                  <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Terms of Service</h4>
+                  <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{t('terms_of_service')}</h4>
                 </div>
                 <ExternalLink className="w-4 h-4 text-on-surface-variant group-hover:text-primary transition-colors" />
               </button>
@@ -395,7 +436,7 @@ export default function Settings({ navigate }: NavigationProps) {
               className="w-full py-4 rounded-2xl bg-error/10 text-error font-bold text-sm flex items-center justify-center gap-2 hover:bg-error/20 transition-colors active:scale-[0.98] duration-200 border border-error/20 shadow-xs"
             >
               <LogOut className="w-5 h-5" />
-              <span>Logout</span>
+              <span>{t('logout')}</span>
             </button>
 
             <p className="text-center text-xs font-semibold text-on-surface-variant/70">
@@ -420,7 +461,7 @@ export default function Settings({ navigate }: NavigationProps) {
               <div className="flex justify-between items-center pb-3 border-b border-outline-variant/40">
                 <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
                   <Globe className="w-5 h-5 text-primary" />
-                  <span>Select Display Language</span>
+                  <span>{t('select_display_lang')}</span>
                 </h3>
                 <button 
                   onClick={() => setIsLanguageModalOpen(false)}
@@ -432,11 +473,11 @@ export default function Settings({ navigate }: NavigationProps) {
 
               <div className="space-y-1.5 pt-1">
                 {languages.map((lang) => {
-                  const isSelected = selectedLanguage === lang.name;
+                  const isSelected = language === lang.code;
                   return (
                     <button
                       key={lang.code}
-                      onClick={() => handleSelectLanguage(lang.name)}
+                      onClick={() => handleSelectLanguage(lang.code)}
                       className={`w-full flex items-center justify-between p-3 rounded-xl border text-xs font-semibold transition-all ${
                         isSelected 
                           ? 'bg-primary-container/10 border-primary text-primary font-bold'

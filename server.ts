@@ -125,7 +125,7 @@ Requirements:
 4. Return ONLY a raw JSON object with the structure: { "suggestions": ["option 1", "option 2", "option 3"] }. No markdown syntax, no extra text outside JSON.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           temperature: 0.7,
@@ -153,7 +153,7 @@ Requirements:
     }
   });
 
-  // API endpoint to generate custom luxury salon promotional offers using Gemini 3.6-flash
+  // API endpoint to generate custom luxury salon promotional offers using Gemini 1.5-flash
   app.post("/api/generate-offer", async (req, res) => {
     try {
       const { campaignGoal, customerType, occasion, services = [], discountPreference, validity, language = "English", tone = "Professional" } = req.body;
@@ -194,7 +194,7 @@ Requirements:
 Return ONLY a JSON object matching the requested schema. No extra conversational text or markdown blocks outside the JSON.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           temperature: 0.8,
@@ -251,7 +251,7 @@ Provide a JSON object with the following properties:
 Return ONLY the raw JSON object, without markdown formatting or code blocks.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite-image",
+        model: "gemini-1.5-flash",
         contents: [
           prompt,
           {
