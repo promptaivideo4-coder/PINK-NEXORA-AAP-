@@ -32,7 +32,7 @@ export default function FloatingInstallBadge({ currentScreen, onNavigate, isInst
           initial={{ scale: 0, opacity: 0, x: -20 }}
           animate={{ scale: 1, opacity: 1, x: 0 }}
           exit={{ scale: 0, opacity: 0, x: -20 }}
-          className="fixed bottom-6 left-6 z-[90] flex items-center gap-1 p-1 bg-white/90 backdrop-blur-md border border-outline-variant/30 rounded-full shadow-lg shadow-black/5 text-primary hover:bg-white transition-colors group"
+          className="fixed bottom-[calc(80px+env(safe-area-inset-bottom,16px))] left-6 z-[90] flex items-center gap-1 p-1 bg-white/90 backdrop-blur-md border border-outline-variant/30 rounded-full shadow-lg shadow-black/5 text-primary hover:bg-white transition-colors group"
         >
           <button
             onClick={() => onNavigate('install-app')}

@@ -214,7 +214,7 @@ export default function ServiceDetail({ navigate }: NavigationProps) {
   };
   return (
     <Layout currentScreen="services" navigate={navigate} title={serviceName} showBack onBack={() => navigate('services')} showSettings transparentTopBar>
-      <div className="px-5 md:px-10 py-4 max-w-[1200px] mx-auto space-y-8 w-full pb-32">
+      <div className="px-4 py-4 max-w-md mx-auto space-y-8 w-full pb-32">
         
         {/* Hero Section */}
         <section className="relative w-full h-64 md:h-96 rounded-xl overflow-hidden bg-white/90 backdrop-blur-[20px] border border-[#E8E8E8] shadow-[0px_4px_20px_rgba(0,0,0,0.03)] -mt-16">

@@ -22,7 +22,7 @@ export default function CancellationRefundPolicy({ navigate }: NavigationProps) 
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-2xl mx-auto space-y-8 pb-12"
+          className="max-w-md mx-auto space-y-8 pb-12"
         >
           {/* Introduction */}
           <section className="space-y-3">

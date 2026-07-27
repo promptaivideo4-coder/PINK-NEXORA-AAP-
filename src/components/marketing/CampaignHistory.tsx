@@ -963,7 +963,7 @@ export default function CampaignHistory({ onBack }: CampaignHistoryProps) {
                     className="absolute right-0 mt-3 w-80 bg-white rounded-3xl border border-[#e2bdc7] shadow-2xl z-50 overflow-hidden"
                   >
                     <div className="p-4 border-b border-[#f2f4f6] flex justify-between items-center">
-                      <h3 className="text-xs font-black text-[#191c1e] uppercase tracking-widest">{t.notifications || 'Notifications'}</h3>
+                      <h3 className="text-xs font-black text-[#191c1e] uppercase tracking-widest">{(t as any).notifications || 'Notifications'}</h3>
                       <button className="text-[10px] font-bold text-[#e6007e]">Mark all read</button>
                     </div>
                     <div className="max-h-[320px] overflow-y-auto">
@@ -1074,7 +1074,7 @@ export default function CampaignHistory({ onBack }: CampaignHistoryProps) {
       <main className="pt-20 px-4 md:ml-64 md:px-10 md:pt-24 max-w-7xl mx-auto w-full space-y-6 pb-32">
         {/* Header Section */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl md:text-3xl font-['Hanken_Grotesk'] font-bold text-[#191c1e] capitalize">{t[activeView as keyof typeof t.EN]} {t.overview}</h1>
+          <h1 className="text-2xl md:text-3xl font-['Hanken_Grotesk'] font-bold text-[#191c1e] capitalize">{(t as any)[activeView] || activeView} {t.overview}</h1>
           <button className="p-2 bg-[#eceef0] rounded-full text-[#e6007e] shadow-sm border border-[#e2bdc7] hover:bg-[#e6e8ea]">
             <TuneIcon className="w-6 h-6" />
           </button>

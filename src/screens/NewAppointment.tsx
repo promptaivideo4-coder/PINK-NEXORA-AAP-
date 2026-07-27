@@ -73,7 +73,7 @@ export default function NewAppointment({ navigate }: NavigationProps) {
     <div className="min-h-screen bg-background text-on-surface font-sans flex flex-col pb-24 md:pb-0">
       <TopBar showBack onBack={() => navigate('bookings')} navigate={navigate} title="New Appointment" />
       
-      <main className="w-full max-w-[1200px] mx-auto px-5 md:px-10 pt-8 pb-32 flex-grow">
+      <main className="w-full max-w-md mx-auto px-4 pt-6 pb-32 flex-grow">
         <div className="flex flex-col md:flex-row gap-8 items-start">
           
           {/* Left Side: Stepper Progress */}

@@ -103,7 +103,7 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
 
   return (
     <Layout currentScreen="website-dashboard" navigate={navigate} title="Reviews & Feedback" showSettings>
-      <div className="px-5 md:px-10 py-8 flex flex-col gap-8 max-w-[1200px] mx-auto w-full relative">
+      <div className="px-4 py-6 flex flex-col gap-8 max-w-md mx-auto w-full relative">
         
         {/* Preview Before Publish Modal */}
         <AnimatePresence>

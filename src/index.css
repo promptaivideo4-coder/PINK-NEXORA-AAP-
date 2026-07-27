@@ -25,10 +25,17 @@
 html, body {
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
-  background-color: var(--color-background);
+  background-color: #0f172a;
   color: var(--color-on-background);
   width: 100%;
+  min-height: 100vh;
   overflow-x: hidden;
+}
+
+@media (max-width: 639px) {
+  html, body {
+    background-color: var(--color-background);
+  }
 }
 
 :root {

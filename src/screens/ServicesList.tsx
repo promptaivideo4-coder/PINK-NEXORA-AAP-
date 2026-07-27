@@ -113,7 +113,7 @@ export default function ServicesList({ navigate }: NavigationProps) {
 
   return (
     <Layout currentScreen="services" navigate={navigate} title="Salon Elite" showSettings>
-      <div className="px-5 md:px-10 py-8 max-w-[1200px] mx-auto w-full relative min-h-[calc(100vh-120px)] flex flex-col pb-32">
+      <div className="px-4 py-6 max-w-md mx-auto w-full relative min-h-[calc(100vh-120px)] flex flex-col pb-32">
         
         {/* Header Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">

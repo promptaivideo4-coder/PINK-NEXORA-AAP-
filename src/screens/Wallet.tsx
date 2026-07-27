@@ -349,7 +349,7 @@ export default function Wallet({ navigate }: NavigationProps) {
 
   return (
     <Layout currentScreen="wallet" navigate={navigate} title="NEXORA SALON">
-      <div id="wallet-dashboard-container" className="px-5 md:px-10 py-8 max-w-3xl mx-auto space-y-6 w-full">
+      <div id="wallet-dashboard-container" className="px-4 py-6 max-w-md mx-auto space-y-6 w-full">
         
         {/* Toast Notification */}
         <AnimatePresence>

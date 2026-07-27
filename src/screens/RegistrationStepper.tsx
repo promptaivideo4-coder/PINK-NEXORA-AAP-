@@ -57,7 +57,7 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
         </button>
       </header>
 
-      <main className="flex-1 mt-16 px-5 pt-8 pb-[120px] max-w-[600px] mx-auto w-full flex flex-col">
+      <main className="flex-1 mt-16 px-4 pt-8 pb-[120px] max-w-md mx-auto w-full flex flex-col">
         {/* Stepper Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2 relative">

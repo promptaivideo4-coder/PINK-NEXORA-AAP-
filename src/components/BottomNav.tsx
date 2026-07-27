@@ -19,7 +19,7 @@ export default function BottomNav({ currentScreen, navigate }: BottomNavProps) {
   ];
 
   return (
-    <nav className="md:hidden bg-surface/90 backdrop-blur-2xl fixed bottom-0 w-full z-40 rounded-t-xl shadow-[0px_-4px_20px_rgba(0,0,0,0.03)] flex justify-around items-center px-2 py-3 pb-[env(safe-area-inset-bottom,20px)] border-t border-surface-container-highest/50">
+    <nav className="bg-surface/95 backdrop-blur-2xl fixed bottom-0 w-full max-w-md mx-auto left-0 right-0 z-40 rounded-t-2xl shadow-[0px_-4px_24px_rgba(0,0,0,0.06)] flex justify-around items-center px-2 pt-2.5 pb-[calc(12px+env(safe-area-inset-bottom,16px))] border-t border-surface-container-highest/60">
       {navItems.map((item) => {
         const isActive = currentScreen === item.id;
         const Icon = item.icon;

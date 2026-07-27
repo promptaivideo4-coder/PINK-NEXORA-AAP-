@@ -406,7 +406,7 @@ export default function Profile({ navigate }: NavigationProps) {
         onChange={handlePersonalAvatarUpload} 
       />
 
-      <div id="profile-container" className="px-4 sm:px-6 md:px-10 py-6 max-w-[1200px] mx-auto w-full space-y-6">
+      <div id="profile-container" className="px-4 py-6 max-w-md mx-auto w-full space-y-6">
         
         {/* Header Title & Tab Toggle */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

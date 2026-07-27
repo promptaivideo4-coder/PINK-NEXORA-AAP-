@@ -112,7 +112,7 @@ export default function Settings({ navigate }: NavigationProps) {
 
   return (
     <Layout currentScreen="settings" navigate={navigate} title="Nexora Salonos" showBack={false}>
-      <div id="settings-container" className="px-4 sm:px-6 md:px-10 py-6 max-w-[900px] mx-auto w-full space-y-6">
+      <div id="settings-container" className="px-4 py-6 max-w-md mx-auto w-full space-y-6">
         
         {/* Page Title Header */}
         <div className="space-y-1">

@@ -345,7 +345,7 @@ export default function Reviews({ navigate }: NavigationProps) {
 
   return (
     <Layout currentScreen="reviews" navigate={navigate} title="Reviews & Feedback" showSettings={true}>
-      <div id="reviews-screen-container" className="px-4 sm:px-6 md:px-10 py-6 max-w-[1200px] mx-auto w-full space-y-6">
+      <div id="reviews-screen-container" className="px-4 py-6 max-w-md mx-auto w-full space-y-6">
         
         {/* Rating Summary Section & Saved Replies Action Header */}
         <section id="reviews-summary-header" className="bg-surface-container-lowest rounded-[20px] border border-outline-variant/60 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">

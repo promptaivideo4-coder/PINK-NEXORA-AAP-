@@ -115,7 +115,7 @@ export default function ResponsiveTables({ navigate }: NavigationProps) {
 
   return (
     <Layout currentScreen="responsive-tables" navigate={navigate} title="Data Overview" showBack onBack={() => navigate('settings')}>
-      <div className="px-5 md:px-10 py-8 max-w-7xl mx-auto w-full flex flex-col gap-8 pb-32">
+      <div className="px-4 py-6 max-w-md mx-auto w-full flex flex-col gap-8 pb-32">
         
         {/* Page Header */}
         <div className="flex flex-col gap-1.5">

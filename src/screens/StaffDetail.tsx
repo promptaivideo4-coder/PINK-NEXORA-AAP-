@@ -438,7 +438,7 @@ export default function StaffDetail({ navigate }: NavigationProps) {
         )}
       </AnimatePresence>
 
-      <div className="px-4 md:px-8 py-6 max-w-[1200px] mx-auto w-full flex flex-col gap-6 pb-28">
+      <div className="px-4 py-6 max-w-md mx-auto w-full flex flex-col gap-6 pb-28">
         
         {/* Profile Header Card */}
         <section className="bg-white rounded-[24px] border border-outline-variant/30 p-6 md:p-8 shadow-[0px_4px_24px_rgba(0,0,0,0.03)] flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden group">

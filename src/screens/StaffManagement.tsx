@@ -226,7 +226,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
         )}
       </AnimatePresence>
 
-      <div className="px-4 md:px-8 py-6 max-w-[1200px] mx-auto w-full relative min-h-[calc(100vh-140px)] flex flex-col gap-6">
+      <div className="px-4 py-6 max-w-md mx-auto w-full relative min-h-[calc(100vh-140px)] flex flex-col gap-6">
         
         {/* Header Section */}
         <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between w-full">

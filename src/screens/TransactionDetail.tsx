@@ -82,7 +82,7 @@ export default function TransactionDetail({ navigate }: NavigationProps) {
       </header>
 
       {/* Main Content Container */}
-      <main id="transaction-detail-main" className="w-full max-w-3xl pt-24 px-5 md:px-0 flex flex-col gap-6 mx-auto">
+      <main id="transaction-detail-main" className="w-full max-w-md pt-24 px-4 flex flex-col gap-6 mx-auto">
         
         {/* Header / Amount Section */}
         <section id="transaction-amount-section" className="flex flex-col items-center justify-center py-6">

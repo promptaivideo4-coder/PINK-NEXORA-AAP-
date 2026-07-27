@@ -322,7 +322,7 @@ export default function Marketing({ navigate }: NavigationProps) {
       
       {selectedSubModule === 'offers' ? (
         /* Full Offers SubModule Screen mapped beautifully from standard HTML blueprint */
-        <div className="p-5 space-y-6 pb-28 max-w-5xl mx-auto w-full">
+        <div className="p-4 space-y-6 pb-28 max-w-md mx-auto w-full">
           
           {/* Header Bar within submodule */}
           <div className="flex items-center justify-between pb-2 border-b border-outline-variant/30">
@@ -688,7 +688,7 @@ export default function Marketing({ navigate }: NavigationProps) {
         </div>
       ) : selectedSubModule === 'ai-offer-creator' ? (
         /* Full AI Offer Creator Screen mapped from user HTML layout */
-        <div className="p-5 space-y-6 pb-28 max-w-5xl mx-auto w-full">
+        <div className="p-4 space-y-6 pb-28 max-w-md mx-auto w-full">
           {/* Header Bar */}
           <div className="flex items-center justify-between pb-2 border-b border-outline-variant/30">
             <div className="flex items-center gap-3">

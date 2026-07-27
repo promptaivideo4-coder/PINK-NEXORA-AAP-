@@ -99,7 +99,7 @@ export default function Bookings({ navigate }: NavigationProps) {
 
   return (
     <Layout currentScreen="bookings" navigate={navigate} title="NEXORA SALONOS">
-      <div className="px-5 md:px-10 py-8 max-w-7xl mx-auto w-full relative min-h-[calc(100vh-120px)] flex flex-col">
+      <div className="px-4 py-6 max-w-md mx-auto w-full relative min-h-[calc(100vh-120px)] flex flex-col">
         
         {/* Header & Search */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">

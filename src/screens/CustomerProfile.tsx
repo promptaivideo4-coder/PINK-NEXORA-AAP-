@@ -223,7 +223,7 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
       </header>
 
       {/* Main Container */}
-      <main className="w-full max-w-[800px] mt-20 px-4 md:px-8 space-y-8 pb-[env(safe-area-inset-bottom,20px)] flex-grow">
+      <main className="w-full max-w-md mx-auto mt-20 px-4 space-y-8 pb-[env(safe-area-inset-bottom,20px)] flex-grow">
         
         {/* Dynamic Background Blur */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vw] max-w-[600px] h-[300px] bg-primary-container/5 rounded-full blur-[100px] -z-10 pointer-events-none"></div>

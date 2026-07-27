@@ -161,7 +161,7 @@ export default function NewStaff({ navigate }: NavigationProps) {
       </header>
 
       {/* Main Form Content */}
-      <main className="flex-1 w-full max-w-[800px] mx-auto px-4 py-6 flex flex-col gap-6">
+      <main className="flex-1 w-full max-w-md mx-auto px-4 py-6 flex flex-col gap-6">
         
         {/* Section 1: Basic Profile */}
         <section className="bg-white rounded-[18px] border border-outline-variant/40 p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] flex flex-col gap-5">

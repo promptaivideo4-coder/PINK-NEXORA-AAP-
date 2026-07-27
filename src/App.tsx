@@ -23,6 +23,7 @@ import Reviews from './screens/Reviews';
 import Settings from './screens/Settings';
 import InstallApp from './screens/InstallApp';
 import FloatingInstallBadge from './components/FloatingInstallBadge';
+import { triggerCelebration } from './utils/celebration';
 import Offline from './screens/Offline';
 import AppUpdate from './screens/AppUpdate';
 import StaffManagement from './screens/StaffManagement';
@@ -37,6 +38,8 @@ import SkeletonShowcase from './screens/SkeletonShowcase';
 import ResetPassword from './screens/ResetPassword';
 import Marketing from './screens/Marketing';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { OfflineSyncProvider } from './contexts/OfflineSyncContext';
+import AddToHomeScreenPrompt from './components/AddToHomeScreenPrompt';
 import { ScreenName } from './types';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -52,6 +55,7 @@ export default function App() {
   const [showInstallToast, setShowInstallToast] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // PWA Update handling
   const {
@@ -156,6 +160,13 @@ export default function App() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+    const handleAppInstalledGlobal = () => {
+      localStorage.setItem('nexora-app-installed', 'true');
+      setShowInstallToast(false);
+      triggerCelebration();
+    };
+    window.addEventListener('appinstalled', handleAppInstalledGlobal);
+
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -204,6 +215,7 @@ export default function App() {
       subscription.unsubscribe();
       window.removeEventListener('hashchange', handleHashRouting);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalledGlobal);
     };
   }, []);
 
@@ -216,6 +228,8 @@ export default function App() {
     if (outcome === 'accepted') {
       setDeferredPrompt(null);
       setShowInstallToast(false);
+      localStorage.setItem('nexora-app-installed', 'true');
+      triggerCelebration();
     }
   };
 
@@ -229,9 +243,95 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'splash':
+        return <Splash navigate={navigate} />;
+      case 'welcome':
+        return <Welcome navigate={navigate} />;
+      case 'login':
+        return <Login navigate={navigate} />;
+      case 'reset-password':
+        return <ResetPassword navigate={navigate} />;
+      case 'register-stepper':
+        return <RegistrationStepper navigate={navigate} />;
+      case 'dashboard':
+        return <Dashboard navigate={navigate} />;
+      case 'bookings':
+        return <Bookings navigate={navigate} />;
+      case 'help-center':
+        return <HelpCenter navigate={navigate} />;
+      case 'services':
+        return <ServicesList navigate={navigate} />;
+      case 'service-detail':
+        return <ServiceDetail navigate={navigate} />;
+      case 'new-service':
+        return <NewService navigate={navigate} />;
+      case 'new-appointment':
+        return <NewAppointment navigate={navigate} />;
+      case 'profile':
+        return <Profile navigate={navigate} />;
+      case 'customers':
+        return <Customers navigate={navigate} />;
+      case 'customer-profile':
+        return <CustomerProfile navigate={navigate} />;
+      case 'theme-selection':
+        return <ThemeSelection navigate={navigate} />;
+      case 'role-conflict':
+        return <RoleConflict navigate={navigate} />;
+      case 'cancellation-refund-policy':
+        return <CancellationRefundPolicy navigate={navigate} />;
+      case 'website-dashboard':
+        return <WebsiteDashboard navigate={navigate} />;
+      case 'website-gallery':
+        return <WebsiteGallery navigate={navigate} />;
+      case 'wallet':
+        return <Wallet navigate={navigate} />;
+      case 'transaction-detail':
+        return <TransactionDetail navigate={navigate} />;
+      case 'revenue-analytics':
+      case 'analytics':
+        return <RevenueAnalytics navigate={navigate} />;
+      case 'reviews':
+        return <Reviews navigate={navigate} />;
+      case 'settings':
+        return <Settings navigate={navigate} />;
+      case 'install-app':
+        return (
+          <InstallApp 
+            navigate={navigate} 
+            onInstalled={() => setIsAppInstalled(true)} 
+          />
+        );
+      case 'offline':
+        return <Offline navigate={navigate} />;
+      case 'app-update':
+        return <AppUpdate navigate={navigate} />;
+      case 'staff':
+        return <StaffManagement navigate={navigate} />;
+      case 'new-staff':
+        return <NewStaff navigate={navigate} />;
+      case 'staff-detail':
+        return <StaffDetail navigate={navigate} />;
+      case 'server-error':
+        return <ServerError navigate={navigate} />;
+      case 'component-library':
+        return <ComponentLibrary navigate={navigate} />;
+      case 'responsive-tables':
+        return <ResponsiveTables navigate={navigate} />;
+      case 'skeleton-showcase':
+        return <SkeletonShowcase navigate={navigate} />;
+      case 'marketing':
+        return <Marketing navigate={navigate} />;
+      default:
+        return <Dashboard navigate={navigate} />;
+    }
+  };
+
   return (
     <ThemeProvider>
-      {/* Offline Status Banner */}
+      <OfflineSyncProvider isOnline={isOnline} isSyncing={isSyncing} setIsSyncing={setIsSyncing}>
+        {/* Offline Status Banner */}
       <AnimatePresence>
         {!isOnline && (
           <motion.div 
@@ -253,7 +353,7 @@ export default function App() {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
-            className="fixed bottom-6 right-6 z-[110] max-w-[320px] bg-surface-container-highest border border-outline-variant rounded-2xl shadow-2xl p-5 flex flex-col gap-4"
+            className="fixed bottom-[calc(80px+env(safe-area-inset-bottom,16px))] right-6 z-[110] max-w-[320px] bg-surface-container-highest border border-outline-variant rounded-2xl shadow-2xl p-5 flex flex-col gap-4"
           >
             <div className="flex gap-4">
               <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
@@ -291,48 +391,8 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className={!isOnline ? 'pt-7' : ''}>
-        {currentScreen === 'splash' && <Splash navigate={navigate} />}
-      {currentScreen === 'welcome' && <Welcome navigate={navigate} />}
-      {currentScreen === 'login' && <Login navigate={navigate} />}
-      {currentScreen === 'reset-password' && <ResetPassword navigate={navigate} />}
-      {currentScreen === 'register-stepper' && <RegistrationStepper navigate={navigate} />}
-      {currentScreen === 'dashboard' && <Dashboard navigate={navigate} />}
-      {currentScreen === 'bookings' && <Bookings navigate={navigate} />}
-      {currentScreen === 'help-center' && <HelpCenter navigate={navigate} />}
-      {currentScreen === 'services' && <ServicesList navigate={navigate} />}
-      {currentScreen === 'service-detail' && <ServiceDetail navigate={navigate} />}
-      {currentScreen === 'new-service' && <NewService navigate={navigate} />}
-      {currentScreen === 'new-appointment' && <NewAppointment navigate={navigate} />}
-      {currentScreen === 'profile' && <Profile navigate={navigate} />}
-      {currentScreen === 'customers' && <Customers navigate={navigate} />}
-      {currentScreen === 'customer-profile' && <CustomerProfile navigate={navigate} />}
-      {currentScreen === 'theme-selection' && <ThemeSelection navigate={navigate} />}
-      {currentScreen === 'role-conflict' && <RoleConflict navigate={navigate} />}
-      {currentScreen === 'cancellation-refund-policy' && <CancellationRefundPolicy navigate={navigate} />}
-      {currentScreen === 'website-dashboard' && <WebsiteDashboard navigate={navigate} />}
-      {currentScreen === 'website-gallery' && <WebsiteGallery navigate={navigate} />}
-      {currentScreen === 'wallet' && <Wallet navigate={navigate} />}
-      {currentScreen === 'transaction-detail' && <TransactionDetail navigate={navigate} />}
-      {(currentScreen === 'revenue-analytics' || currentScreen === 'analytics') && <RevenueAnalytics navigate={navigate} />}
-      {currentScreen === 'reviews' && <Reviews navigate={navigate} />}
-      {currentScreen === 'settings' && <Settings navigate={navigate} />}
-      {currentScreen === 'install-app' && (
-        <InstallApp 
-          navigate={navigate} 
-          onInstalled={() => setIsAppInstalled(true)} 
-        />
-      )}
-      {currentScreen === 'offline' && <Offline navigate={navigate} />}
-      {currentScreen === 'app-update' && <AppUpdate navigate={navigate} />}
-      {currentScreen === 'staff' && <StaffManagement navigate={navigate} />}
-      {currentScreen === 'new-staff' && <NewStaff navigate={navigate} />}
-      {currentScreen === 'staff-detail' && <StaffDetail navigate={navigate} />}
-      {currentScreen === 'server-error' && <ServerError navigate={navigate} />}
-      {currentScreen === 'component-library' && <ComponentLibrary navigate={navigate} />}
-      {currentScreen === 'responsive-tables' && <ResponsiveTables navigate={navigate} />}
-      {currentScreen === 'skeleton-showcase' && <SkeletonShowcase navigate={navigate} />}
-      {currentScreen === 'marketing' && <Marketing navigate={navigate} />}
+      <div className={`max-w-md mx-auto w-full min-h-screen relative shadow-2xl bg-surface overflow-x-hidden ${!isOnline ? 'pt-7' : ''}`}>
+        {renderScreen()}
       </div>
 
       <FloatingInstallBadge 
@@ -341,40 +401,12 @@ export default function App() {
         isInstalled={isAppInstalled} 
       />
 
-      <AnimatePresence>
-        {showInstallToast && (
-          <motion.div 
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-6 left-6 right-6 z-[100] md:left-auto md:w-96"
-          >
-            <div className="bg-primary text-white p-4 rounded-2xl shadow-xl flex items-center gap-4 border border-white/20">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                <Download className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-bold">Unlock the full Nexora experience</h4>
-                <p className="text-xs text-white/80">Install Nexora to get instant booking alerts and offline access to your schedule.</p>
-              </div>
-              <div className="flex flex-col gap-1">
-                <button 
-                  onClick={handleInstall}
-                  className="bg-white text-primary px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-all"
-                >
-                  Install
-                </button>
-                <button 
-                  onClick={dismissInstallToast}
-                  className="text-white/60 hover:text-white px-3 py-1 rounded-lg text-[10px] font-medium transition-colors text-center"
-                >
-                  Later
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AddToHomeScreenPrompt 
+        variant="banner" 
+        deferredPrompt={deferredPrompt}
+        onInstalled={() => setIsAppInstalled(true)} 
+      />
+      </OfflineSyncProvider>
     </ThemeProvider>
   );
 }

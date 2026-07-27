@@ -40,7 +40,7 @@ export default function SkeletonShowcase({ navigate }: NavigationProps) {
 
   return (
     <Layout currentScreen="skeleton-showcase" navigate={navigate} title="System Loading">
-      <div className="px-4 sm:px-6 md:px-10 py-6 max-w-7xl mx-auto w-full flex flex-col gap-6 pb-32">
+      <div className="px-4 py-6 max-w-md mx-auto w-full flex flex-col gap-6 pb-32">
         
         {/* Header & Controls */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">

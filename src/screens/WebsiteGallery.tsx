@@ -438,7 +438,7 @@ export default function WebsiteGallery({ navigate }: NavigationProps) {
       )}
       
       {/* Main Content Canvas */}
-      <main className="pt-24 px-5 md:px-10 max-w-[1200px] mx-auto min-h-screen flex flex-col gap-8 pb-10">
+      <main className="pt-24 px-4 max-w-md mx-auto min-h-screen flex flex-col gap-8 pb-10">
         {/* Filters & Search Bar Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
           {/* Category Tabs */}

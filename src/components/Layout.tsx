@@ -39,7 +39,7 @@ export default function Layout({
         transparent={transparentTopBar}
       />
       
-      <main className="flex-1 w-full max-w-[1200px] mx-auto px-4 md:px-8 flex flex-col overflow-x-hidden">
+      <main className="flex-1 w-full max-w-md mx-auto px-4 flex flex-col overflow-x-hidden">
         {children}
       </main>
 

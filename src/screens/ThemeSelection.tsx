@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import ThemePreview from '../components/ThemePreview';
 
 export default function ThemeSelection({ navigate }: NavigationProps) {
-  const { activeTheme, setActiveTheme } = useTheme();
+  const { activeTheme, updateThemeSettings } = useTheme();
   const [previewTheme, setPreviewTheme] = useState<Theme | null>(null);
   const [deviceView, setDeviceView] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [previewTab, setPreviewTab] = useState<'home' | 'services' | 'gallery' | 'booking'>('home');
@@ -73,7 +73,7 @@ export default function ThemeSelection({ navigate }: NavigationProps) {
   ];
 
   const handleSelectTheme = (theme: Theme) => {
-    setActiveTheme(theme);
+    updateThemeSettings(theme);
     setToastMessage(`"${theme.name}" theme applied successfully!`);
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -125,7 +125,7 @@ export default function ThemeSelection({ navigate }: NavigationProps) {
       </header>
 
       {/* Main Content Canvas */}
-      <main className="flex-grow pt-24 px-5 md:px-10 max-w-[1200px] mx-auto w-full">
+      <main className="flex-grow pt-24 px-4 max-w-md mx-auto w-full">
         <div className="mb-8 text-center md:text-left max-w-2xl">
           <h2 className="text-[28px] md:text-[32px] font-bold text-on-surface mb-2 tracking-tight">Elevate Your Brand</h2>
           <p className="text-[16px] text-on-surface-variant">Select a starting theme for your salon website. All themes are fully customizable and designed to convert visitors into clients.</p>

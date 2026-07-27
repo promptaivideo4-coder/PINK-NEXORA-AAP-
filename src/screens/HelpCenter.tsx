@@ -6,7 +6,7 @@ import { Search, Calendar, CreditCard, IdCard, UserCog, TrendingUp, ChevronRight
 export default function HelpCenter({ navigate }: NavigationProps) {
   return (
     <Layout currentScreen="help-center" navigate={navigate} title="Nexora" showSettings={true} transparentTopBar={true}>
-      <div className="px-5 md:px-10 py-8 max-w-[1200px] mx-auto flex flex-col gap-8 w-full">
+      <div className="px-4 py-6 max-w-md mx-auto flex flex-col gap-8 w-full">
         
         {/* Search Section */}
         <section className="flex flex-col items-center text-center gap-4 pt-8 pb-4">

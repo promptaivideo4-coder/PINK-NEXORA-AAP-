@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavigationProps } from '../types';
 import ShaderBackground from '../components/ShaderBackground';
+import { triggerCelebration } from '../utils/celebration';
 import { 
   Diamond, 
   Zap, 
@@ -138,6 +139,21 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
   const [showHelp, setShowHelp] = useState(false);
   const [qrLarge, setQrLarge] = useState(false);
   const [helpTab, setHelpTab] = useState<'ios' | 'android' | 'desktop'>('ios');
+  const [manualModalWidth, setManualModalWidth] = useState<number>(360);
+  const manualModalRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showHelp || !manualModalRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setManualModalWidth(entry.contentRect.width);
+        }
+      }
+    });
+    observer.observe(manualModalRef.current);
+    return () => observer.disconnect();
+  }, [showHelp]);
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -231,7 +247,14 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
       setDeferredPrompt(e);
     };
 
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      localStorage.setItem('nexora-app-installed', 'true');
+      triggerCelebration();
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone || localStorage.getItem('nexora-app-installed') === 'true') {
       setIsInstalled(true);
@@ -239,6 +262,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -255,6 +279,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
     setTimeout(() => {
       setAnimationStage('landed');
       setShowConfetti(true);
+      triggerCelebration();
     }, 2200);
 
     // Stage 4: finish phone view after 4000ms
@@ -698,6 +723,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
             onClick={() => setShowHelp(false)}
           >
             <motion.div
+              ref={manualModalRef}
               initial={{ opacity: 0, scale: 0.95, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
@@ -851,39 +877,53 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                       </div>
                     </button>
                   </div>
-                  <div className={`flex items-center justify-center transition-all duration-500 overflow-hidden relative ${qrLarge ? 'w-full aspect-square' : 'w-32 h-32'}`}>
-                    {/* Reactive Glow Effect */}
-                    <motion.div 
-                      className="absolute inset-0 -z-10 rounded-full blur-[40px] opacity-20"
-                      style={{
-                        background: `radial-gradient(circle, var(--md-sys-color-primary) 0%, transparent 70%)`
-                      }}
-                      animate={{ 
-                        opacity: [0.1, 0.4, 0.1],
-                        scale: [0.8, 1.1, 0.8]
-                      }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    />
-                    <QRCodeCanvas 
-                      value={window.location.href} 
-                      size={qrLarge ? 512 : 128} 
-                      style={{ width: '100%', height: '100%' }}
-                    />
-                    {/* Scanning Laser Line */}
-                    <motion.div 
-                      className="absolute left-0 right-0 h-0.5 bg-primary/60 shadow-[0_0_15px_rgba(230,0,126,0.8)] z-10"
-                      animate={{ top: ['0%', '100%', '0%'] }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    />
-                  </div>
+                  {(() => {
+                    const computedQrSize = Math.max(96, Math.min(manualModalWidth - 64, qrLarge ? 220 : 128));
+                    return (
+                      <div className="flex flex-col items-center gap-1.5 w-full">
+                        <div 
+                          style={{ width: `${computedQrSize}px`, height: `${computedQrSize}px` }}
+                          className="mx-auto flex items-center justify-center transition-all duration-300 overflow-hidden relative shrink-0 rounded-xl"
+                        >
+                          {/* Reactive Glow Effect */}
+                          <motion.div 
+                            className="absolute inset-0 -z-10 rounded-full blur-[40px] opacity-20"
+                            style={{
+                              background: `radial-gradient(circle, var(--md-sys-color-primary) 0%, transparent 70%)`
+                            }}
+                            animate={{ 
+                              opacity: [0.1, 0.4, 0.1],
+                              scale: [0.8, 1.1, 0.8]
+                            }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                          />
+                          <QRCodeCanvas 
+                            value={window.location.href} 
+                            size={computedQrSize} 
+                            style={{ width: '100%', height: '100%' }}
+                          />
+                          {/* Scanning Laser Line */}
+                          <motion.div 
+                            className="absolute left-0 right-0 h-0.5 bg-primary/60 shadow-[0_0_15px_rgba(230,0,126,0.8)] z-10"
+                            animate={{ top: ['0%', '100%', '0%'] }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant font-medium flex items-center justify-center gap-1 text-center">
+                          <Camera className="w-3 h-3 text-primary shrink-0" />
+                          <span>Scan with your phone's native camera app to open</span>
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </motion.div>
 
                 {/* Content */}

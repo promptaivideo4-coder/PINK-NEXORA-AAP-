@@ -242,7 +242,7 @@ export default function Customers({ navigate }: NavigationProps) {
     <div className="min-h-screen bg-background text-on-surface font-sans flex flex-col pb-24 md:pb-0 relative overflow-hidden">
       <TopBar showBack onBack={() => navigate('dashboard')} navigate={navigate} title={t('customers')} />
 
-      <main className="w-full max-w-[800px] mx-auto px-5 md:px-10 pt-6 pb-12 flex-grow space-y-6 flex flex-col">
+      <main className="w-full max-w-md mx-auto px-4 pt-6 pb-12 flex-grow space-y-6 flex flex-col">
         
         {/* Top Header Actions */}
         <div className="flex items-center justify-between">

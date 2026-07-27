@@ -152,7 +152,7 @@ export default function NewService({ navigate }: NavigationProps) {
     <div className="min-h-screen bg-background text-on-background pb-24 font-body md:pb-8 flex flex-col items-center">
       <TopBar showBack onBack={() => navigate('services')} navigate={navigate} title="New Service" />
 
-      <main className="w-full max-w-[800px] mt-8 px-5 md:px-10 space-y-8 pb-[env(safe-area-inset-bottom,20px)] flex-grow">
+      <main className="w-full max-w-md mx-auto mt-8 px-4 space-y-8 pb-[env(safe-area-inset-bottom,20px)] flex-grow">
         <form onSubmit={handleSubmit} className="space-y-8 w-full mx-auto">
           
           {/* Quick Preset Templates Selection */}
