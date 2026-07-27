@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, ChevronDown, ArrowRight, AlertCircle } from 'lucide-react';
+import { X, ChevronDown, ArrowRight, AlertCircle, Check } from 'lucide-react';
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -12,6 +12,7 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
   const [businessName, setBusinessName] = useState('');
   const [businessCategory, setBusinessCategory] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [policyAgreed, setPolicyAgreed] = useState(false);
 
   const handleNext = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,11 +198,26 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
 
         {/* Sticky Bottom Action */}
         <div className="fixed bottom-0 left-0 w-full p-5 pb-[env(safe-area-inset-bottom,20px)] bg-surface/90 backdrop-blur-[20px] border-t border-surface-variant shadow-[0px_-4px_20px_rgba(0,0,0,0.03)] z-40">
-          <div className="max-w-[600px] mx-auto w-full">
+          <div className="max-w-[600px] mx-auto w-full flex flex-col gap-4">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="relative flex items-center justify-center mt-0.5">
+                <input 
+                  type="checkbox" 
+                  checked={policyAgreed}
+                  onChange={(e) => setPolicyAgreed(e.target.checked)}
+                  className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-outline-variant bg-surface transition-all checked:border-primary checked:bg-primary"
+                />
+                <Check className="absolute h-3.5 w-3.5 text-white opacity-0 transition-opacity peer-checked:opacity-100" strokeWidth={4} />
+              </div>
+              <span className="text-[12px] text-on-surface-variant leading-tight group-hover:text-on-surface transition-colors">
+                I agree to the <button type="button" onClick={() => navigate('cancellation-refund-policy')} className="text-primary font-bold hover:underline">Cancellation & Refund Policy</button>. I understand these platform terms apply to my business account.
+              </span>
+            </label>
+
             <button 
               type="submit"
               form="reg-form"
-              disabled={loading}
+              disabled={loading || !policyAgreed}
               className="w-full bg-primary-container text-white rounded-[16px] py-4 text-base font-semibold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-50"
             >
               {loading ? 'Creating Account...' : 'Next Step'}

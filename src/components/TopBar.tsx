@@ -25,7 +25,7 @@ export default function TopBar({
   const { t } = useLanguage();
   
   return (
-    <header className={`sticky top-0 w-full z-50 border-b flex justify-between items-center px-5 h-16 transition-colors ${
+    <header className={`sticky top-0 w-full z-50 border-b flex justify-between items-center px-5 min-h-16 pt-safe transition-colors ${
       transparent 
         ? 'bg-transparent border-transparent' 
         : 'bg-surface/80 backdrop-blur-xl border-surface-container-highest'

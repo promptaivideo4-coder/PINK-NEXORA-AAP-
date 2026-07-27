@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Smartphone } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -7,13 +7,27 @@ interface InstallAppBannerProps {
 }
 
 export default function InstallAppBanner({ navigate }: InstallAppBannerProps) {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const { t } = useLanguage();
+
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone || localStorage.getItem('nexora-app-installed') === 'true';
+    const isDismissed = localStorage.getItem('nexora-install-dismissed') === 'true';
+    if (!isStandalone && !isDismissed) {
+      setIsVisible(true);
+    }
+  }, []);
 
   if (!isVisible) return null;
 
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsVisible(false);
+    localStorage.setItem('nexora-install-dismissed', 'true');
+  };
+
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-xl shadow-md relative overflow-hidden mb-6 flex items-center justify-between group cursor-pointer hover:shadow-lg transition-all" onClick={() => navigate('/app/owner/install')}>
+    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-xl shadow-md relative overflow-hidden mb-6 flex items-center justify-between group cursor-pointer hover:shadow-lg transition-all" onClick={() => navigate('install-app')}>
       <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
       
       <div className="flex items-center gap-4 relative z-10">
@@ -27,14 +41,11 @@ export default function InstallAppBanner({ navigate }: InstallAppBannerProps) {
       </div>
       
       <div className="flex flex-col sm:flex-row items-center gap-3 relative z-10">
-        <button className="bg-white text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-50 transition-colors whitespace-nowrap flex items-center gap-1.5" onClick={(e) => { e.stopPropagation(); navigate('/app/owner/install'); }}>
+        <button className="bg-white text-indigo-700 px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-50 transition-colors whitespace-nowrap flex items-center gap-1.5" onClick={(e) => { e.stopPropagation(); navigate('install-app'); }}>
           {t('install_now')}
         </button>
         <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsVisible(false);
-          }}
+          onClick={handleDismiss}
           className="p-2 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors"
           aria-label="Close advertisement"
         >

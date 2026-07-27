@@ -29,6 +29,8 @@ import StaffManagement from './screens/StaffManagement';
 import NewStaff from './screens/NewStaff';
 import StaffDetail from './screens/StaffDetail';
 import ServerError from './screens/ServerError';
+import CancellationRefundPolicy from './screens/CancellationRefundPolicy';
+import RoleConflict from './screens/RoleConflict';
 import ComponentLibrary from './screens/ComponentLibrary';
 import ResponsiveTables from './screens/ResponsiveTables';
 import SkeletonShowcase from './screens/SkeletonShowcase';
@@ -38,8 +40,9 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { ScreenName } from './types';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
-import { Download, X } from 'lucide-react';
+import { Download, X, WifiOff, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('splash');
@@ -48,28 +51,64 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallToast, setShowInstallToast] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // PWA Update handling
+  const {
+    offlineReady: [offlineReady, setOfflineReady],
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r) {
+      console.log('SW Registered');
+    },
+    onRegisterError(error) {
+      console.log('SW registration error', error);
+    },
+  });
+
+  const closeUpdatePrompt = () => {
+    setOfflineReady(false);
+    setNeedRefresh(false);
+  };
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     // Check if app is installed
-    if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
+    if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone || localStorage.getItem('nexora-app-installed') === 'true') {
       setIsAppInstalled(true);
     }
-
-    // Send Supabase config to Service Worker for background sync
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        if (registration.active) {
-          registration.active.postMessage({
-            type: 'SET_CONFIG',
-            config: {
-              url: import.meta.env.VITE_SUPABASE_URL,
-              key: import.meta.env.VITE_SUPABASE_ANON_KEY
-            }
-          });
-        }
-      });
-    }
   }, []);
+
+  const handleApplyUpdate = () => {
+    // Check for unsaved form data before reloading
+    const hasUnsavedNewAppointment = !!localStorage.getItem('nexora-new-appointment-form');
+    const hasUnsavedNewService = !!localStorage.getItem('nexora-new-service-form');
+
+    if (hasUnsavedNewAppointment || hasUnsavedNewService) {
+      const confirmReload = window.confirm(
+        'You have unsaved form data. Updating now will refresh the page. Continue updating?'
+      );
+      if (!confirmReload) return;
+    }
+
+    updateServiceWorker(true);
+  };
+
+  // Send Supabase config to SW removed as it's better handled by standard Workbox strategies
+  // or explicitly if needed.
 
   // Visit tracking logic
   useEffect(() => {
@@ -103,6 +142,7 @@ export default function App() {
     // Listen for beforeinstallprompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      (window as any).deferredInstallPrompt = e;
       setDeferredPrompt(e);
       
       // Check visits if already on dashboard
@@ -115,15 +155,6 @@ export default function App() {
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    // Apply theme on boot
-    const savedTheme = localStorage.getItem('nexora-theme');
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else if (savedTheme === 'light') {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    }
 
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -200,7 +231,68 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      {currentScreen === 'splash' && <Splash navigate={navigate} />}
+      {/* Offline Status Banner */}
+      <AnimatePresence>
+        {!isOnline && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="fixed top-0 left-0 w-full z-[100] bg-error text-white text-[11px] font-bold py-1.5 px-4 flex items-center justify-center gap-2 shadow-md overflow-hidden"
+          >
+            <WifiOff className="w-3 h-3" />
+            <span>You are currently offline. Some features may be unavailable.</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PWA Update / Offline Ready Prompt */}
+      <AnimatePresence>
+        {(offlineReady || needRefresh) && (
+          <motion.div 
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-6 right-6 z-[110] max-w-[320px] bg-surface-container-highest border border-outline-variant rounded-2xl shadow-2xl p-5 flex flex-col gap-4"
+          >
+            <div className="flex gap-4">
+              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                <RefreshCw className="w-5 h-5 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-on-surface">
+                  {needRefresh ? 'Update Available' : 'Ready for Offline'}
+                </h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  {needRefresh 
+                    ? 'A new version of Nexora is available. Update now to get the latest features.' 
+                    : 'Nexora is ready to work offline. You can access your schedule anytime.'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              {needRefresh && (
+                <button 
+                  onClick={handleApplyUpdate}
+                  className="flex-1 bg-primary text-white py-2.5 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all"
+                >
+                  Update Now
+                </button>
+              )}
+              <button 
+                onClick={closeUpdatePrompt}
+                className="flex-1 bg-surface-container-low text-on-surface-variant py-2.5 rounded-xl text-xs font-bold hover:bg-surface-container-high transition-all"
+              >
+                {needRefresh ? 'Later' : 'Got it'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className={!isOnline ? 'pt-7' : ''}>
+        {currentScreen === 'splash' && <Splash navigate={navigate} />}
       {currentScreen === 'welcome' && <Welcome navigate={navigate} />}
       {currentScreen === 'login' && <Login navigate={navigate} />}
       {currentScreen === 'reset-password' && <ResetPassword navigate={navigate} />}
@@ -216,6 +308,8 @@ export default function App() {
       {currentScreen === 'customers' && <Customers navigate={navigate} />}
       {currentScreen === 'customer-profile' && <CustomerProfile navigate={navigate} />}
       {currentScreen === 'theme-selection' && <ThemeSelection navigate={navigate} />}
+      {currentScreen === 'role-conflict' && <RoleConflict navigate={navigate} />}
+      {currentScreen === 'cancellation-refund-policy' && <CancellationRefundPolicy navigate={navigate} />}
       {currentScreen === 'website-dashboard' && <WebsiteDashboard navigate={navigate} />}
       {currentScreen === 'website-gallery' && <WebsiteGallery navigate={navigate} />}
       {currentScreen === 'wallet' && <Wallet navigate={navigate} />}
@@ -239,6 +333,7 @@ export default function App() {
       {currentScreen === 'responsive-tables' && <ResponsiveTables navigate={navigate} />}
       {currentScreen === 'skeleton-showcase' && <SkeletonShowcase navigate={navigate} />}
       {currentScreen === 'marketing' && <Marketing navigate={navigate} />}
+      </div>
 
       <FloatingInstallBadge 
         currentScreen={currentScreen} 

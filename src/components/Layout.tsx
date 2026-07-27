@@ -28,7 +28,7 @@ export default function Layout({
   transparentTopBar = false
 }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-background text-on-surface font-sans flex flex-col pb-24 md:pb-0">
+    <div className={`min-h-screen bg-background text-on-surface font-sans flex flex-col ${!hideBottomNav ? 'pb-24 md:pb-0' : 'pb-safe'}`}>
       <TopBar 
         title={title} 
         showBack={showBack} 
@@ -39,7 +39,7 @@ export default function Layout({
         transparent={transparentTopBar}
       />
       
-      <main className="flex-1 w-full max-w-[1200px] mx-auto w-full flex flex-col">
+      <main className="flex-1 w-full max-w-[1200px] mx-auto px-4 md:px-8 flex flex-col overflow-x-hidden">
         {children}
       </main>
 

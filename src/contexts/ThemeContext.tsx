@@ -1,10 +1,14 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Theme } from '../types';
 
+export type SystemTheme = 'light' | 'dark' | 'system';
+
 interface ThemeContextType {
   activeTheme: Theme;
-  setActiveTheme: (theme: Theme) => void;
+  systemTheme: SystemTheme;
+  setSystemTheme: (theme: SystemTheme) => void;
   updateThemeSettings: (settings: Partial<Theme>) => void;
+  resetToDefault: () => void;
 }
 
 const defaultTheme: Theme = {
@@ -25,14 +29,70 @@ const defaultTheme: Theme = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [activeTheme, setActiveTheme] = useState<Theme>(defaultTheme);
+  const [activeTheme, setActiveTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem('nexora-active-theme');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse active theme', e);
+      }
+    }
+    return defaultTheme;
+  });
+
+  const [systemTheme, setSystemTheme] = useState<SystemTheme>(() => {
+    const saved = localStorage.getItem('nexora-theme') as SystemTheme;
+    return saved || 'light';
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('nexora-active-theme', JSON.stringify(activeTheme));
+    localStorage.setItem('nexora-theme', systemTheme);
+    
+    const root = document.documentElement;
+    
+    // Handle Light/Dark Class
+    const isDark = systemTheme === 'dark' || (systemTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    if (isDark) {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    }
+
+    // Apply branded primary and accent colors to the Material Design variables used in index.css
+    root.style.setProperty('--md-sys-color-primary', activeTheme.primaryColor);
+    root.style.setProperty('--md-sys-color-on-primary', '#FFFFFF');
+    root.style.setProperty('--md-sys-color-primary-container', `${activeTheme.primaryColor}20`);
+    
+    // Secondary/Accent
+    root.style.setProperty('--md-sys-color-secondary', activeTheme.accentColor);
+    
+    // Set custom theme variables
+    root.style.setProperty('--theme-primary', activeTheme.primaryColor);
+    root.style.setProperty('--theme-accent', activeTheme.accentColor);
+  }, [activeTheme, systemTheme]);
 
   const updateThemeSettings = (settings: Partial<Theme>) => {
     setActiveTheme(prev => ({ ...prev, ...settings }));
   };
 
+  const resetToDefault = () => {
+    setActiveTheme(defaultTheme);
+    setSystemTheme('light');
+  };
+
   return (
-    <ThemeContext.Provider value={{ activeTheme, setActiveTheme, updateThemeSettings }}>
+    <ThemeContext.Provider value={{ 
+      activeTheme, 
+      systemTheme, 
+      setSystemTheme, 
+      updateThemeSettings, 
+      resetToDefault 
+    }}>
       {children}
     </ThemeContext.Provider>
   );

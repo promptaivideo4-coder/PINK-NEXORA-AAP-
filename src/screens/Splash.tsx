@@ -20,7 +20,7 @@ export default function Splash({ navigate }: NavigationProps) {
   }, [navigate]);
 
   return (
-    <div className="relative h-screen w-full flex flex-col items-center justify-center bg-black overflow-hidden selection:bg-primary-container selection:text-white">
+    <div className="relative h-screen w-full flex flex-col items-center justify-center bg-black overflow-hidden selection:bg-primary-container selection:text-white pt-safe pb-safe">
       {/* Animated Shader Background */}
       <ShaderBackground opacity={0.65} />
 

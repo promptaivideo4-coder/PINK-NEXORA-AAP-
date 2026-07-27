@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { 
   Palette, 
   Sliders, 
@@ -10,6 +11,7 @@ import {
   Bell, 
   Shield, 
   FileText, 
+  RefreshCcw,
   LogOut, 
   ChevronRight, 
   ExternalLink,
@@ -29,11 +31,12 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { clearOwnerSessionData } from '../utils/storage';
+import { requestNotificationPermission } from '../utils/notifications';
+
 export default function Settings({ navigate }: NavigationProps) {
   const { language, setLanguage, t } = useLanguage();
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    return (localStorage.getItem('nexora-theme') as 'light' | 'dark' | 'system') || 'light';
-  });
+  const { systemTheme, setSystemTheme, activeTheme } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [activeLegalModal, setActiveLegalModal] = useState<'privacy' | 'terms' | null>(null);
@@ -80,25 +83,20 @@ export default function Settings({ navigate }: NavigationProps) {
   };
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
-    setTheme(newTheme);
-    localStorage.setItem('nexora-theme', newTheme);
-    
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else if (newTheme === 'light') {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    } else {
-      document.documentElement.classList.remove('dark', 'light');
-      // If system, we might want to check preference immediately or just let CSS media queries handle it
-      // Standard approach for 'system' is to remove classes and let @media (prefers-color-scheme) work
-    }
+    setSystemTheme(newTheme);
     showToast(`App theme set to ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)}`);
   };
 
-  const handleToggleNotifications = () => {
+  const handleToggleNotifications = async () => {
     const nextState = !notificationsEnabled;
+    if (nextState) {
+      const perm = await requestNotificationPermission();
+      if (perm === 'denied') {
+        showToast('Notification permission blocked in browser settings');
+        setNotificationsEnabled(false);
+        return;
+      }
+    }
     setNotificationsEnabled(nextState);
     showToast(nextState ? 'Push notifications enabled' : 'Push notifications disabled');
   };
@@ -146,7 +144,7 @@ export default function Settings({ navigate }: NavigationProps) {
               <h3 className="text-sm font-bold text-on-surface">{t('appearance')}</h3>
             </div>
             
-            <div className="p-6">
+            <div className="p-6 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h4 className="text-sm font-bold text-on-surface">{t('theme')}</h4>
@@ -157,7 +155,7 @@ export default function Settings({ navigate }: NavigationProps) {
                   <button 
                     onClick={() => handleThemeChange('light')}
                     className={`px-3.5 py-2 rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5 ${
-                      theme === 'light' 
+                      systemTheme === 'light' 
                         ? 'bg-surface-container-lowest text-primary shadow-xs font-bold' 
                         : 'text-on-surface-variant hover:text-on-surface'
                     }`}
@@ -169,7 +167,7 @@ export default function Settings({ navigate }: NavigationProps) {
                   <button 
                     onClick={() => handleThemeChange('dark')}
                     className={`px-3.5 py-2 rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5 ${
-                      theme === 'dark' 
+                      systemTheme === 'dark' 
                         ? 'bg-surface-container-lowest text-primary shadow-xs font-bold' 
                         : 'text-on-surface-variant hover:text-on-surface'
                     }`}
@@ -181,7 +179,7 @@ export default function Settings({ navigate }: NavigationProps) {
                   <button 
                     onClick={() => handleThemeChange('system')}
                     className={`px-3.5 py-2 rounded-lg font-semibold text-xs transition-all flex items-center gap-1.5 ${
-                      theme === 'system' 
+                      systemTheme === 'system' 
                         ? 'bg-surface-container-lowest text-primary shadow-xs font-bold' 
                         : 'text-on-surface-variant hover:text-on-surface'
                     }`}
@@ -190,6 +188,19 @@ export default function Settings({ navigate }: NavigationProps) {
                     <span>{t('system')}</span>
                   </button>
                 </div>
+              </div>
+
+              <div className="pt-4 border-t border-surface-container-highest/60 flex items-center justify-between group cursor-pointer" onClick={() => navigate('theme-selection')}>
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${activeTheme.primaryColor}15`, color: activeTheme.primaryColor }}>
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Brand Style & Colors</h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Currently using <span className="font-bold" style={{ color: activeTheme.primaryColor }}>{activeTheme.name}</span> identity</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
               </div>
             </div>
           </section>
@@ -427,10 +438,21 @@ export default function Settings({ navigate }: NavigationProps) {
           <section className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest/80 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] overflow-hidden transition-shadow hover:shadow-[0px_8px_30px_rgba(0,0,0,0.06)] duration-300">
             <div className="px-6 py-4 border-b border-surface-container-highest/60 bg-surface-bright/50 flex items-center gap-2.5">
               <Shield className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-bold text-on-surface">{t('privacy_policy')} & {t('terms_of_service')}</h3>
+              <h3 className="text-sm font-bold text-on-surface">Policies & Legal</h3>
             </div>
 
             <div className="divide-y divide-surface-container-highest/60">
+              <button 
+                onClick={() => navigate('cancellation-refund-policy')}
+                className="w-full p-6 flex items-center justify-between group hover:bg-surface-container-low/50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <RefreshCcw className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
+                  <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Cancellation & Refund Policy</h4>
+                </div>
+                <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
+              </button>
+
               <button 
                 onClick={() => setActiveLegalModal('privacy')}
                 className="w-full p-6 flex items-center justify-between group hover:bg-surface-container-low/50 transition-colors text-left"
@@ -459,6 +481,7 @@ export default function Settings({ navigate }: NavigationProps) {
           <div className="pt-2 space-y-3">
             <button 
               onClick={async () => {
+                clearOwnerSessionData();
                 await supabase.auth.signOut();
                 navigate('welcome');
               }}

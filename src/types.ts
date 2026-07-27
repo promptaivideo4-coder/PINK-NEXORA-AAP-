@@ -16,6 +16,8 @@ export type ScreenName =
   | 'customers'
   | 'customer-profile'
   | 'theme-selection'
+  | 'cancellation-refund-policy'
+  | 'role-conflict'
   | 'website-dashboard'
   | 'website-gallery'
   | 'wallet'
@@ -34,6 +36,17 @@ export type ScreenName =
   | 'responsive-tables'
   | 'skeleton-showcase'
   | 'marketing';
+
+export const VALID_SCREENS: ScreenName[] = [
+  'splash', 'welcome', 'login', 'reset-password', 'register-stepper', 'dashboard',
+  'bookings', 'new-appointment', 'services', 'service-detail', 'new-service',
+  'help-center', 'profile', 'settings', 'customers', 'customer-profile',
+  'theme-selection', 'cancellation-refund-policy', 'role-conflict',
+  'website-dashboard', 'website-gallery', 'wallet', 'transaction-detail',
+  'revenue-analytics', 'analytics', 'reviews', 'install-app', 'offline',
+  'app-update', 'staff', 'new-staff', 'staff-detail', 'server-error',
+  'component-library', 'responsive-tables', 'skeleton-showcase', 'marketing'
+];
 
 export interface Theme {
   id: string;

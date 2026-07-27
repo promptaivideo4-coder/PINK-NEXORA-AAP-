@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, UserPlus, ArrowRight, Check, X } from 'lucide-react';
 import TopBar from '../components/TopBar';
@@ -6,11 +6,44 @@ import { NavigationProps } from '../types';
 
 import { queueAction } from '../lib/sync-manager';
 
+const FORM_CACHE_KEY = 'nexora-new-appointment-form';
+
 export default function NewAppointment({ navigate }: NavigationProps) {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
+  const [policyAgreed, setPolicyAgreed] = useState(false);
+
+  // Form preservation logic
+  useEffect(() => {
+    const cachedForm = localStorage.getItem(FORM_CACHE_KEY);
+    if (cachedForm) {
+      try {
+        const data = JSON.parse(cachedForm);
+        setNewClientName(data.name || '');
+        setNewClientPhone(data.phone || '');
+        setPolicyAgreed(data.policyAgreed || false);
+        setSelectedClientId(data.clientId || null);
+      } catch (e) {
+        console.error('Failed to parse cached form', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const formData = {
+      name: newClientName,
+      phone: newClientPhone,
+      policyAgreed,
+      clientId: selectedClientId
+    };
+    localStorage.setItem(FORM_CACHE_KEY, JSON.stringify(formData));
+  }, [newClientName, newClientPhone, policyAgreed, selectedClientId]);
+
+  const clearFormCache = () => {
+    localStorage.removeItem(FORM_CACHE_KEY);
+  };
 
   const clients = [
     { id: '1', name: 'Ananya Sharma', phone: '+91 98765 43210', initials: 'AS', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBqt3CvTQkv49W6kHRrxM8D6AD17xgJJnd1-PXzDvJFntf1vIaWGTBKDrq4178iNlR1oY-i9KXr2tHcivAtU_LIeNeh-KMCH3EZlIXEdAhmNzXCBaYI3yJaOTbEfoBZXI81GOO5xsBP7XZQId6TO1sBrbxZwueWGLrnoWFZxMC9CzTb_Y4VM-2zZsw4FfkeRJbgsPACItgF7as3vVyL-6UYwktjydrHV2UbjorbI4MEGVK9uN8jU3Pk47TTQUpmu0-7pOrkrrVRBZo' },
@@ -187,10 +220,28 @@ export default function NewAppointment({ navigate }: NavigationProps) {
                 </div>
               </div>
               
-              <div className="p-6 bg-surface-container-low border-t border-surface-variant flex justify-end">
-                <button 
-                   onClick={async () => {
-                     // In a real app, we'd have all the data from previous steps
+              <div className="p-6 bg-surface-container-low border-t border-surface-variant flex flex-col gap-4">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center mt-0.5">
+                    <input 
+                      type="checkbox" 
+                      checked={policyAgreed}
+                      onChange={(e) => setPolicyAgreed(e.target.checked)}
+                      className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-outline-variant bg-surface transition-all checked:border-primary checked:bg-primary"
+                    />
+                    <Check className="absolute h-3.5 w-3.5 text-white opacity-0 transition-opacity peer-checked:opacity-100" strokeWidth={4} />
+                  </div>
+                  <span className="text-[13px] text-on-surface-variant leading-tight group-hover:text-on-surface transition-colors">
+                    I have read and agree to the <button onClick={() => navigate('cancellation-refund-policy')} className="text-primary font-bold hover:underline">Cancellation & Refund Policy</button>. I understand that fees may apply for late cancellations or no-shows.
+                  </span>
+                </label>
+
+                <div className="flex justify-end">
+                  <button 
+                    disabled={!policyAgreed || !selectedClientId}
+                    onClick={async () => {
+                      if (!policyAgreed) return;
+                      // In a real app, we'd have all the data from previous steps
                      try {
                         await queueAction('CREATE_APPOINTMENT', {
                           client_id: selectedClientId,
@@ -202,6 +253,7 @@ export default function NewAppointment({ navigate }: NavigationProps) {
                      } catch (err) {
                         console.error('Failed to queue appointment', err);
                      }
+                     clearFormCache();
                      navigate('bookings');
                    }}
                    className="px-6 py-3 bg-primary text-white rounded-xl text-base font-semibold hover:opacity-90 transition-opacity active:scale-95 shadow-md flex items-center gap-2"
@@ -211,6 +263,7 @@ export default function NewAppointment({ navigate }: NavigationProps) {
                 </button>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </main>

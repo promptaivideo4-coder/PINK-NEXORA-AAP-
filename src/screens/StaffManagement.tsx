@@ -94,7 +94,14 @@ type FilterType = 'All' | 'Available' | 'In-Session' | 'Off-Duty';
 export default function StaffManagement({ navigate }: NavigationProps) {
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem('nexora_staff_list');
-    return saved ? JSON.parse(saved) : INITIAL_STAFF;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse nexora_staff_list', e);
+      }
+    }
+    return INITIAL_STAFF;
   });
   
   const [searchQuery, setSearchQuery] = useState('');

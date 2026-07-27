@@ -166,7 +166,14 @@ export default function StaffDetail({ navigate }: NavigationProps) {
   // Load staff list & active ID
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem('nexora_staff_list');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse nexora_staff_list', e);
+      }
+    }
+    return [];
   });
 
   const [selectedStaffId, setSelectedStaffId] = useState<string>(() => {

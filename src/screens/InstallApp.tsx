@@ -221,14 +221,19 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
   };
 
   useEffect(() => {
+    if ((window as any).deferredInstallPrompt) {
+      setDeferredPrompt((window as any).deferredInstallPrompt);
+    }
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      (window as any).deferredInstallPrompt = e;
       setDeferredPrompt(e);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone || localStorage.getItem('nexora-app-installed') === 'true') {
       setIsInstalled(true);
     }
 
@@ -261,6 +266,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
     setTimeout(() => {
       setIsAnimating(false);
       setIsInstalled(true);
+      localStorage.setItem('nexora-app-installed', 'true');
       if (onInstalled) onInstalled();
       setShowToast(true);
       
@@ -272,15 +278,22 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
   };
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        startInstallAnimation();
+    const promptToUse = deferredPrompt || (window as any).deferredInstallPrompt;
+    if (promptToUse) {
+      try {
+        promptToUse.prompt();
+        const { outcome } = await promptToUse.userChoice;
+        if (outcome === 'accepted') {
+          (window as any).deferredInstallPrompt = null;
+          setDeferredPrompt(null);
+          startInstallAnimation();
+        }
+      } catch (err) {
+        setShowHelp(true);
       }
-      setDeferredPrompt(null);
     } else {
-      startInstallAnimation();
+      // On iOS Safari or unsupported browser without native prompt, show Add to Home Screen instructions
+      setShowHelp(true);
     }
   };
 
@@ -685,9 +698,10 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
             onClick={() => setShowHelp(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className="w-full max-w-lg bg-surface-container-lowest rounded-[28px] shadow-2xl border border-outline-variant/40 overflow-hidden flex flex-col manual-installation-modal relative"
               onClick={(e) => e.stopPropagation()}
             >
@@ -730,11 +744,41 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                         setCopyToast(true);
                         setTimeout(() => setCopyToast(false), 2000);
                       }}
-                      className="p-2 rounded-xl hover:bg-surface-container-high transition-all text-primary flex items-center gap-2 px-3 group"
+                      className="p-2 rounded-xl hover:bg-surface-container-high transition-all text-primary flex items-center gap-2 px-3 group min-w-[110px]"
                       title="Copy Link"
                     >
-                      <Copy className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">Copy Link</span>
+                      <motion.div
+                        initial={false}
+                        animate={{ rotate: copyToast ? 360 : 0, scale: copyToast ? 1.2 : 1 }}
+                        className="relative w-4 h-4 flex items-center justify-center"
+                      >
+                        <AnimatePresence mode="wait">
+                          {copyToast ? (
+                            <motion.div
+                              key="check"
+                              initial={{ opacity: 0, scale: 0.5 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.5 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <Check className="w-4 h-4 text-green-500" />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              key="copy"
+                              initial={{ opacity: 0, scale: 0.5 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.5 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <Copy className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                      <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">
+                        {copyToast ? 'Copied!' : 'Copy Link'}
+                      </span>
                     </button>
                     <button 
                       onClick={() => setShowHelp(false)}
@@ -808,6 +852,22 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                     </button>
                   </div>
                   <div className={`flex items-center justify-center transition-all duration-500 overflow-hidden relative ${qrLarge ? 'w-full aspect-square' : 'w-32 h-32'}`}>
+                    {/* Reactive Glow Effect */}
+                    <motion.div 
+                      className="absolute inset-0 -z-10 rounded-full blur-[40px] opacity-20"
+                      style={{
+                        background: `radial-gradient(circle, var(--md-sys-color-primary) 0%, transparent 70%)`
+                      }}
+                      animate={{ 
+                        opacity: [0.1, 0.4, 0.1],
+                        scale: [0.8, 1.1, 0.8]
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
                     <QRCodeCanvas 
                       value={window.location.href} 
                       size={qrLarge ? 512 : 128} 
