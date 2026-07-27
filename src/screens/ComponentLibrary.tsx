@@ -310,14 +310,14 @@ export default function ComponentLibrary({ navigate }: NavigationProps) {
                         <span className="inline-block px-2.5 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[11px] font-bold mb-2">
                           Confirmed
                         </span>
-                        <h4 className="text-base font-bold text-on-surface">Sarah Jenkins</h4>
+                        <h4 className="text-base font-bold text-on-surface">Suman Gupta</h4>
                         <p className="text-xs font-medium text-on-surface-variant flex items-center gap-1.5 mt-1">
                           <Clock className="w-3.5 h-3.5 text-primary" />
                           <span>Today, 2:30 PM - 4:00 PM</span>
                         </p>
                       </div>
                       <div className="text-right">
-                        <span className="block text-base font-extrabold text-on-surface">$145.00</span>
+                        <span className="block text-base font-extrabold text-on-surface">₹145.00</span>
                         <span className="text-xs font-semibold text-on-surface-variant">Balayage</span>
                       </div>
                     </div>
@@ -326,7 +326,7 @@ export default function ComponentLibrary({ navigate }: NavigationProps) {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          triggerToast('Reschedule requested for Sarah Jenkins');
+                          triggerToast('Reschedule requested for Suman Gupta');
                         }}
                         className="text-xs font-bold bg-secondary-fixed text-primary-container px-3.5 py-1.5 rounded-lg hover:bg-secondary-fixed-dim transition-colors"
                       >
@@ -352,7 +352,7 @@ export default function ComponentLibrary({ navigate }: NavigationProps) {
                       <div className="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center text-primary-container mb-3">
                         <DollarSign className="w-6 h-6" />
                       </div>
-                      <h4 className="text-2xl font-black text-on-surface tracking-tight">$4,250</h4>
+                      <h4 className="text-2xl font-black text-on-surface tracking-tight">₹4,250</h4>
                       <p className="text-xs font-bold text-on-surface-variant mt-0.5">Revenue Today</p>
                     </div>
 

@@ -389,9 +389,9 @@ export default function ThemeSelection({ navigate }: NavigationProps) {
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           {[
-                            { name: 'Balayage & Glossing', price: '$180+', desc: 'Custom hand-painted highlights' },
-                            { name: 'Hydra-Gloss Facial', price: '$130', desc: 'Deep hydration treatment' },
-                            { name: 'Signature Blowout', price: '$65', desc: 'Sleek & voluminous styling' },
+                            { name: 'Balayage & Glossing', price: '₹14,500+', desc: 'Custom hand-painted highlights' },
+                            { name: 'Hydra-Gloss Facial', price: '₹8,500', desc: 'Deep hydration treatment' },
+                            { name: 'Signature Blowout', price: '₹3,500', desc: 'Sleek & voluminous styling' },
                           ].map((s, idx) => (
                             <div key={idx} className="p-4 rounded-xl bg-black/5 hover:bg-black/10 transition-colors border border-black/5">
                               <h3 className="font-bold text-sm sm:text-base">{s.name}</h3>
@@ -410,9 +410,9 @@ export default function ThemeSelection({ navigate }: NavigationProps) {
                       <h2 className="text-3xl font-bold text-center">Our Full Service Menu</h2>
                       <div className="max-w-2xl mx-auto space-y-4">
                         {[
-                          { title: 'Haircuts & Styling', items: ['Master Haircut - $85', 'Blowout & Style - $60', 'Bridal Styling - $150'] },
-                          { title: 'Coloring Services', items: ['Full Balayage - $220', 'Root Touch-up - $95', 'Gloss & Toner - $70'] },
-                          { title: 'Nail & Spa Treatments', items: ['Luxury Gel Manicure - $55', 'Aromatherapy Pedicure - $75', 'Facial Glow Therapy - $120'] }
+                          { title: 'Haircuts & Styling', items: ['Master Haircut - ₹85', 'Blowout & Style - ₹60', 'Bridal Styling - ₹150'] },
+                          { title: 'Coloring Services', items: ['Full Balayage - ₹220', 'Root Touch-up - ₹95', 'Gloss & Toner - ₹70'] },
+                          { title: 'Nail & Spa Treatments', items: ['Luxury Gel Manicure - ₹55', 'Aromatherapy Pedicure - ₹75', 'Facial Glow Therapy - ₹120'] }
                         ].map((cat, i) => (
                           <div key={i} className="p-6 rounded-2xl bg-black/5 space-y-3">
                             <h3 className="font-bold text-lg" style={{ color: previewTheme.primaryColor }}>{cat.title}</h3>

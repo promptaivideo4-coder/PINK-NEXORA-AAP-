@@ -697,7 +697,7 @@ export default function Wallet({ navigate }: NavigationProps) {
                               type="text"
                               value={newMethodData.accountName}
                               onChange={(e) => setNewMethodData({...newMethodData, accountName: e.target.value})}
-                              placeholder="e.g. John Doe"
+                              placeholder="e.g. Rahul Sharma"
                               className={`w-full h-11 px-4 rounded-xl border bg-surface-bright text-sm outline-none focus:ring-1 focus:ring-primary ${formErrors.accountName ? 'border-error' : 'border-surface-variant'}`}
                             />
                           </div>

@@ -8,7 +8,7 @@ import { formatPrice } from '../utils/currency';
 interface ServiceItem {
   id: string;
   name: string;
-  category: 'Hair' | 'Nails' | 'Spa' | 'Aesthetic';
+  category: string;
   description: string;
   duration: number;
   price: number;
@@ -17,31 +17,58 @@ interface ServiceItem {
 
 const initialServices: ServiceItem[] = [
   {
-    id: 'SRV-01',
+    id: '1',
     name: 'Balayage & Styling',
-    category: 'Hair',
-    description: 'Premium hand-painted highlights with signature blowout and styling for a seamless, sun-kissed look.',
+    description: 'Full balayage treatment with toner, root smudge, and signature blowout styling.',
     duration: 120,
-    price: 240,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDw9naRZ0loBzUpQG7MWjsnG_zY_PI1ow606HO1hgOtQCN7eS4F9SNU82vaAlJuI9nP_pA0lqH-3gDIl6BedEJ2KMYBqnjLPx81IRT1u-5ZNCXvIV96G4Of2THK_tGUJkjAF49lnh5VyTsaPI3VJQphCIO6fflhrL6Ti0deu6eq955lQwvQeJMhwk4SF5FbCjnmV9Y9Trz0r3lSW_Q3EebSRGkhUrv5A2V-0u9qwXA2pdms4WzmRAD_jB30b5KUn6FaIv6bVeXayw0',
+    price: 3500,
+    category: 'Hair',
+    image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&q=80&w=800'
   },
   {
-    id: 'SRV-02',
-    name: 'Signature Gel Manicure',
-    category: 'Nails',
-    description: 'Detailed cuticle care, shaping, and long-lasting premium gel application with a relaxing hand massage.',
+    id: '2',
+    name: 'Bridal Makeup Package',
+    description: 'Complete bridal makeup including HD makeup, hair styling, and draping.',
+    duration: 180,
+    price: 15000,
+    category: 'Makeup',
+    image: 'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: '3',
+    name: 'De-tan & Bleach',
+    description: 'O3+ De-tan pack with gentle skin bleach for face and neck.',
+    duration: 45,
+    price: 800,
+    category: 'Skin & Spa',
+    image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: '4',
+    name: 'Eyebrow Threading',
+    description: 'Precision eyebrow shaping and upper lip threading.',
+    duration: 15,
+    price: 100,
+    category: 'Threading',
+    image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: '5',
+    name: 'Bridal Mehendi / Heena',
+    description: 'Intricate traditional bridal mehendi design for hands and feet.',
+    duration: 240,
+    price: 5000,
+    category: 'Mehendi',
+    image: 'https://images.unsplash.com/photo-1596455607563-ad6193f76b17?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: '6',
+    name: 'L\'Oréal Hair Spa',
+    description: 'Deep conditioning L\'Oréal hair spa with scalp massage and steam.',
     duration: 60,
-    price: 65,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCsMa93lnFVoBxo3xQ378bEATTF8OIPleZAyWCaX-6yq_m-YBU4Rr7qfX1myA6d4MiXPztL_r7762IjRRSLSbm5r6_re6-ToKze6UKFBClimgkV9acJLjL6WRXEWxKptm8GrJnfnBcMaAh9ONwryIelRl78KsPeN_se_qCZW5rr8ypvNSEJdBjrgZvO2yMcZEGU3z4QogUQed1gGAisC1vsdcMv83fk35NSUiQK8UB_qXv83tQxOFWIvottN-JzfpETBdLwb3ilZ70',
-  },
-  {
-    id: 'SRV-03',
-    name: 'Deep Tissue Massage',
-    category: 'Spa',
-    description: 'Intensive therapeutic massage designed to relieve severe tension in the muscle and connective tissue.',
-    duration: 90,
-    price: 150,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAQx3HdC0HCSnpDGIvOmQhmlPLc7C-GCZUPc9eECwFVoFIrYyM22eg7xsLndcdNP5FTSsSnwCuhWN6rnLQI0jHXFWllmsPyLYEWMm4hjmfK0ak29hiRGrN2onjtyVi4iQbIB3ETHQMwrUe79h7u5nPi9Edqsq7ItNENpJUvgl9gbuWG18nTAl6H26TF4hKkdveupNCjP6TEyQ9YV-5quHDU73JPNROmtW5WVQaJSUr0uYjb49-VVODp9TvyO-VP8gwhj4aTsClG7xs',
+    price: 1200,
+    category: 'Hair',
+    image: 'https://images.unsplash.com/photo-1560869713-7d0a29430803?auto=format&fit=crop&q=80&w=800'
   },
 ];
 
@@ -65,7 +92,7 @@ export default function ServicesList({ navigate }: NavigationProps) {
     localStorage.setItem('nexora_services', JSON.stringify(services));
   }, [services]);
 
-  const categories = ['All', 'Hair', 'Nails', 'Spa', 'Aesthetic'];
+  const categories = ['All', 'Hair', 'Makeup', 'Skin & Spa', 'Threading', 'Mehendi'];
 
   const filteredServices = services.filter((srv) => {
     const matchesCat = activeCategory === 'All' || srv.category === activeCategory;

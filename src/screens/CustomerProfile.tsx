@@ -9,23 +9,23 @@ import {
 import TopBar from '../components/TopBar';
 import { motion, AnimatePresence } from 'motion/react';
 
-// Default static Isabella Rossi profile data if none in localStorage
-const ISABELLA_ROSSI: Customer = {
+// Default static Neha Gupta profile data if none in localStorage
+const NEHA_GUPTA: Customer = {
   id: 'isabella',
-  name: 'Isabella Rossi',
+  name: 'Neha Gupta',
   type: 'VIP',
   lastVisit: 'Aug 05',
-  spend: '$4,200',
+  spend: '₹42,000',
   visits: '24',
-  initials: 'IR',
+  initials: 'NG',
   image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDSASh8fQbXRphLrWlNUiZJkDAPzXTKKOj0wxBl_dEfVg5YjX_QjzuayOuck-4bqtQuoxVVYJLL35bXm7ClOVeMELqfIMK52Fi-23S7uogMSFKDuKkOPu4GsU1AzN7H9q2fneBzJu3YUgrH2cCRAVNjuZfeNcjendo_pDd8ZyiyZnMQVB_OW8QOuX34tGDizguwOOHdahxKDbJ5ODAoRyA6dl3VzuzcgXKZECHCYTm7fG3qHg87pxhUvs30iDvRfSPSKQYDAOqZzp8',
-  phone: '+1 (310) 555-0142',
-  email: 'isabella.rossi@example.com',
-  address: 'Beverly Hills, CA',
+  phone: '+91 98765 11223',
+  email: 'neha.gupta@example.com',
+  address: 'Vasant Vihar, New Delhi',
   notes: 'Allergic to specific brand of PPD hair dye. Ensure use of PPD-free color lines only.',
   history: [
-    { id: 'h1', date: 'Aug 05, 2023', service: 'Full Highlight & Cut', provider: 'Senior Stylist Emma', price: '$320' },
-    { id: 'h2', date: 'May 18, 2023', service: 'Root Touch-up & Blowout', provider: 'Stylist Sarah', price: '$150' },
+    { id: 'h1', date: 'Aug 05, 2026', service: 'Full Highlight & Cut', provider: 'Senior Stylist Aditi', price: '₹8,500' },
+    { id: 'h2', date: 'May 18, 2026', service: 'Root Touch-up & Blowout', provider: 'Stylist Suman', price: '₹3,500' },
   ]
 };
 
@@ -52,7 +52,7 @@ type TabType = 'bookings' | 'history' | 'notes' | 'wallet';
 
 export default function CustomerProfile({ navigate }: NavigationProps) {
   const [activeTab, setActiveTab] = useState<TabType>('bookings');
-  const [customer, setCustomer] = useState<Customer>(ISABELLA_ROSSI);
+  const [customer, setCustomer] = useState<Customer>(NEHA_GUPTA);
   
   // Custom states for the Isabella detail cards that aren't strictly on Customer type
   const [preferences, setPreferences] = useState<string[]>(DEFAULT_PREFERENCES);
@@ -99,7 +99,7 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
           ]);
           setPhotos([]);
         } else {
-          setCustomer(ISABELLA_ROSSI);
+          setCustomer(NEHA_GUPTA);
           setStoreCredit(150.00);
           setLoyaltyPoints(850);
           setPreferences(DEFAULT_PREFERENCES);
@@ -108,10 +108,10 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
         }
       } catch (e) {
         console.error("Error parsing customer details, loading Isabella Rossi", e);
-        setCustomer(ISABELLA_ROSSI);
+        setCustomer(NEHA_GUPTA);
       }
     } else {
-      setCustomer(ISABELLA_ROSSI);
+      setCustomer(NEHA_GUPTA);
     }
   }, []);
 
@@ -186,7 +186,7 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
 
   const handleTopUp = () => {
     setStoreCredit(prev => prev + 50);
-    triggerToast('Credited $50.00 to store account!');
+    triggerToast('Credited ₹50.00 to store account!');
   };
 
   return (
@@ -290,7 +290,7 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
           <div className="bg-white rounded-[20px] p-4 flex flex-col items-center justify-center text-center border border-outline-variant/20 shadow-xs hover:-translate-y-0.5 transition-transform relative overflow-hidden">
             <div className="absolute -right-4 -top-4 w-12 h-12 bg-primary-container/5 rounded-full blur-lg"></div>
             <CreditCard className="w-5 h-5 text-primary-container mb-1.5" />
-            <span className="text-xl md:text-2xl font-black text-on-surface">{customer.spend || '$150'}</span>
+            <span className="text-xl md:text-2xl font-black text-on-surface">{customer.spend || '₹150'}</span>
             <span className="text-[11px] font-bold text-on-surface-variant mt-0.5 uppercase tracking-wider">Total Spend</span>
           </div>
 
@@ -343,7 +343,7 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-lg font-bold text-on-surface">Balayage &amp; Tone</h4>
-                      <p className="text-sm font-medium text-on-surface-variant">With Senior Stylist Emma</p>
+                      <p className="text-sm font-medium text-on-surface-variant">With Senior Stylist Aditi</p>
                     </div>
                     <span className="bg-emerald-500/10 text-emerald-600 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
                       Confirmed
@@ -357,7 +357,7 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
                     </span>
                     <span className="inline-flex items-center gap-1 bg-surface-container px-3 py-1 rounded-xl text-xs font-medium text-on-surface-variant">
                       <CreditCard className="w-3.5 h-3.5 text-primary-container" /> 
-                      <span>$285</span>
+                      <span>₹285</span>
                     </span>
                   </div>
                 </div>
@@ -596,7 +596,7 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
                       onClick={handleTopUp}
                       className="bg-white text-primary-container hover:bg-white/90 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-sm active:scale-95"
                     >
-                      Top Up $50
+                      Top Up ₹50
                     </button>
                   </div>
                 </div>

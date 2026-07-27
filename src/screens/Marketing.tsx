@@ -183,7 +183,7 @@ export default function Marketing({ navigate }: NavigationProps) {
     const newOffer: Offer = {
       id: String(Date.now()),
       title: generatedOffer.title,
-      discount: discountPreference === 'Percentage' ? '20% Off' : discountPreference === 'Fixed' ? '$15 Off' : 'BOGO',
+      discount: discountPreference === 'Percentage' ? '20% Off' : discountPreference === 'Fixed' ? '₹500 Off' : 'BOGO',
       code: generatedOffer.suggestedCouponCode.toUpperCase().replace(/\s+/g, ''),
       status: status,
       startDate: 'Today',
@@ -802,7 +802,7 @@ export default function Marketing({ navigate }: NavigationProps) {
                   className="w-full h-11 px-3 bg-surface-container-low border border-outline-variant/30 rounded-xl text-xs text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 >
                   <option value="Percentage">Percentage Discount (e.g. 20% Off)</option>
-                  <option value="Fixed">Fixed Amount Off (e.g. $15 Off)</option>
+                  <option value="Fixed">Fixed Amount Off (e.g. ₹500 Off)</option>
                   <option value="BOGO">BOGO (Buy One Get One)</option>
                 </select>
               </div>
@@ -912,7 +912,7 @@ export default function Marketing({ navigate }: NavigationProps) {
                       <div className="absolute inset-0 bg-black/55 backdrop-blur-[0.5px]"></div>
                       <div className="relative text-center px-4 space-y-2 z-10">
                         <span className="text-[10px] font-extrabold text-white bg-primary/40 border border-primary/30 px-2.5 py-0.5 rounded-full uppercase tracking-widest">
-                          {discountPreference === 'Percentage' ? '20% OFF' : discountPreference === 'Fixed' ? '$15 OFF' : 'BOGO'}
+                          {discountPreference === 'Percentage' ? '20% OFF' : discountPreference === 'Fixed' ? '₹500 OFF' : 'BOGO'}
                         </span>
                         <h4 className="text-lg font-bold text-white tracking-tight line-clamp-2 max-w-md mx-auto">
                           {generatedOffer.title}

@@ -56,7 +56,7 @@ interface SavedReply {
 const initialReviews: Review[] = [
   {
     id: 'rev-1',
-    customerName: 'Sarah J.',
+    customerName: 'Suman G.',
     customerAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDyamfgVHEFfNUwHoBFHMzlxXIXNRz7pgW1XewyxhXLuQCekKzaJgg80c6oXwCgbKLYxOVKaP1GWvkaC3tb558V2elM2uuVQNT7LFZynb6wP-pfK-TsNJ3N1dXZH4eYvq-hvdkN8F9qA4jM_Idd54OwkEMuSKk7Mh9mLJHUehYdrPRc6NoDkJL5OghshpXpI7s5VecRmT9B3HSHqltg2bKYJTA1N01V2hV0i38kCC2lxQXGQp_HvQhPM2u0zxDuErElIavNtrB57Pg',
     timeAgo: '2 days ago',
     rating: 5,

@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export default function TransactionDetail({ navigate }: NavigationProps) {
   const [status, setStatus] = useState<'Settled' | 'Refunded'>('Settled');
-  const [amount, setAmount] = useState('$285.00');
+  const [amount, setAmount] = useState('₹285.00');
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [refundReason, setRefundReason] = useState('Customer request');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export default function TransactionDetail({ navigate }: NavigationProps) {
     e.preventDefault();
     setStatus('Refunded');
     setIsRefundModalOpen(false);
-    showToast('Refund of $285.00 initiated successfully.');
+    showToast('Refund of ₹285.00 initiated successfully.');
   };
 
   const handleDownloadPdf = () => {
@@ -265,7 +265,7 @@ export default function TransactionDetail({ navigate }: NavigationProps) {
               </div>
 
               <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-xs text-rose-800">
-                You are issuing a <strong>$285.00</strong> refund to Isabella Rossi's Visa ending in 4242. This action cannot be undone.
+                You are issuing a <strong>₹285.00</strong> refund to Isabella Rossi's Visa ending in 4242. This action cannot be undone.
               </div>
 
               <form onSubmit={handleRefund} className="space-y-4">

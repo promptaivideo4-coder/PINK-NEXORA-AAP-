@@ -104,7 +104,7 @@ export default function NewStaff({ navigate }: NavigationProps) {
       avatar: avatar,
       initials: initials,
       status: 'Available',
-      weeklyRev: '$0.0k',
+      weeklyRev: '₹0.0k',
       bookingsThisWeek: 0,
       statusInfo: 'Ready'
     };

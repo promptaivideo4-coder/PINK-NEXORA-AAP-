@@ -44,7 +44,7 @@ interface StaffMember {
 const INITIAL_STAFF: StaffMember[] = [
   {
     id: 'ST-01',
-    name: 'Elena Rostova',
+    name: 'Sanya Rao',
     role: 'Senior Stylist',
     specialty: 'Balayage & Color Correction',
     phone: '+1 (310) 555-0145',
@@ -53,13 +53,13 @@ const INITIAL_STAFF: StaffMember[] = [
     reviewsCount: 124,
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzw-FINsqOVvcGQdzJ6FpXYOgm1eruw1ADnOEIGIePBqAv1Sj0fqUjb4tp-x5F-uPmfj0ee_vU0G-_P1-d29WZYQz5xkPwi8AHhcUT7D87_K2VL8c4zdqu2clG_YALpB6GnrHr5lzMuYu-GDQP5tDmI90XnsGKwiW0MIOfp9ARCuSHPEQ7oErLvv20Z4VnxVGa_tu0kmmGiB5TGJ9kh9Yce6UwwMB4MX_EFrvOmyKtczXXiaPnVA9HoG1IQbvDLPfG4IWjPUc10_s',
     status: 'Available',
-    weeklyRev: '$2.4k',
+    weeklyRev: '₹2.4L',
     bookingsThisWeek: 28,
     statusInfo: 'Next: 2:00 PM'
   },
   {
     id: 'ST-02',
-    name: 'Marcus Chen',
+    name: 'Kiran Kumar',
     role: 'Color Specialist',
     specialty: 'Vibrant Colors & Highlights',
     phone: '+1 (310) 555-0198',
@@ -68,13 +68,13 @@ const INITIAL_STAFF: StaffMember[] = [
     reviewsCount: 98,
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyga_-IhTVr5NSAbjqjeCoJ1Bu_jl7CY9jLf86be5WQUJqFUT5Axn0Ewctks2h-7-E3S7QfErHnkeFbyI5E5WeoT3e8CrYMtLMgjWVa7DHhSUBdlbuZU-yRK4iULK_XKNSdLf19idGyjyeU96aNDbnSZVFnMrA-TYIVAOqlRc0Kbv7dzC7RzsJN7xZMT9Jj_NlK3v_sNA7Zcz27dIVucRiBYT2vUQNNFHzwo37biqHLLPGyn8TOfEadCHQIqt6ZZSEjukdEbjWwYQ',
     status: 'In-Session',
-    weeklyRev: '$3.1k',
+    weeklyRev: '₹3.1L',
     bookingsThisWeek: 22,
     statusInfo: 'Ends: 1:15 PM'
   },
   {
     id: 'ST-03',
-    name: 'Sarah Jenkins',
+    name: 'Suman Gupta',
     role: 'Junior Stylist',
     specialty: 'Modern Cuts & Blowouts',
     phone: '+1 (310) 555-0123',
@@ -83,7 +83,7 @@ const INITIAL_STAFF: StaffMember[] = [
     reviewsCount: 45,
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCqnBO6_8zyof5TquhFt61wmjfRvHWi2mmdCuJ25FU1h5bfnEdrhcBMLDsihOIeHQHZy0amhhVqh301sqwb1Kj2JMsw4NmoQgRkUccRmTQjq6H3RLgx45gB61IojoxkbKRmFF32-yDT4LU1D-84iw9fJuEctaeycEQSh18PhPLVuou3ANKAPP2QNMBhRinOkG9H0kK_-DNSWXM1Z60touK72oYpSJWgovXxPfC8zlS3fOYQNHV6Arawl-wkUeHuPHGt-29tkIxUJNs',
     status: 'Off-Duty',
-    weeklyRev: '$1.2k',
+    weeklyRev: '₹1.2L',
     bookingsThisWeek: 14,
     statusInfo: 'Back: Tomorrow'
   }
@@ -143,7 +143,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
       reviewsCount: 1,
       initials,
       status: initialStatus,
-      weeklyRev: '$0.0k',
+      weeklyRev: '₹0.0L',
       bookingsThisWeek: 0,
       statusInfo: initialStatus === 'Available' ? 'Ready' : initialStatus === 'In-Session' ? 'In service' : 'Away'
     };
@@ -593,7 +593,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Elena Rostova"
+                    placeholder="e.g. Sanya Rao"
                     className="w-full h-11 px-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container font-semibold"
                   />
                 </div>

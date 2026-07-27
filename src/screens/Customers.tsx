@@ -4,7 +4,7 @@ import { NavigationProps, Customer } from '../types';
 import CustomerDetailModal from '../components/CustomerDetailModal';
 import { Search, Plus, X, UserPlus, User, RotateCcw, Upload, Check, Mail, Phone, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import BannerAd from '../components/BannerAd';
+import InstallAppBanner from '../components/InstallAppBanner';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type FilterType = 'All' | 'VIP' | 'Members' | 'New';
@@ -12,20 +12,20 @@ type FilterType = 'All' | 'VIP' | 'Members' | 'New';
 const INITIAL_CUSTOMERS: Customer[] = [
   {
     id: 'isabella',
-    name: 'Isabella Rossi',
+    name: 'Neha Gupta',
     type: 'VIP',
     lastVisit: 'Aug 05',
-    spend: '$4,200',
+    spend: '₹42,000',
     visits: '24',
-    initials: 'IR',
+    initials: 'NG',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDSASh8fQbXRphLrWlNUiZJkDAPzXTKKOj0wxBl_dEfVg5YjX_QjzuayOuck-4bqtQuoxVVYJLL35bXm7ClOVeMELqfIMK52Fi-23S7uogMSFKDuKkOPu4GsU1AzN7H9q2fneBzJu3YUgrH2cCRAVNjuZfeNcjendo_pDd8ZyiyZnMQVB_OW8QOuX34tGDizguwOOHdahxKDbJ5ODAoRyA6dl3VzuzcgXKZECHCYTm7fG3qHg87pxhUvs30iDvRfSPSKQYDAOqZzp8',
-    phone: '+1 (310) 555-0142',
-    email: 'isabella.rossi@example.com',
-    address: 'Beverly Hills, CA',
+    phone: '+91 98765 11223',
+    email: 'neha.gupta@example.com',
+    address: 'Vasant Vihar, New Delhi',
     notes: 'Allergic to specific brand of PPD hair dye. Ensure use of PPD-free color lines only.',
     history: [
-      { id: 'h1', date: 'Aug 05, 2023', service: 'Full Highlight & Cut', provider: 'Senior Stylist Emma', price: '$320' },
-      { id: 'h2', date: 'May 18, 2023', service: 'Root Touch-up & Blowout', provider: 'Stylist Sarah', price: '$150' },
+      { id: 'h1', date: 'Aug 05, 2026', service: 'Full Highlight & Cut', provider: 'Senior Stylist Aditi', price: '₹8,500' },
+      { id: 'h2', date: 'May 18, 2026', service: 'Root Touch-up & Blowout', provider: 'Stylist Suman', price: '₹3,500' },
     ]
   },
   {
@@ -193,7 +193,7 @@ export default function Customers({ navigate }: NavigationProps) {
 
       <main className="w-full max-w-[800px] mx-auto px-5 md:px-10 pt-6 pb-12 flex-grow space-y-6 flex flex-col">
         
-        <BannerAd />
+        <InstallAppBanner navigate={navigate} />
 
         {/* Top Header Actions */}
         <div className="flex items-center justify-between">

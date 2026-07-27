@@ -74,8 +74,8 @@ const INITIAL_STAFF_DETAILS: Record<string, Partial<StaffMember>> = {
     onTimeRate: '98%',
     todayBookingsCount: 6,
     todayBookingsTotal: 8,
-    monthlyRevenue: '$12,850',
-    projectedRevenue: '$14,200',
+    monthlyRevenue: '₹12,850',
+    projectedRevenue: '₹14,200',
     clientRetention: '85%',
     tenureYears: 5,
     commissionRate: 40,
@@ -89,10 +89,10 @@ const INITIAL_STAFF_DETAILS: Record<string, Partial<StaffMember>> = {
       'Sunday': { active: false, start: '09:00', end: '17:00' }
     },
     assignedServices: [
-      { id: 'S-01', name: 'Balayage & Tone', duration: '120 mins', price: 'From $185' },
-      { id: 'S-02', name: "Women's Haircut", duration: '60 mins', price: '$85' },
-      { id: 'S-03', name: 'Full Foil Highlights', duration: '150 mins', price: 'From $210' },
-      { id: 'S-04', name: 'Keratin Treatment', duration: '180 mins', price: '$250' }
+      { id: 'S-01', name: 'Balayage & Tone', duration: '120 mins', price: 'From ₹14,500' },
+      { id: 'S-02', name: "Women's Haircut", duration: '60 mins', price: '₹6,500' },
+      { id: 'S-03', name: 'Full Foil Highlights', duration: '150 mins', price: 'From ₹16,500' },
+      { id: 'S-04', name: 'Keratin Treatment', duration: '180 mins', price: '₹20,000' }
     ]
   },
   'ST-02': {
@@ -100,8 +100,8 @@ const INITIAL_STAFF_DETAILS: Record<string, Partial<StaffMember>> = {
     onTimeRate: '93%',
     todayBookingsCount: 5,
     todayBookingsTotal: 7,
-    monthlyRevenue: '$14,500',
-    projectedRevenue: '$16,000',
+    monthlyRevenue: '₹14,500',
+    projectedRevenue: '₹16,000',
     clientRetention: '89%',
     tenureYears: 3,
     commissionRate: 45,
@@ -115,9 +115,9 @@ const INITIAL_STAFF_DETAILS: Record<string, Partial<StaffMember>> = {
       'Sunday': { active: false, start: '09:00', end: '17:00' }
     },
     assignedServices: [
-      { id: 'S-05', name: 'Vibrant Highlights', duration: '120 mins', price: '$195' },
-      { id: 'S-06', name: 'Creative Dyeing', duration: '150 mins', price: '$220' },
-      { id: 'S-07', name: 'Balayage & Tone', duration: '120 mins', price: 'From $185' }
+      { id: 'S-05', name: 'Vibrant Highlights', duration: '120 mins', price: '₹15,000' },
+      { id: 'S-06', name: 'Creative Dyeing', duration: '150 mins', price: '₹17,500' },
+      { id: 'S-07', name: 'Balayage & Tone', duration: '120 mins', price: 'From ₹14,500' }
     ]
   },
   'ST-03': {
@@ -125,8 +125,8 @@ const INITIAL_STAFF_DETAILS: Record<string, Partial<StaffMember>> = {
     onTimeRate: '90%',
     todayBookingsCount: 3,
     todayBookingsTotal: 6,
-    monthlyRevenue: '$6,400',
-    projectedRevenue: '$8,000',
+    monthlyRevenue: '₹6,400',
+    projectedRevenue: '₹8,000',
     clientRetention: '74%',
     tenureYears: 1,
     commissionRate: 35,
@@ -140,26 +140,26 @@ const INITIAL_STAFF_DETAILS: Record<string, Partial<StaffMember>> = {
       'Sunday': { active: false, start: '09:00', end: '17:00' }
     },
     assignedServices: [
-      { id: 'S-08', name: "Men's Classic Cut", duration: '45 mins', price: '$55' },
-      { id: 'S-09', name: 'Blowout Special', duration: '50 mins', price: '$65' },
-      { id: 'S-10', name: "Women's Haircut", duration: '60 mins', price: '$85' }
+      { id: 'S-08', name: "Men's Classic Cut", duration: '45 mins', price: '₹4,500' },
+      { id: 'S-09', name: 'Blowout Special', duration: '50 mins', price: '₹5,000' },
+      { id: 'S-10', name: "Women's Haircut", duration: '60 mins', price: '₹6,500' }
     ]
   }
 };
 
 const DEFAULT_SERVICES_REGISTRY = [
-  { id: 'S-01', name: 'Balayage & Tone', duration: '120 mins', price: 'From $185' },
-  { id: 'S-02', name: "Women's Haircut", duration: '60 mins', price: '$85' },
-  { id: 'S-03', name: 'Full Foil Highlights', duration: '150 mins', price: 'From $210' },
-  { id: 'S-04', name: 'Keratin Treatment', duration: '180 mins', price: '$250' },
-  { id: 'S-05', name: 'Vibrant Highlights', duration: '120 mins', price: '$195' },
-  { id: 'S-06', name: 'Creative Dyeing', duration: '150 mins', price: '$220' },
-  { id: 'S-08', name: "Men's Classic Cut", duration: '45 mins', price: '$55' },
-  { id: 'S-09', name: 'Blowout Special', duration: '50 mins', price: '$65' },
-  { id: 'S-11', name: 'Deep Conditioning Scalp Therapy', duration: '45 mins', price: '$75' },
-  { id: 'S-12', name: 'Classic Pedicure', duration: '50 mins', price: '$60' },
-  { id: 'S-13', name: 'Swedish Massage Session', duration: '60 mins', price: '$110' },
-  { id: 'S-14', name: 'Gel Nails Manicure', duration: '45 mins', price: '$50' }
+  { id: 'S-01', name: 'Balayage & Tone', duration: '120 mins', price: 'From ₹14,500' },
+  { id: 'S-02', name: "Women's Haircut", duration: '60 mins', price: '₹6,500' },
+  { id: 'S-03', name: 'Full Foil Highlights', duration: '150 mins', price: 'From ₹16,500' },
+  { id: 'S-04', name: 'Keratin Treatment', duration: '180 mins', price: '₹20,000' },
+  { id: 'S-05', name: 'Vibrant Highlights', duration: '120 mins', price: '₹15,000' },
+  { id: 'S-06', name: 'Creative Dyeing', duration: '150 mins', price: '₹17,500' },
+  { id: 'S-08', name: "Men's Classic Cut", duration: '45 mins', price: '₹4,500' },
+  { id: 'S-09', name: 'Blowout Special', duration: '50 mins', price: '₹5,000' },
+  { id: 'S-11', name: 'Deep Conditioning Scalp Therapy', duration: '45 mins', price: '₹6,000' },
+  { id: 'S-12', name: 'Classic Pedicure', duration: '50 mins', price: '₹4,800' },
+  { id: 'S-13', name: 'Swedish Massage Session', duration: '60 mins', price: '₹8,500' },
+  { id: 'S-14', name: 'Gel Nails Manicure', duration: '45 mins', price: '₹4,000' }
 ];
 
 export default function StaffDetail({ navigate }: NavigationProps) {
@@ -191,8 +191,8 @@ export default function StaffDetail({ navigate }: NavigationProps) {
   const [editAttendance, setEditAttendance] = useState('98%');
   const [editOnTimeRate, setEditOnTimeRate] = useState('98%');
   const [editClientRetention, setEditClientRetention] = useState('85%');
-  const [editMonthlyRevenue, setEditMonthlyRevenue] = useState('$12,850');
-  const [editProjectedRevenue, setEditProjectedRevenue] = useState('$14,200');
+  const [editMonthlyRevenue, setEditMonthlyRevenue] = useState('₹12,850');
+  const [editProjectedRevenue, setEditProjectedRevenue] = useState('₹14,200');
   const [editTodayBookingsCount, setEditTodayBookingsCount] = useState(6);
   const [editTodayBookingsTotal, setEditTodayBookingsTotal] = useState(8);
 
@@ -210,8 +210,8 @@ export default function StaffDetail({ navigate }: NavigationProps) {
         onTimeRate: '95%',
         todayBookingsCount: 5,
         todayBookingsTotal: 8,
-        monthlyRevenue: '$10,000',
-        projectedRevenue: '$11,500',
+        monthlyRevenue: '₹10,000',
+        projectedRevenue: '₹11,500',
         clientRetention: '80%',
         tenureYears: 3,
         commissionRate: 40,
@@ -225,8 +225,8 @@ export default function StaffDetail({ navigate }: NavigationProps) {
           'Sunday': { active: false, start: '09:00', end: '17:00' }
         },
         assignedServices: [
-          { id: 'S-01', name: 'Balayage & Tone', duration: '120 mins', price: 'From $185' },
-          { id: 'S-02', name: "Women's Haircut", duration: '60 mins', price: '$85' }
+          { id: 'S-01', name: 'Balayage & Tone', duration: '120 mins', price: 'From ₹14,500' },
+          { id: 'S-02', name: "Women's Haircut", duration: '60 mins', price: '₹6,500' }
         ]
       };
 
@@ -266,8 +266,8 @@ export default function StaffDetail({ navigate }: NavigationProps) {
     setEditAttendance(activeStaff.attendance || '95%');
     setEditOnTimeRate(activeStaff.onTimeRate || '95%');
     setEditClientRetention(activeStaff.clientRetention || '80%');
-    setEditMonthlyRevenue(activeStaff.monthlyRevenue || '$10,000');
-    setEditProjectedRevenue(activeStaff.projectedRevenue || '$11,500');
+    setEditMonthlyRevenue(activeStaff.monthlyRevenue || '₹10,000');
+    setEditProjectedRevenue(activeStaff.projectedRevenue || '₹11,500');
     setEditTodayBookingsCount(activeStaff.todayBookingsCount || 5);
     setEditTodayBookingsTotal(activeStaff.todayBookingsTotal || 8);
     setShowEditModal(true);
@@ -535,8 +535,8 @@ export default function StaffDetail({ navigate }: NavigationProps) {
             </div>
             <div>
               <p className="text-[11px] font-extrabold text-on-surface-variant uppercase tracking-wider mb-1">Monthly Revenue</p>
-              <h3 className="text-xl md:text-2xl font-black text-on-surface">{activeStaff.monthlyRevenue || '$12,850'}</h3>
-              <p className="text-[11px] text-on-surface-variant/70 mt-1">Proj: {activeStaff.projectedRevenue || '$14,200'}</p>
+              <h3 className="text-xl md:text-2xl font-black text-on-surface">{activeStaff.monthlyRevenue || '₹12,850'}</h3>
+              <p className="text-[11px] text-on-surface-variant/70 mt-1">Proj: {activeStaff.projectedRevenue || '₹14,200'}</p>
             </div>
           </div>
 

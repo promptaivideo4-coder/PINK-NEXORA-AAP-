@@ -217,6 +217,9 @@ export const translations: Record<Language, Record<string, string>> = {
     ytd_spend: 'YTD Spend',
     visits_label: 'Visits',
     first_visit: 'First Visit',
+    download_app: 'Download Nexora App',
+    download_app_desc: 'Install the app on your device for a better experience.',
+    install_now: 'Install Now',
   },
   hi: {
     dashboard: 'डैशबोर्ड',
@@ -434,6 +437,9 @@ export const translations: Record<Language, Record<string, string>> = {
     ytd_spend: 'YTD खर्च',
     visits_label: 'यात्राएं',
     first_visit: 'पहली यात्रा',
+    download_app: 'नेक्सोरा ऐप डाउनलोड करें',
+    download_app_desc: 'बेहतर अनुभव के लिए अपने डिवाइस पर ऐप इंस्टॉल करें।',
+    install_now: 'अभी इंस्टॉल करें',
   },
   pa: {
     dashboard: 'ਡੈਸ਼ਬੋਰਡ',
@@ -651,6 +657,9 @@ export const translations: Record<Language, Record<string, string>> = {
     ytd_spend: 'YTD ਖਰਚ',
     visits_label: 'ਮੁਲਾਕਾਤਾਂ',
     first_visit: 'ਪਹਿਲੀ ਮੁਲਾਕਾਤ',
+    download_app: 'ਨੇਕਸੋਰਾ ਐਪ ਡਾਊਨਲੋਡ ਕਰੋ',
+    download_app_desc: 'ਬਿਹਤਰ ਅਨੁਭਵ ਲਈ ਆਪਣੇ ਡਿਵਾਈਸ \'ਤੇ ਐਪ ਸਥਾਪਿਤ ਕਰੋ।',
+    install_now: 'ਹੁਣੇ ਸਥਾਪਿਤ ਕਰੋ',
   },
   te: {
     dashboard: 'డాష్‌బోర్డ్',
@@ -868,5 +877,8 @@ export const translations: Record<Language, Record<string, string>> = {
     ytd_spend: 'YTD ఖర్చు',
     visits_label: 'సందర్శనలు',
     first_visit: 'మొదటి సందర్శన',
+    download_app: 'నెక్సోరా యాప్‌ను డౌన్‌లోడ్ చేయండి',
+    download_app_desc: 'మెరుగైన అనుభవం కోసం మీ పరికరంలో యాప్‌ను ఇన్‌స్టాల్ చేయండి.',
+    install_now: 'ఇప్పుడే ఇన్‌స్టాల్ చేయండి',
   },
 };

@@ -319,7 +319,7 @@ export default function RevenueAnalytics({ navigate }: NavigationProps) {
                           fontSize: '13px',
                           fontWeight: '600'
                         }}
-                        formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
+                        formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Revenue']}
                       />
                       <Area 
                         type="monotone" 

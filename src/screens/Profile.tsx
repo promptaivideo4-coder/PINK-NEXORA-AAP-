@@ -46,9 +46,9 @@ export default function Profile({ navigate }: NavigationProps) {
   const personalAvatarInputRef = useRef<HTMLInputElement>(null);
 
   // Business Profile Form State
-  const [businessName, setBusinessName] = useState(() => localStorage.getItem('nexora_business_name') || 'Nexora Luxury Salon');
+  const [businessName, setBusinessName] = useState(() => localStorage.getItem('nexora_business_name') || 'Nexora Beauty Studio');
   const [gstNumber, setGstNumber] = useState(() => localStorage.getItem('nexora_gst_number') || '29GGGGG1314R9Z6');
-  const [address, setAddress] = useState(() => localStorage.getItem('nexora_address') || '124 Luxe Avenue, District 9');
+  const [address, setAddress] = useState(() => localStorage.getItem('nexora_address') || '124 Connaught Place, New Delhi');
   const [city, setCity] = useState(() => localStorage.getItem('nexora_city') || 'Metropolis');
   const [postalCode, setPostalCode] = useState(() => localStorage.getItem('nexora_postal_code') || '50001');
 
@@ -102,8 +102,8 @@ export default function Profile({ navigate }: NavigationProps) {
   });
 
   // Personal Profile State
-  const [fullName, setFullName] = useState(() => localStorage.getItem('nexora_full_name') || 'Sarah Jenkins');
-  const [email, setEmail] = useState(() => localStorage.getItem('nexora_email') || 'sarah.j@nexora.app');
+  const [fullName, setFullName] = useState(() => localStorage.getItem('nexora_full_name') || 'Suman Gupta');
+  const [email, setEmail] = useState(() => localStorage.getItem('nexora_email') || 'suman.g@nexora.app');
   const [phone, setPhone] = useState(() => localStorage.getItem('nexora_phone') || '+91 98765 43210');
   const [ownerRole, setOwnerRole] = useState(() => localStorage.getItem('nexora_owner_role') || 'Owner & Lead Stylist');
 
@@ -133,7 +133,7 @@ export default function Profile({ navigate }: NavigationProps) {
     return localStorage.getItem('nexora_language') || 'English';
   });
   const [localeCurrency, setLocaleCurrency] = useState(() => {
-    return localStorage.getItem('nexora_currency') || 'USD';
+    return localStorage.getItem('nexora_currency') || 'INR';
   });
   const [biometricLockEnabled, setBiometricLockEnabled] = useState(() => {
     const saved = localStorage.getItem('nexora_biometric_lock');
@@ -316,9 +316,9 @@ export default function Profile({ navigate }: NavigationProps) {
   // Switch account user list
   const accounts = [
     {
-      name: 'Sarah Jenkins',
+      name: 'Suman Gupta',
       role: 'Owner & Lead Stylist',
-      email: 'sarah.j@nexora.app',
+      email: 'suman.g@nexora.app',
       phone: '+91 98765 43210',
       avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBqgvGNG39kGIBgw1Oz3QIWte4icOiprO-WoXM9uFOtvqYe5LvvjgWPpCb_nwz3R7azRQVDECwN6oKp-5KV9u4TdiZOLQ8D0_vdd5lUHA7c5BzEn7bTM8ekQHbTaHvSlfHcAEGlfayEVy2AEoY4IXBgNM46M5EXNE6w3_8Uwy1U7K-rQpcNpkTj9Megb4bgdWwwAXfUDy6U8onZdBSX_v6YO1dWqr11-6DTM8PF5QgXsI1K2jpJmWMPYb20yvFig7ApTWtw2P5iBn0'
     },
@@ -467,7 +467,7 @@ export default function Profile({ navigate }: NavigationProps) {
                       type="text" 
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
-                      placeholder="e.g. Nexora Luxury Salon"
+                      placeholder="e.g. Nexora Beauty Studio"
                       className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                     />
                   </div>
@@ -501,7 +501,7 @@ export default function Profile({ navigate }: NavigationProps) {
                     type="text" 
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="e.g. 124 Luxe Avenue, District 9"
+                    placeholder="e.g. 124 Connaught Place, New Delhi"
                     className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                   />
                 </div>
@@ -776,7 +776,7 @@ export default function Profile({ navigate }: NavigationProps) {
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Sarah Jenkins"
+                    placeholder="Suman Gupta"
                     className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl pl-9 pr-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                   />
                 </div>
@@ -790,7 +790,7 @@ export default function Profile({ navigate }: NavigationProps) {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="sarah.j@nexora.app"
+                    placeholder="suman.g@nexora.app"
                     className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl pl-9 pr-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                   />
                 </div>
@@ -1329,9 +1329,8 @@ export default function Profile({ navigate }: NavigationProps) {
                 {/* Currency format selection */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-extrabold uppercase tracking-wider text-on-surface-variant">Currency & Price Formats</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {[
-                      { code: 'USD', label: 'US Dollar ($)', desc: 'USD format' },
                       { code: 'INR', label: 'Indian Rupee (₹)', desc: 'INR (en-IN) format' }
                     ].map((curr) => {
                       const isSel = localeCurrency === curr.code;

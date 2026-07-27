@@ -41,18 +41,18 @@ interface TransactionRecord {
 const CLIENT_RECORDS: ClientRecord[] = [
   {
     id: '1',
-    name: 'Emma Thompson',
+    name: 'Aditi Sharma',
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBW4CtAT2tdd2YuZ6WouiFS1KneWa5Q8ObiRiC-kQe6wrYErarvNUTcIiFJFquX5zhzP5OcRpEjwAGlR5H-euBjLZQLc9nbZ2tiqAULzn4RPxHD_ZtT50Td2QraviPhxh6Pwgbv_A22rxkKTNj_sGqQP7lbIDn9CFkTtdnaobzwzcGXLU9DAQheRlCFlFhSxN9VY698qd8ZI12BG9DxPU759d3XZYDL3Wgb9l45H40fbB-RNnG_ABbXTgGNIkDZ1bq94eJsyekXh0I',
     lastVisit: 'Oct 12, 2023',
-    spend: '$1,240.00',
+    spend: '₹1,240.00',
     status: 'VIP'
   },
   {
     id: '2',
-    name: 'Sarah Jenkins',
+    name: 'Suman Gupta',
     initials: 'SJ',
     lastVisit: 'Nov 05, 2023',
-    spend: '$450.00',
+    spend: '₹450.00',
     status: 'Regular'
   },
   {
@@ -60,7 +60,7 @@ const CLIENT_RECORDS: ClientRecord[] = [
     name: 'Michael Chen',
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB2GpHIx9Sp7japZtTMjP4Lv4ONK00KLpSclWA7pPXdp4EyfNxK1D3q7ivsD8NmKyIKtIDqMtklF1N9o9TegRSzeBktFakLSnOQzEh84AifdnPcZMCtbiizzA-yhDcJYYRolLcAQvBtpu2Sjmp3TbHLK1W3-cW0sGX1wZ-jfllfkyieFqv0dvWbk_SFv3eSzwqWcEmiLfOkki0I37Ffi8DPEqGSjYf3HJ1u_u9W5I5v3xEaZbv7yjPS5CM4gp9GcIiOlkS5Ttn7uMQ',
     lastVisit: 'Aug 22, 2023',
-    spend: '$890.00',
+    spend: '₹890.00',
     status: 'At Risk'
   },
   {
@@ -68,7 +68,7 @@ const CLIENT_RECORDS: ClientRecord[] = [
     name: 'Chloe Martinez',
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDXmxb3-cgY68I-Np8VynFSUirxUNp3pSC92c02DpaH20RR7TkS2aNc2eBU28yMr2mvF4ta7pMOlY0VsthN-E0_Nru9VFxYExGswOvPTezXWTYjl2tx7mQIuFUSS39PcdOSb7IcY6NCdVlQlhVNIGbL24TMNycSHwZ55k22K_IwoGyYfxhAeh74HXJiHziItTCLCLb4_MNooy-XIxXXBPCIgNiOFFSNoFcpWolBWfwThWlwRIVFxh7CnY3vhGh228vaddwAWIilJiQ',
     lastVisit: 'Nov 12, 2023',
-    spend: '$2,100.00',
+    spend: '₹2,100.00',
     status: 'VIP'
   }
 ];
@@ -79,8 +79,8 @@ const TRANSACTIONS: TransactionRecord[] = [
     date: 'Nov 15, 2023',
     time: '14:30 PM',
     service: 'Balayage & Cut',
-    amount: '$285.00',
-    client: 'Sarah Jenkins',
+    amount: '₹285.00',
+    client: 'Suman Gupta',
     receiptNumber: '#NX-98231'
   },
   {
@@ -88,8 +88,8 @@ const TRANSACTIONS: TransactionRecord[] = [
     date: 'Nov 15, 2023',
     time: '10:15 AM',
     service: 'Olaplex Treatment',
-    amount: '$65.00',
-    client: 'Emma Thompson',
+    amount: '₹65.00',
+    client: 'Aditi Sharma',
     receiptNumber: '#NX-98230'
   },
   {
@@ -97,7 +97,7 @@ const TRANSACTIONS: TransactionRecord[] = [
     date: 'Nov 14, 2023',
     time: '16:00 PM',
     service: 'Signature Hydro Facial',
-    amount: '$140.00',
+    amount: '₹140.00',
     client: 'Michael Chen',
     receiptNumber: '#NX-98229'
   }
