@@ -65,8 +65,11 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [editWhatsapp, setEditWhatsapp] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editAddress, setEditAddress] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editJoinDate, setEditJoinDate] = useState('');
   const [editType, setEditType] = useState<'VIP' | 'Gold Member' | 'New' | 'Standard'>('VIP');
 
   // Input states for adding items
@@ -125,8 +128,11 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
   const handleOpenEdit = () => {
     setEditName(customer.name);
     setEditPhone(customer.phone);
+    setEditWhatsapp(customer.whatsappNumber || '');
     setEditEmail(customer.email);
     setEditAddress(customer.address);
+    setEditCity(customer.city || '');
+    setEditJoinDate(customer.joinDate || '');
     setEditType(customer.type);
     setIsEditModalOpen(true);
   };
@@ -137,8 +143,11 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
       ...customer,
       name: editName,
       phone: editPhone,
+      whatsappNumber: editWhatsapp,
       email: editEmail,
       address: editAddress,
+      city: editCity,
+      joinDate: editJoinDate,
       type: editType
     };
     setCustomer(updated);
@@ -713,6 +722,16 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">WhatsApp Number</label>
+                  <input
+                    type="text"
+                    value={editWhatsapp}
+                    onChange={(e) => setEditWhatsapp(e.target.value)}
+                    className="w-full h-11 px-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container font-semibold"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-bold text-on-surface mb-1">Email Address</label>
                   <input
                     type="email"
@@ -728,8 +747,29 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
                   <input
                     type="text"
                     required
+                    value={editCity}
+                    onChange={(e) => setEditCity(e.target.value)}
+                    className="w-full h-11 px-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Address</label>
+                  <input
+                    type="text"
+                    required
                     value={editAddress}
                     onChange={(e) => setEditAddress(e.target.value)}
+                    className="w-full h-11 px-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Join Date</label>
+                  <input
+                    type="text"
+                    value={editJoinDate}
+                    onChange={(e) => setEditJoinDate(e.target.value)}
                     className="w-full h-11 px-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container font-semibold"
                   />
                 </div>

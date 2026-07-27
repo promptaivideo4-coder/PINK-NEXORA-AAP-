@@ -125,14 +125,31 @@ function ConfettiOverlay() {
   );
 }
 
-export default function InstallApp({ navigate }: NavigationProps) {
+interface InstallAppProps extends NavigationProps {
+  onInstalled?: () => void;
+}
+
+export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [copyToast, setCopyToast] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [helpTab, setHelpTab] = useState<'ios' | 'android'>('ios');
+  const [helpTab, setHelpTab] = useState<'ios' | 'android' | 'desktop'>('ios');
+
+  useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isAndroid = /android/.test(userAgent);
+    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+    if (isAndroid) {
+        setHelpTab('android');
+    } else if (isIOS) {
+        setHelpTab('ios');
+    } else {
+        setHelpTab('desktop');
+    }
+  }, []);
 
   // Install Animation State
   const [isAnimating, setIsAnimating] = useState(false);
@@ -231,6 +248,7 @@ export default function InstallApp({ navigate }: NavigationProps) {
     setTimeout(() => {
       setIsAnimating(false);
       setIsInstalled(true);
+      if (onInstalled) onInstalled();
       setShowToast(true);
       
       // Keep toast visible for a second before navigating
@@ -667,7 +685,7 @@ export default function InstallApp({ navigate }: NavigationProps) {
                         : 'text-on-surface-variant hover:text-on-surface'
                     }`}
                   >
-                    iOS (Safari)
+                    iOS
                   </button>
                   <button
                     onClick={() => setHelpTab('android')}
@@ -677,7 +695,17 @@ export default function InstallApp({ navigate }: NavigationProps) {
                         : 'text-on-surface-variant hover:text-on-surface'
                     }`}
                   >
-                    Android (Chrome)
+                    Android
+                  </button>
+                  <button
+                    onClick={() => setHelpTab('desktop')}
+                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                      helpTab === 'desktop' 
+                        ? 'bg-white shadow-sm text-primary' 
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    Desktop
                   </button>
                 </div>
 
@@ -718,7 +746,7 @@ export default function InstallApp({ navigate }: NavigationProps) {
                           <Share className="w-5 h-5 text-[#E6007E] drop-shadow-md" />
                         </div>
                       </>
-                    ) : (
+                    ) : helpTab === 'android' ? (
                       <>
                         <img 
                           src="/src/assets/images/android_pwa_install_steps_1784952063366.jpg" 
@@ -732,40 +760,55 @@ export default function InstallApp({ navigate }: NavigationProps) {
                           <MoreVertical className="w-5 h-5 text-[#E6007E] drop-shadow-md" />
                         </div>
                       </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-surface-container-low text-on-surface-variant p-6 text-center">
+                          <p>Open this URL in Google Chrome or Microsoft Edge on your computer. Look for the 'Install' icon in the address bar.</p>
+                      </div>
                     )}
                   </div>
 
-                  <div className="space-y-3 px-1">
-                    <h3 className="text-sm font-bold text-on-surface">Steps for {helpTab === 'ios' ? 'iOS Safari' : 'Android Chrome'}:</h3>
+                  <div className="space-y-3 px-1 overflow-y-auto max-h-[25vh]">
+                    <h3 className="text-sm font-bold text-on-surface">Steps for {helpTab === 'ios' ? 'iOS Safari' : helpTab === 'android' ? 'Android Chrome' : 'Desktop Browser'}:</h3>
                     <ul className="space-y-2.5">
                       {helpTab === 'ios' ? (
                         <>
                           <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
-                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold">1</span>
+                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold text-[10px]">1/3</span>
                             <span>Open this website in the <strong className="text-on-surface">Safari browser</strong>.</span>
                           </li>
                           <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
-                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold">2</span>
+                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold text-[10px]">2/3</span>
                             <span>Tap the <strong className="text-[#E6007E]">Share button</strong> (square with upward arrow) highlighted above.</span>
                           </li>
                           <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
-                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold">3</span>
+                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold text-[10px]">3/3</span>
                             <span>Scroll down and select <strong className="text-on-surface">'Add to Home Screen'</strong>.</span>
+                          </li>
+                        </>
+                      ) : helpTab === 'android' ? (
+                        <>
+                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
+                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold text-[10px]">1/3</span>
+                            <span>Open this website in <strong className="text-on-surface">Google Chrome</strong>.</span>
+                          </li>
+                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
+                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold text-[10px]">2/3</span>
+                            <span>Tap the <strong className="text-[#E6007E]">Three Dots menu</strong> highlighted in the top right.</span>
+                          </li>
+                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
+                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold text-[10px]">3/3</span>
+                            <span>Select <strong className="text-on-surface">'Install app'</strong> or <strong className="text-on-surface">'Add to Home Screen'</strong>.</span>
                           </li>
                         </>
                       ) : (
                         <>
                           <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
-                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold">1</span>
-                            <span>Open this website in <strong className="text-on-surface">Google Chrome</strong>.</span>
+                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold text-[10px]">1/2</span>
+                            <span>Open this website in <strong className="text-on-surface">Google Chrome</strong> or <strong className="text-on-surface">Microsoft Edge</strong>.</span>
                           </li>
                           <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
-                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold">2</span>
-                            <span>Tap the <strong className="text-[#E6007E]">Three Dots menu</strong> highlighted in the top right.</span>
-                          </li>
-                          <li className="flex gap-3 text-xs text-on-surface-variant leading-relaxed">
-                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold">3</span>
-                            <span>Select <strong className="text-on-surface">'Install app'</strong> or <strong className="text-on-surface">'Add to Home Screen'</strong>.</span>
+                            <span className="w-5 h-5 rounded-full bg-[#E6007E]/10 text-[#E6007E] flex items-center justify-center shrink-0 font-bold text-[10px]">2/2</span>
+                            <span>Click the <strong className="text-[#E6007E]">Install icon</strong> (computer with down arrow) in the right side of the address bar.</span>
                           </li>
                         </>
                       )}

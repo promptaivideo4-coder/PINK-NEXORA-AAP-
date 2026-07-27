@@ -35,6 +35,21 @@ export type ScreenName =
   | 'skeleton-showcase'
   | 'marketing';
 
+export interface Theme {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  recommended: boolean;
+  tagline: string;
+  primaryColor: string;
+  bgColor: string;
+  textColor: string;
+  accentColor: string;
+  fontStyle: string;
+  features: string[];
+}
+
 export interface NavigationProps {
   navigate: (screen: ScreenName) => void;
 }
@@ -58,8 +73,11 @@ export type Customer = {
   image?: string;
   initials?: string;
   phone: string;
+  whatsappNumber?: string;
   email: string;
   address: string;
+  city?: string;
+  joinDate?: string;
   notes: string;
   history: CustomerHistory[];
 };
@@ -79,6 +97,18 @@ export interface Offer {
   redeemed: number;
 }
 
+export interface WhatsAppTemplate {
+  id: string;
+  name: string;
+  content: string;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface FestivalTemplate {
   id: string;
   title: string;
@@ -91,4 +121,43 @@ export interface FestivalTemplate {
   isPremium?: boolean;
   suggestedMessage: string;
   targetServices: string[];
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  price: string;
+  duration: string;
+  category: string;
+}
+
+export interface Review {
+  id: string;
+  customerName: string;
+  rating: number;
+  comment: string;
+}
+
+export interface WebsiteConfig {
+  businessName: string;
+  tagline: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  heroImageUrl: string;
+  heroCtaText: string;
+  heroCtaLink: string;
+  services: Service[];
+  reviews: Review[];
+  contact: {
+    address: string;
+    phone: string;
+    socialLinks: { instagram: string; facebook: string; tiktok: string; };
+    openingHours: string;
+    locationMap: string;
+  };
+  theme: {
+    primaryColor: string;
+    backgroundColor: string;
+    fontStyle: string;
+  };
 }

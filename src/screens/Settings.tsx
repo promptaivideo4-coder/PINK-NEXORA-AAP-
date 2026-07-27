@@ -39,6 +39,17 @@ export default function Settings({ navigate }: NavigationProps) {
   const [activeLegalModal, setActiveLegalModal] = useState<'privacy' | 'terms' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  React.useEffect(() => {
+    const checkStandalone = () => {
+      const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
+      setIsStandalone(isStandaloneMode);
+    };
+    checkStandalone();
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkStandalone);
+    return () => window.matchMedia('(display-mode: standalone)').removeEventListener('change', checkStandalone);
+  }, []);
 
   React.useEffect(() => {
     // Check Supabase connection
@@ -192,17 +203,28 @@ export default function Settings({ navigate }: NavigationProps) {
               </div>
               
               {/* Connection Status Badge */}
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                isSupabaseConnected === true 
-                  ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' 
-                  : isSupabaseConnected === false 
-                    ? 'bg-error/10 text-error border-error/20'
-                    : 'bg-surface-container text-on-surface-variant border-outline-variant/30 animate-pulse'
-              }`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${
-                  isSupabaseConnected === true ? 'bg-emerald-500' : isSupabaseConnected === false ? 'bg-error' : 'bg-on-surface-variant/40'
-                }`} />
-                {isSupabaseConnected === true ? t('connected') : isSupabaseConnected === false ? t('disconnected') : t('checking')}
+              <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                  isStandalone 
+                    ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' 
+                    : 'bg-amber-500/10 text-amber-700 border-amber-500/20'
+                }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isStandalone ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  {isStandalone ? 'Installed' : 'Not Installed'}
+                </div>
+                
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                  isSupabaseConnected === true 
+                    ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' 
+                    : isSupabaseConnected === false 
+                      ? 'bg-error/10 text-error border-error/20'
+                      : 'bg-surface-container text-on-surface-variant border-outline-variant/30 animate-pulse'
+                }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${
+                    isSupabaseConnected === true ? 'bg-emerald-500' : isSupabaseConnected === false ? 'bg-error' : 'bg-on-surface-variant/40'
+                  }`} />
+                  {isSupabaseConnected === true ? t('connected') : isSupabaseConnected === false ? t('disconnected') : t('checking')}
+                </div>
               </div>
             </div>
 

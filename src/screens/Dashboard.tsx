@@ -2,7 +2,6 @@ import React from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
 import { TrendingUp, TrendingDown, ArrowUp, ArrowDown, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard } from 'lucide-react';
-import InstallAppBanner from '../components/InstallAppBanner';
 import { formatPrice } from '../utils/currency';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -18,8 +17,6 @@ export default function Dashboard({ navigate }: NavigationProps) {
           <h2 className="text-3xl font-bold text-on-surface tracking-tight">{t('welcome_greeting')}</h2>
           <p className="text-base text-on-surface-variant">{t('nexora_today')}</p>
         </section>
-
-        <InstallAppBanner navigate={navigate} />
 
         {/* Top Metrics Bento Grid */}
         <section className="grid grid-cols-1 md:grid-cols-12 gap-4">

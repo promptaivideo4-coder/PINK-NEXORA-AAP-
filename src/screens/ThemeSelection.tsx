@@ -1,31 +1,19 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, Eye, Star, X, Laptop, Smartphone, Tablet, Sparkles, Check, ArrowRight, ExternalLink } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Eye, Star, X, Laptop, Smartphone, Tablet, Sparkles, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { NavigationProps } from '../types';
-
-interface Theme {
-  id: string;
-  name: string;
-  description: string;
-  image: string;
-  recommended: boolean;
-  tagline: string;
-  primaryColor: string;
-  bgColor: string;
-  textColor: string;
-  accentColor: string;
-  fontStyle: string;
-  features: string[];
-}
+import { NavigationProps, Theme } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
+import ThemePreview from '../components/ThemePreview';
 
 export default function ThemeSelection({ navigate }: NavigationProps) {
-  const [selectedTheme, setSelectedTheme] = useState<string>('classic-elegance');
+  const { activeTheme, setActiveTheme } = useTheme();
   const [previewTheme, setPreviewTheme] = useState<Theme | null>(null);
   const [deviceView, setDeviceView] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [previewTab, setPreviewTab] = useState<'home' | 'services' | 'gallery' | 'booking'>('home');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const themes: Theme[] = [
+    // ... same theme array as before
     {
       id: 'modern-minimal',
       name: 'Modern Minimal',
@@ -68,17 +56,31 @@ export default function ThemeSelection({ navigate }: NavigationProps) {
       fontStyle: 'font-sans',
       features: ['Dark Mode Aesthetic', 'Neon Glowing Buttons', 'Bold Typography', 'Edge-to-edge Gallery']
     },
+    {
+      id: 'summer-vibes',
+      name: 'Summer Vibes',
+      description: 'Bright, energetic, and full of sunshine.',
+      tagline: 'Sun-Kissed Glow & Vibrant Summer Styling',
+      image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=800',
+      recommended: false,
+      primaryColor: '#F97316',
+      bgColor: '#FFFBEB',
+      textColor: '#7C2D12',
+      accentColor: '#FACC15',
+      fontStyle: 'font-sans',
+      features: ['Tropical Palette', 'Vibrant Animations', 'Sunny Accents', 'Relaxed Layout']
+    },
   ];
 
-  const handleSelectTheme = (id: string, name: string) => {
-    setSelectedTheme(id);
-    setToastMessage(`"${name}" theme applied successfully!`);
+  const handleSelectTheme = (theme: Theme) => {
+    setActiveTheme(theme);
+    setToastMessage(`"${theme.name}" theme applied successfully!`);
     setTimeout(() => setToastMessage(null), 3000);
   };
-
-  const handleApplyFromPreview = () => {
+  
+    const handleApplyFromPreview = () => {
     if (previewTheme) {
-      handleSelectTheme(previewTheme.id, previewTheme.name);
+      handleSelectTheme(previewTheme);
       setPreviewTheme(null);
     }
   };
@@ -132,7 +134,7 @@ export default function ThemeSelection({ navigate }: NavigationProps) {
         {/* Themes Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 pb-12">
           {themes.map((theme) => {
-            const isSelected = selectedTheme === theme.id;
+            const isSelected = activeTheme.id === theme.id;
             
             return (
               <div 
@@ -168,7 +170,7 @@ export default function ThemeSelection({ navigate }: NavigationProps) {
                     </button>
 
                     <button 
-                      onClick={() => handleSelectTheme(theme.id, theme.name)}
+                      onClick={() => handleSelectTheme(theme)}
                       className={`flex-1 text-[13px] font-bold py-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 ${
                         isSelected 
                           ? 'bg-emerald-600 text-white' 
@@ -304,167 +306,8 @@ export default function ThemeSelection({ navigate }: NavigationProps) {
                   deviceView === 'tablet' ? 'w-full max-w-[768px] min-h-[650px]' :
                   'w-full max-w-[360px] min-h-[580px]'
                 }`}
-                style={{
-                  backgroundColor: previewTheme.bgColor,
-                  color: previewTheme.textColor,
-                }}
               >
-                {/* Simulated Browser Header */}
-                <div className="h-9 bg-black/10 border-b border-black/10 flex items-center px-3 gap-2 shrink-0">
-                  <div className="flex gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
-                  </div>
-                  <div className="mx-auto bg-black/5 px-2 py-0.5 rounded-md text-[10px] font-mono text-slate-500 truncate max-w-[180px]">
-                    {previewTheme.id}.luxesalon.com
-                  </div>
-                </div>
-
-                {/* Simulated Website Content */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:p-10 space-y-6 sm:space-y-8 custom-scrollbar">
-                  
-                  {/* Demo Navigation Bar */}
-                  <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pb-3 border-b border-black/15">
-                    <span className={`text-base sm:text-lg md:text-xl font-bold tracking-wider uppercase whitespace-nowrap ${previewTheme.fontStyle}`} style={{ color: previewTheme.primaryColor }}>
-                      Luxe Salon
-                    </span>
-                    <div className="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-sm font-medium opacity-90 flex-wrap justify-center">
-                      <button onClick={() => setPreviewTab('home')} className={previewTab === 'home' ? 'font-bold underline' : ''}>Home</button>
-                      <button onClick={() => setPreviewTab('services')} className={previewTab === 'services' ? 'font-bold underline' : ''}>Services</button>
-                      <button onClick={() => setPreviewTab('gallery')} className={previewTab === 'gallery' ? 'font-bold underline' : ''}>Gallery</button>
-                      <button 
-                        onClick={() => setPreviewTab('booking')}
-                        className="px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold text-white shadow-xs"
-                        style={{ backgroundColor: previewTheme.primaryColor }}
-                      >
-                        Book
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* TAB CONTENT: HOME */}
-                  {previewTab === 'home' && (
-                    <div className="space-y-6 sm:space-y-10">
-                      {/* Hero Section */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center pt-2">
-                        <div className="space-y-3">
-                          <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase px-2.5 py-0.5 rounded-full bg-black/5 inline-block">
-                            Welcome to Luxe
-                          </span>
-                          <h1 className={`text-2xl sm:text-3xl md:text-5xl font-bold leading-tight ${previewTheme.fontStyle}`}>
-                            Redefining Hair & Elegance
-                          </h1>
-                          <p className="text-xs sm:text-sm opacity-80 leading-relaxed">
-                            {previewTheme.tagline}. Experience master artistry in a sanctuary designed for pure relaxation.
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 pt-1">
-                            <button 
-                              className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm text-white shadow-md hover:opacity-95"
-                              style={{ backgroundColor: previewTheme.primaryColor }}
-                            >
-                              Explore Services
-                            </button>
-                            <button className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm border border-black/20 hover:bg-black/5">
-                              Our Story
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="relative rounded-2xl overflow-hidden aspect-[4/3] shadow-lg border border-black/10">
-                          <img 
-                            src={previewTheme.image} 
-                            alt="Salon Hero" 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Featured Services Grid */}
-                      <div className="pt-6 border-t border-black/10">
-                        <div className="text-center max-w-md mx-auto mb-6">
-                          <h2 className="text-xl sm:text-2xl font-bold mb-1">Signature Treatments</h2>
-                          <p className="text-[11px] sm:text-xs opacity-70">Crafted with premium organic formulas</p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {[
-                            { name: 'Balayage & Glossing', price: '₹14,500+', desc: 'Custom hand-painted highlights' },
-                            { name: 'Hydra-Gloss Facial', price: '₹8,500', desc: 'Deep hydration treatment' },
-                            { name: 'Signature Blowout', price: '₹3,500', desc: 'Sleek & voluminous styling' },
-                          ].map((s, idx) => (
-                            <div key={idx} className="p-4 rounded-xl bg-black/5 hover:bg-black/10 transition-colors border border-black/5">
-                              <h3 className="font-bold text-sm sm:text-base">{s.name}</h3>
-                              <p className="text-[11px] sm:text-xs opacity-70 my-1.5">{s.desc}</p>
-                              <span className="font-bold text-xs sm:text-sm" style={{ color: previewTheme.primaryColor }}>{s.price}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAB CONTENT: SERVICES */}
-                  {previewTab === 'services' && (
-                    <div className="space-y-6 pt-2">
-                      <h2 className="text-3xl font-bold text-center">Our Full Service Menu</h2>
-                      <div className="max-w-2xl mx-auto space-y-4">
-                        {[
-                          { title: 'Haircuts & Styling', items: ['Master Haircut - ₹85', 'Blowout & Style - ₹60', 'Bridal Styling - ₹150'] },
-                          { title: 'Coloring Services', items: ['Full Balayage - ₹220', 'Root Touch-up - ₹95', 'Gloss & Toner - ₹70'] },
-                          { title: 'Nail & Spa Treatments', items: ['Luxury Gel Manicure - ₹55', 'Aromatherapy Pedicure - ₹75', 'Facial Glow Therapy - ₹120'] }
-                        ].map((cat, i) => (
-                          <div key={i} className="p-6 rounded-2xl bg-black/5 space-y-3">
-                            <h3 className="font-bold text-lg" style={{ color: previewTheme.primaryColor }}>{cat.title}</h3>
-                            <ul className="space-y-2 text-sm opacity-80">
-                              {cat.items.map((it, j) => (
-                                <li key={j} className="flex justify-between border-b border-black/5 pb-1">
-                                  <span>{it.split(' - ')[0]}</span>
-                                  <span className="font-bold">{it.split(' - ')[1]}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAB CONTENT: GALLERY */}
-                  {previewTab === 'gallery' && (
-                    <div className="space-y-6 pt-2">
-                      <h2 className="text-3xl font-bold text-center">Lookbook & Client Results</h2>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <img src={previewTheme.image} className="w-full aspect-square object-cover rounded-xl" alt="Gallery 1" />
-                        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS1TSh0xAT-CaIARm8ZMOh8lkKgSpOKyr6uUhzigGX4Btksym-kT8sd7bBrnIG6ZL-Vf6osifrQdhPwOr7LuZBkuQ2fAgLcW8qdq-aJLwosgJCPvd_um3VMGqeUt4itxYlgOJKFSmBjrf3PQAl6MZlgCQjRSPcepRPexIOpeohFakeqHln1V90P66YBuW280jctHCr_nw6sPtJdM2vbcBhVOTG-vC0dfcrV4rtgunzGCsnUzVrkrOi7tKytY_9xhQdUIl0vAJyl48" className="w-full aspect-square object-cover rounded-xl" alt="Gallery 2" />
-                        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6GxQrpGuWsf_jIb5LWWLw-SDCi3yNhBVu7NUInT1dcXNhUM8VWWnP9YfiF68otcLuEhLeptYybaFKHIIJOczC5nZh9HXvefD3bqyMeBkIRvd2CD7iR6WVBCFDvCdUYWuz26gR4AehSysjd_V18UqfacnDp47zojjbpITxS0csac6Bb9laGqNGOmeQcR6t0TM5uViysjGv4AE9-gdzsEQ0w4OEqyKuehkAQHoGpNUZN6W-49v0yZAtfroDFnBsEHReS-_JwtVcoM4" className="w-full aspect-square object-cover rounded-xl" alt="Gallery 3" />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAB CONTENT: BOOKING */}
-                  {previewTab === 'booking' && (
-                    <div className="max-w-md mx-auto p-8 rounded-2xl bg-black/5 space-y-4 text-center">
-                      <h2 className="text-2xl font-bold">Book Your Appointment</h2>
-                      <p className="text-xs opacity-70">Select date & service below</p>
-                      <input type="text" placeholder="Your Name" className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm bg-white text-black" />
-                      <input type="date" className="w-full px-4 py-2.5 rounded-xl border border-black/10 text-sm bg-white text-black" />
-                      <button 
-                        className="w-full py-3 rounded-xl font-bold text-white text-sm shadow-md"
-                        style={{ backgroundColor: previewTheme.primaryColor }}
-                      >
-                        Confirm Booking
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Footer */}
-                  <div className="pt-8 border-t border-black/10 flex flex-col md:flex-row justify-between items-center text-xs opacity-60 gap-2">
-                    <p>© 2026 Luxe Salon. Powered by Nexora.</p>
-                    <p>123 Beauty Blvd, Suite 100 • (555) 019-2834</p>
-                  </div>
-
-                </div>
+                <ThemePreview theme={previewTheme} />
               </motion.div>
             </div>
 

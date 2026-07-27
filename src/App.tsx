@@ -22,6 +22,7 @@ import RevenueAnalytics from './screens/RevenueAnalytics';
 import Reviews from './screens/Reviews';
 import Settings from './screens/Settings';
 import InstallApp from './screens/InstallApp';
+import FloatingInstallBadge from './components/FloatingInstallBadge';
 import Offline from './screens/Offline';
 import AppUpdate from './screens/AppUpdate';
 import StaffManagement from './screens/StaffManagement';
@@ -33,20 +34,72 @@ import ResponsiveTables from './screens/ResponsiveTables';
 import SkeletonShowcase from './screens/SkeletonShowcase';
 import ResetPassword from './screens/ResetPassword';
 import Marketing from './screens/Marketing';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ScreenName } from './types';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
+import { Download, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('splash');
   const currentScreenRef = React.useRef(currentScreen);
   const [session, setSession] = useState<Session | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallToast, setShowInstallToast] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+
+  useEffect(() => {
+    // Check if app is installed
+    if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
+      setIsAppInstalled(true);
+    }
+  }, []);
+
+  // Visit tracking logic
+  useEffect(() => {
+    if (currentScreen === 'dashboard') {
+      const visitCount = parseInt(localStorage.getItem('nexora-dashboard-visits') || '0', 10);
+      const newVisitCount = visitCount + 1;
+      localStorage.setItem('nexora-dashboard-visits', newVisitCount.toString());
+
+      // Show install toast if we have a prompt, not dismissed, and at least 3 visits
+      if (deferredPrompt && !localStorage.getItem('nexora-install-dismissed') && newVisitCount >= 3) {
+        setShowInstallToast(true);
+      }
+    }
+  }, [currentScreen, deferredPrompt]);
+
+  // Timed auto-hide for install toast
+  useEffect(() => {
+    if (showInstallToast) {
+      const timer = setTimeout(() => {
+        setShowInstallToast(false);
+      }, 12000); // Auto-hide after 12 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [showInstallToast]);
 
   useEffect(() => {
     currentScreenRef.current = currentScreen;
   }, [currentScreen]);
 
   useEffect(() => {
+    // Listen for beforeinstallprompt
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      
+      // Check visits if already on dashboard
+      if (currentScreenRef.current === 'dashboard') {
+        const visits = parseInt(localStorage.getItem('nexora-dashboard-visits') || '0', 10);
+        if (!localStorage.getItem('nexora-install-dismissed') && visits >= 3) {
+          setShowInstallToast(true);
+        }
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     // Apply theme on boot
     const savedTheme = localStorage.getItem('nexora-theme');
     if (savedTheme === 'dark') {
@@ -104,8 +157,26 @@ export default function App() {
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('hashchange', handleHashRouting);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setShowInstallToast(false);
+    }
+  };
+
+  const dismissInstallToast = () => {
+    setShowInstallToast(false);
+    localStorage.setItem('nexora-install-dismissed', 'true');
+  };
 
   const navigate = (screen: ScreenName) => {
     setCurrentScreen(screen);
@@ -113,7 +184,7 @@ export default function App() {
   };
 
   return (
-    <>
+    <ThemeProvider>
       {currentScreen === 'splash' && <Splash navigate={navigate} />}
       {currentScreen === 'welcome' && <Welcome navigate={navigate} />}
       {currentScreen === 'login' && <Login navigate={navigate} />}
@@ -137,7 +208,12 @@ export default function App() {
       {(currentScreen === 'revenue-analytics' || currentScreen === 'analytics') && <RevenueAnalytics navigate={navigate} />}
       {currentScreen === 'reviews' && <Reviews navigate={navigate} />}
       {currentScreen === 'settings' && <Settings navigate={navigate} />}
-      {currentScreen === 'install-app' && <InstallApp navigate={navigate} />}
+      {currentScreen === 'install-app' && (
+        <InstallApp 
+          navigate={navigate} 
+          onInstalled={() => setIsAppInstalled(true)} 
+        />
+      )}
       {currentScreen === 'offline' && <Offline navigate={navigate} />}
       {currentScreen === 'app-update' && <AppUpdate navigate={navigate} />}
       {currentScreen === 'staff' && <StaffManagement navigate={navigate} />}
@@ -148,6 +224,47 @@ export default function App() {
       {currentScreen === 'responsive-tables' && <ResponsiveTables navigate={navigate} />}
       {currentScreen === 'skeleton-showcase' && <SkeletonShowcase navigate={navigate} />}
       {currentScreen === 'marketing' && <Marketing navigate={navigate} />}
-    </>
+
+      <FloatingInstallBadge 
+        currentScreen={currentScreen} 
+        onNavigate={navigate} 
+        isInstalled={isAppInstalled} 
+      />
+
+      <AnimatePresence>
+        {showInstallToast && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-6 right-6 z-[100] md:left-auto md:w-96"
+          >
+            <div className="bg-primary text-white p-4 rounded-2xl shadow-xl flex items-center gap-4 border border-white/20">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                <Download className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold">Unlock the full Nexora experience</h4>
+                <p className="text-xs text-white/80">Install Nexora to get instant booking alerts and offline access to your schedule.</p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <button 
+                  onClick={handleInstall}
+                  className="bg-white text-primary px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-all"
+                >
+                  Install
+                </button>
+                <button 
+                  onClick={dismissInstallToast}
+                  className="text-white/60 hover:text-white px-3 py-1 rounded-lg text-[10px] font-medium transition-colors text-center"
+                >
+                  Later
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </ThemeProvider>
   );
 }

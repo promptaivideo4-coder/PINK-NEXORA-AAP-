@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Phone, Mail, MapPin, Calendar, Clock, ChevronRight, Share, Check } from 'lucide-react';
+import { X, Phone, Mail, MapPin, Calendar, Clock, ChevronRight, Share, Check, Download, MessageCircle } from 'lucide-react';
 import { Customer } from '../types';
 
 interface CustomerDetailModalProps {
@@ -10,6 +10,26 @@ interface CustomerDetailModalProps {
 
 export default function CustomerDetailModal({ customer, onClose }: CustomerDetailModalProps) {
   const [copied, setCopied] = useState(false);
+
+  const exportSingleCustomer = (customer: Customer) => {
+    const headers = ['Name', 'Phone/WhatsApp Number', 'Email', 'City', 'Join Date', 'Membership Status', 'Total Spend'];
+    const row = [
+      customer.name,
+      customer.whatsappNumber || customer.phone,
+      customer.email,
+      customer.city || 'N/A',
+      customer.joinDate || 'N/A',
+      customer.type,
+      customer.spend || '0'
+    ];
+    const csvContent = [headers.join(','), row.join(',')].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${customer.name.replace(/\s+/g, '_')}_details.csv`;
+    a.click();
+  };
 
   const handleShare = async () => {
     if (!customer) return;
@@ -103,13 +123,19 @@ export default function CustomerDetailModal({ customer, onClose }: CustomerDetai
               
               {/* Quick Actions */}
               <div className="flex gap-4">
-                <button className="flex-1 bg-primary-container/10 text-primary-container py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary-container/20 transition-colors">
-                  <Calendar className="w-5 h-5" />
-                  Book Now
+                <button 
+                  onClick={() => exportSingleCustomer(customer)}
+                  className="flex-1 bg-primary-container/10 text-primary-container py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary-container/20 transition-colors"
+                >
+                  <Download className="w-5 h-5" />
+                  Export
                 </button>
-                <button className="flex-1 bg-surface-container py-3 rounded-xl font-semibold text-on-surface flex items-center justify-center gap-2 hover:bg-surface-variant transition-colors">
-                  <Mail className="w-5 h-5" />
-                  Message
+                <button 
+                  onClick={() => window.open(`https://wa.me/${customer.whatsappNumber?.replace(/\s+/g, '')}`, '_blank')}
+                  className="flex-1 bg-emerald-600/10 text-emerald-700 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-emerald-600/20 transition-colors"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  WhatsApp
                 </button>
               </div>
 
@@ -126,6 +152,17 @@ export default function CustomerDetailModal({ customer, onClose }: CustomerDetai
                       <div className="text-[13px] text-on-surface-variant">Mobile</div>
                     </div>
                   </div>
+                  {customer.whatsappNumber && (
+                    <div className="flex items-center gap-4 p-4 border-b border-outline-variant/30">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                        <MessageCircle className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-[14px] font-medium text-on-surface">{customer.whatsappNumber}</div>
+                        <div className="text-[13px] text-on-surface-variant">WhatsApp</div>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-4 p-4 border-b border-outline-variant/30">
                     <div className="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center text-primary-container shrink-0">
                       <Mail className="w-5 h-5" />
@@ -135,15 +172,26 @@ export default function CustomerDetailModal({ customer, onClose }: CustomerDetai
                       <div className="text-[13px] text-on-surface-variant">Email</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 p-4">
+                  <div className="flex items-center gap-4 p-4 border-b border-outline-variant/30">
                     <div className="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center text-primary-container shrink-0">
                       <MapPin className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
-                      <div className="text-[14px] font-medium text-on-surface leading-tight">{customer.address}</div>
-                      <div className="text-[13px] text-on-surface-variant mt-0.5">Address</div>
+                      <div className="text-[14px] font-medium text-on-surface leading-tight">{customer.city || customer.address}</div>
+                      <div className="text-[13px] text-on-surface-variant mt-0.5">{customer.city ? 'City' : 'Address'}</div>
                     </div>
                   </div>
+                  {customer.joinDate && (
+                    <div className="flex items-center gap-4 p-4">
+                      <div className="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center text-primary-container shrink-0">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-[14px] font-medium text-on-surface leading-tight">{customer.joinDate}</div>
+                        <div className="text-[13px] text-on-surface-variant mt-0.5">Join Date</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
 

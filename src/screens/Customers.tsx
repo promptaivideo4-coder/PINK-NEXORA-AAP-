@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import TopBar from '../components/TopBar';
-import { NavigationProps, Customer } from '../types';
+import { NavigationProps, Customer, WhatsAppTemplate, Tag as TagInterface } from '../types';
 import CustomerDetailModal from '../components/CustomerDetailModal';
-import { Search, Plus, X, UserPlus, User, RotateCcw, Upload, Check, Mail, Phone, Sparkles } from 'lucide-react';
+import WhatsAppTemplateModal from '../components/WhatsAppTemplateModal';
+import TagModal from '../components/TagModal';
+import { Search, Plus, X, UserPlus, User, RotateCcw, Upload, Check, Mail, Phone, Sparkles, Download, MessageCircle, Settings, Tag as TagIcon, Trash2 } from 'lucide-react';
+import { exportCustomersToCSV } from '../utils/export';
 import { motion, AnimatePresence } from 'motion/react';
-import InstallAppBanner from '../components/InstallAppBanner';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type FilterType = 'All' | 'VIP' | 'Members' | 'New';
@@ -20,8 +22,11 @@ const INITIAL_CUSTOMERS: Customer[] = [
     initials: 'NG',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDSASh8fQbXRphLrWlNUiZJkDAPzXTKKOj0wxBl_dEfVg5YjX_QjzuayOuck-4bqtQuoxVVYJLL35bXm7ClOVeMELqfIMK52Fi-23S7uogMSFKDuKkOPu4GsU1AzN7H9q2fneBzJu3YUgrH2cCRAVNjuZfeNcjendo_pDd8ZyiyZnMQVB_OW8QOuX34tGDizguwOOHdahxKDbJ5ODAoRyA6dl3VzuzcgXKZECHCYTm7fG3qHg87pxhUvs30iDvRfSPSKQYDAOqZzp8',
     phone: '+91 98765 11223',
+    whatsappNumber: '+91 98765 11223',
     email: 'neha.gupta@example.com',
     address: 'Vasant Vihar, New Delhi',
+    city: 'New Delhi',
+    joinDate: '10 Jan 2024',
     notes: 'Allergic to specific brand of PPD hair dye. Ensure use of PPD-free color lines only.',
     history: [
       { id: 'h1', date: 'Aug 05, 2026', service: 'Full Highlight & Cut', provider: 'Senior Stylist Aditi', price: '₹8,500' },
@@ -36,8 +41,11 @@ const INITIAL_CUSTOMERS: Customer[] = [
     spend: '₹1,25,000',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCt-PXhrzr1JwegXd4yq3Q-tOn-Y6DVNyA-dibhf_9y43Rv1G4vJGXWLGDaKPe25-EoJ9_GW-kQugV8F5X3LuB0mc2esYdTv3yerLaGI8E8K5Jx0dgyG_mRyiWBdsMbasm2_bo3TEC29iDoCiyWuofLHUaJoNEhlfClsnJUrENyongZGvk4WFRz5Od7hjNG9rvh_1PqxWstK0j49Z82TDa2RudlUlAZiyjYBrVKxyI2dTLjfs742Atdy6s0Y4QE-Fw_A1LO-s33uNc',
     phone: '+91 98765 43210',
+    whatsappNumber: '+91 98765 43210',
     email: 'ananya.sharma@example.com',
     address: 'Bandra West, Mumbai, MH 400050',
+    city: 'Mumbai',
+    joinDate: '15 Jan 2024',
     notes: 'Prefers quiet sessions. Always books with Rohan. Allergic to lavender products.',
     history: [
       { id: 'h1', date: 'Oct 12, 2026', service: 'Balayage & Cut', provider: 'Rohan', price: '₹12,500' },
@@ -53,8 +61,11 @@ const INITIAL_CUSTOMERS: Customer[] = [
     visits: '14',
     initials: 'PK',
     phone: '+91 98765 87654',
+    whatsappNumber: '+91 98765 87654',
     email: 'priya.kapoor@example.com',
     address: 'Connaught Place, New Delhi, DL 110001',
+    city: 'New Delhi',
+    joinDate: '01 Feb 2024',
     notes: 'Likes to chat during appointments. Prefers morning slots.',
     history: [
       { id: 'h4', date: 'Sep 28, 2026', service: 'Women\'s Haircut', provider: 'Ananya', price: '₹3,500' },
@@ -69,8 +80,11 @@ const INITIAL_CUSTOMERS: Customer[] = [
     spend: '₹34,000',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDXmxb3-cgY68I-Np8VynFSUirxUNp3pSC92c02DpaH20RR7TkS2aNc2eBU28yMr2mvF4ta7pMOlY0VsthN-E0_Nru9VFxYExGswOvPTezXWTYjl2tx7mQIuFUSS39PcdOSb7IcY6NCdVlQlhVNIGbL24TMNycSHwZ55k22K_IwoGyYfxhAeh74HXJiHziItTCLCLb4_MNooy-XIxXXBPCIgNiOFFSNoFcpWolBWfwThWlwRIVFxh7CnY3vhGh228vaddwAWIilJiQ',
     phone: '+91 98765 32109',
+    whatsappNumber: '+91 98765 32109',
     email: 'rohan.verma@example.com',
     address: 'Koramangala, Bengaluru, KA 560034',
+    city: 'Bengaluru',
+    joinDate: '15 Mar 2024',
     notes: 'Usually books last minute.',
     history: [
       { id: 'h6', date: 'Oct 20, 2026', service: 'Color Correction', provider: 'Amit', price: '₹8,500' },
@@ -84,8 +98,11 @@ const INITIAL_CUSTOMERS: Customer[] = [
     upcomingVisit: 'Oct 25',
     initials: 'AP',
     phone: '+91 98765 65432',
+    whatsappNumber: '+91 98765 65432',
     email: 'amit.patel@example.com',
     address: 'Jubilee Hills, Hyderabad, TS 500033',
+    city: 'Hyderabad',
+    joinDate: '01 Apr 2024',
     notes: 'First time client. Referred by Priya Kapoor.',
     history: []
   }
@@ -96,8 +113,21 @@ export default function Customers({ navigate }: NavigationProps) {
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+  const [cityFilter, setCityFilter] = useState<string>('All');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+  const [templates, setTemplates] = useState<WhatsAppTemplate[]>([
+    { id: '1', name: 'Confirm Appointment', content: 'Hi {client_name}, this is a reminder about your appointment.' },
+    { id: '2', name: 'Service Follow-up', content: 'Hi {client_name}, thank you for visiting! How was your service?' }
+  ]);
+  const [tags, setTags] = useState<TagInterface[]>([
+    { id: '1', name: 'VIP', color: '#EF4444' },
+    { id: '2', name: 'New Client', color: '#10B981' }
+  ]);
   
   // Invite Customer Form state
   const [inviteName, setInviteName] = useState('');
@@ -105,6 +135,25 @@ export default function Customers({ navigate }: NavigationProps) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteType, setInviteType] = useState<Customer['type']>('New');
   const [successToast, setSuccessToast] = useState('');
+
+  const cities = Array.from(new Set(customers.map(c => c.city).filter(Boolean))) as string[];
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleBulkMessage = (template: WhatsAppTemplate) => {
+    selectedIds.forEach(id => {
+      const customer = customers.find(c => c.id === id);
+      if (customer?.whatsappNumber) {
+        const message = template.content
+          .replace('{client_name}', customer.name)
+          .replace('{service_name}', customer.history[0]?.service || 'your service');
+        window.open(`https://wa.me/${customer.whatsappNumber.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+      }
+    });
+    setSelectedIds([]);
+  };
 
   const filters: FilterType[] = ['All', 'VIP', 'Members', 'New'];
 
@@ -115,13 +164,15 @@ export default function Customers({ navigate }: NavigationProps) {
       (activeFilter === 'Members' && customer.type === 'Gold Member') ||
       (activeFilter === 'New' && customer.type === 'New');
 
+    const matchesCity = cityFilter === 'All' || customer.city === cityFilter;
+
     const matchesSearch =
       searchQuery.trim() === '' ||
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesCity && matchesSearch;
   });
 
   const handleClearAll = () => {
@@ -193,22 +244,93 @@ export default function Customers({ navigate }: NavigationProps) {
 
       <main className="w-full max-w-[800px] mx-auto px-5 md:px-10 pt-6 pb-12 flex-grow space-y-6 flex flex-col">
         
-        <InstallAppBanner navigate={navigate} />
-
         {/* Top Header Actions */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight">{t('client_directory')}</h1>
             <p className="text-xs text-on-surface-variant">{t('client_directory_desc')}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedIds.length > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <button
+                    onClick={() => setActiveMenuId(activeMenuId === 'bulk' ? null : 'bulk')}
+                    className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-full transition-colors flex items-center gap-1"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    Bulk Message
+                  </button>
+                  {activeMenuId === 'bulk' && (
+                    <div className="absolute right-0 top-full mt-2 bg-white shadow-xl rounded-xl p-2 z-50 w-48 border border-outline-variant/30 flex flex-col gap-1">
+                      {templates.map(template => (
+                        <button 
+                          key={template.id}
+                          onClick={() => { handleBulkMessage(template); setActiveMenuId(null); }}
+                          className="w-full text-left px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+                        >
+                          {template.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => exportCustomersToCSV(customers.filter(c => selectedIds.includes(c.id)))}
+                  className="px-3 py-1.5 text-xs font-semibold text-on-surface bg-surface-variant hover:bg-surface-container-high rounded-full transition-colors flex items-center gap-1"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Export
+                </button>
+                <button
+                  onClick={() => alert('Tagging feature placeholder')}
+                  className="px-3 py-1.5 text-xs font-semibold text-on-surface bg-surface-variant hover:bg-surface-container-high rounded-full transition-colors flex items-center gap-1"
+                >
+                  <TagIcon className="w-3.5 h-3.5" />
+                  Tag
+                </button>
+                <button
+                  onClick={() => setIsTagModalOpen(true)}
+                  className="px-3 py-1.5 text-xs font-semibold text-on-surface bg-surface-variant hover:bg-surface-container-high rounded-full transition-colors flex items-center gap-1"
+                >
+                  <TagIcon className="w-3.5 h-3.5" />
+                  Manage Tags
+                </button>
+                <button
+                  onClick={() => {
+                    setCustomers(customers.filter(c => !selectedIds.includes(c.id)));
+                    setSelectedIds([]);
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-full transition-colors flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </button>
+              </div>
+            )}
             {customers.length > 0 ? (
-              <button
-                onClick={handleClearAll}
-                className="px-3 py-1.5 text-xs font-semibold text-on-surface-variant border border-outline-variant/40 hover:text-error hover:border-error/40 rounded-full transition-colors"
-              >
-                {t('clear_directory')}
-              </button>
+              <>
+                <button
+                  onClick={() => exportCustomersToCSV(customers)}
+                  className="px-3 py-1.5 text-xs font-semibold text-primary border border-primary/30 hover:bg-primary-fixed/20 rounded-full transition-colors flex items-center gap-1"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  {t('export')}
+                </button>
+                <button
+                  onClick={handleClearAll}
+                  className="px-3 py-1.5 text-xs font-semibold text-on-surface-variant border border-outline-variant/40 hover:text-error hover:border-error/40 rounded-full transition-colors"
+                >
+                  {t('clear_directory')}
+                </button>
+                <button
+                  onClick={() => setIsTemplateModalOpen(true)}
+                  className="px-3 py-1.5 text-xs font-semibold text-on-surface-variant border border-outline-variant/40 hover:text-primary hover:border-primary/40 rounded-full transition-colors flex items-center gap-1"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  Templates
+                </button>
+              </>
             ) : (
               <button
                 onClick={handleRestore}
@@ -243,21 +365,26 @@ export default function Customers({ navigate }: NavigationProps) {
               )}
             </div>
 
-            {/* Filter Chips */}
-            <div className="flex overflow-x-auto gap-2 no-scrollbar pb-1">
-              {filters.map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setActiveFilter(filter)}
-                  className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-[13px] transition-colors border ${
-                    activeFilter === filter
-                      ? 'bg-primary-container text-white border-primary-container shadow-xs'
-                      : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant/50 hover:bg-surface-variant'
-                  }`}
-                >
-                  {filter === 'All' ? t('all_label') : filter === 'VIP' ? t('vip_label') : filter === 'Members' ? t('members_label') : t('new_label')}
-                </button>
-              ))}
+            {/* Filters */}
+            <div className="flex gap-2">
+              <select 
+                value={activeFilter} 
+                onChange={(e) => setActiveFilter(e.target.value as FilterType)}
+                className="flex-1 bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-2.5 px-4 focus:outline-none focus:border-primary text-sm shadow-xs"
+              >
+                <option value="All">All Statuses</option>
+                <option value="VIP">VIP</option>
+                <option value="Members">Gold Members</option>
+                <option value="New">New</option>
+              </select>
+              <select 
+                value={cityFilter} 
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="flex-1 bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-2.5 px-4 focus:outline-none focus:border-primary text-sm shadow-xs"
+              >
+                <option value="All">All Cities</option>
+                {cities.map(city => <option key={city} value={city}>{city}</option>)}
+              </select>
             </div>
           </div>
         )}
@@ -283,17 +410,25 @@ export default function Customers({ navigate }: NavigationProps) {
             {filteredCustomers.map((customer) => (
               <div 
                 key={customer.id}
-                onClick={() => {
-                  localStorage.setItem('selected_customer_id', customer.id);
-                  localStorage.setItem('selected_customer_data', JSON.stringify(customer));
-                  navigate('customer-profile');
-                }}
-                className="bg-white/95 backdrop-blur-[20px] border border-surface-variant rounded-[18px] shadow-[0px_4px_20px_rgba(0,0,0,0.03)] p-4 flex items-center justify-between active:scale-[0.98] transition-transform cursor-pointer hover:shadow-md relative overflow-hidden"
+                className="bg-white/95 backdrop-blur-[20px] border border-surface-variant rounded-[18px] shadow-[0px_4px_20px_rgba(0,0,0,0.03)] p-4 flex items-center justify-between transition-transform cursor-pointer hover:shadow-md relative overflow-hidden"
               >
-                {customer.type === 'VIP' && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-container"></div>
-                )}
-                <div className="flex items-center gap-4 pl-2">
+                <div 
+                  className="flex items-center gap-3 flex-grow"
+                  onClick={() => {
+                    localStorage.setItem('selected_customer_id', customer.id);
+                    localStorage.setItem('selected_customer_data', JSON.stringify(customer));
+                    navigate('customer-profile');
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(customer.id)}
+                    onChange={(e) => { e.stopPropagation(); toggleSelection(customer.id); }}
+                    className="w-5 h-5 rounded border-outline-variant/40 text-primary focus:ring-primary"
+                  />
+                  {customer.type === 'VIP' && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-container"></div>
+                  )}
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center border border-outline-variant/30 overflow-hidden shrink-0 ${customer.image ? 'bg-surface-variant' : 'bg-surface-container-highest text-[18px] font-semibold text-on-surface-variant'}`}>
                     {customer.image ? (
                       <img 
@@ -307,19 +442,63 @@ export default function Customers({ navigate }: NavigationProps) {
                   </div>
                   <div>
                     <h3 className="text-[18px] font-semibold text-on-surface">{customer.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      {customer.type !== 'Standard' && (
-                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase ${
-                          customer.type === 'VIP' ? 'bg-primary-container/10 text-primary-container' :
-                          customer.type === 'Gold Member' ? 'bg-[#0052da]/10 text-[#0052da]' :
-                          'bg-secondary-container/10 text-secondary-container'
-                        }`}>
-                          {customer.type}
+                    <div className="flex flex-col gap-0.5 mt-1">
+                      <div className="flex items-center gap-2">
+                        {customer.type !== 'Standard' && (
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase ${
+                            customer.type === 'VIP' ? 'bg-primary-container/10 text-primary-container' :
+                            customer.type === 'Gold Member' ? 'bg-[#0052da]/10 text-[#0052da]' :
+                            'bg-secondary-container/10 text-secondary-container'
+                          }`}>
+                            {customer.type}
+                          </span>
+                        )}
+                        <span className="text-on-surface-variant/70 text-xs font-medium">
+                          {customer.lastVisit ? `${t('last_visit')}: ${customer.lastVisit}` : `${t('upcoming')}: ${customer.upcomingVisit}`}
                         </span>
-                      )}
-                      <span className="text-on-surface-variant/70 text-xs font-medium">
-                        {customer.lastVisit ? `${t('last_visit')}: ${customer.lastVisit}` : `${t('upcoming')}: ${customer.upcomingVisit}`}
-                      </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[11px] text-on-surface-variant/80 mt-1">
+                        {customer.city && <span>{customer.city}</span>}
+                        {customer.whatsappNumber && (
+                          <div 
+                            className="relative" 
+                            onMouseEnter={() => setActiveMenuId(customer.id)}
+                            onMouseLeave={() => setActiveMenuId(null)}
+                          >
+                            <motion.a 
+                              href={`https://wa.me/${customer.whatsappNumber.replace(/\s+/g, '')}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="flex items-center justify-center p-1.5 bg-emerald-100 text-emerald-700 rounded-full hover:bg-emerald-200 transition-colors" 
+                              title="Chat on WhatsApp"
+                              animate={{ scale: [1, 1.05, 1] }}
+                              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </motion.a>
+                            {activeMenuId === customer.id && (
+                              <div className="absolute left-0 bottom-full mb-2 bg-white shadow-xl rounded-xl p-2 z-50 w-48 border border-outline-variant/30 flex flex-col gap-1">
+                                {templates.map(template => (
+                                  <button 
+                                    key={template.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const message = template.content
+                                        .replace('{client_name}', customer.name)
+                                        .replace('{service_name}', customer.history[0]?.service || 'your service');
+                                      window.open(`https://wa.me/${customer.whatsappNumber.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
+                                  >
+                                    {template.name}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {customer.joinDate && <span>Joined: {customer.joinDate}</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -525,6 +704,18 @@ export default function Customers({ navigate }: NavigationProps) {
           </motion.div>
         )}
       </AnimatePresence>
+      <WhatsAppTemplateModal 
+        isOpen={isTemplateModalOpen} 
+        onClose={() => setIsTemplateModalOpen(false)} 
+        templates={templates}
+        onSave={setTemplates}
+      />
+      <TagModal 
+        isOpen={isTagModalOpen} 
+        onClose={() => setIsTagModalOpen(false)} 
+        tags={tags}
+        onSave={setTags}
+      />
     </div>
   );
 }
