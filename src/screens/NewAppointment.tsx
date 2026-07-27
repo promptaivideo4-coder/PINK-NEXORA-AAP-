@@ -4,6 +4,8 @@ import { Search, UserPlus, ArrowRight, Check, X } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import { NavigationProps } from '../types';
 
+import { queueAction } from '../lib/sync-manager';
+
 export default function NewAppointment({ navigate }: NavigationProps) {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
@@ -15,9 +17,21 @@ export default function NewAppointment({ navigate }: NavigationProps) {
     { id: '2', name: 'Rohan Verma', email: 'rohan.verma@example.com', initials: 'RV' }
   ];
 
-  const handleAddClient = (e: React.FormEvent) => {
+  const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate adding client
+    
+    // Queue for sync
+    try {
+      await queueAction('CREATE_CLIENT', {
+        name: newClientName,
+        phone: newClientPhone,
+        created_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Failed to queue client creation', err);
+    }
+
+    // Simulate adding client locally
     setSelectedClientId('new');
     setShowNewClientForm(false);
   };
@@ -175,7 +189,21 @@ export default function NewAppointment({ navigate }: NavigationProps) {
               
               <div className="p-6 bg-surface-container-low border-t border-surface-variant flex justify-end">
                 <button 
-                   onClick={() => navigate('bookings')}
+                   onClick={async () => {
+                     // In a real app, we'd have all the data from previous steps
+                     try {
+                        await queueAction('CREATE_APPOINTMENT', {
+                          client_id: selectedClientId,
+                          service_id: 'haircut-1', // Mock service
+                          staff_id: 'staff-1', // Mock staff
+                          appointment_time: new Date().toISOString(),
+                          status: 'pending'
+                        });
+                     } catch (err) {
+                        console.error('Failed to queue appointment', err);
+                     }
+                     navigate('bookings');
+                   }}
                    className="px-6 py-3 bg-primary text-white rounded-xl text-base font-semibold hover:opacity-90 transition-opacity active:scale-95 shadow-md flex items-center gap-2"
                 >
                   Continue

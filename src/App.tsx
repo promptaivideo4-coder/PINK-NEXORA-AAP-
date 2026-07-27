@@ -54,6 +54,21 @@ export default function App() {
     if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
       setIsAppInstalled(true);
     }
+
+    // Send Supabase config to Service Worker for background sync
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        if (registration.active) {
+          registration.active.postMessage({
+            type: 'SET_CONFIG',
+            config: {
+              url: import.meta.env.VITE_SUPABASE_URL,
+              key: import.meta.env.VITE_SUPABASE_ANON_KEY
+            }
+          });
+        }
+      });
+    }
   }, []);
 
   // Visit tracking logic

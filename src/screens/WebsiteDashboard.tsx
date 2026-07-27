@@ -25,13 +25,13 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'hero' | 'services' | 'reviews' | 'contact' | 'theme'>('hero');
+  const [activeTab, setActiveTab] = useState<'hero' | 'services' | 'reviews' | 'contact' | 'theme' | 'layout'>('hero');
   const [websiteConfig, setWebsiteConfig] = useState<WebsiteConfig>({
     businessName: 'Luxe Salon',
     tagline: 'Experience master artistry',
     heroTitle: 'Hero Section Needs Update',
     heroSubtitle: 'Promote the new summer styling package.',
-    heroImageUrl: '',
+    heroImageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=1200',
     heroCtaText: 'Book Now',
     heroCtaLink: '/book',
     services: [{ id: '1', name: 'Haircut', price: '$50', duration: '60m', category: 'Hair' }],
@@ -39,8 +39,20 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
     contact: { address: '123 St', phone: '555-5555', socialLinks: { instagram: '', facebook: '', tiktok: '' }, openingHours: '9-5', locationMap: '' },
     theme: { 
       primaryColor: activeTheme.primaryColor, 
+      accentColor: activeTheme.accentColor,
+      textColor: activeTheme.textColor,
       backgroundColor: activeTheme.bgColor, 
-      fontStyle: activeTheme.fontStyle.replace('font-', '') 
+      fontStyle: activeTheme.fontStyle.replace('font-', ''),
+      fontSizeBase: 16,
+      fontSizeHeading: 40
+    },
+    layoutToggles: {
+      showHero: true,
+      showServices: true,
+      showReviews: true,
+      showContact: true,
+      showGallery: true,
+      showFooter: true,
     }
   });
 
@@ -50,8 +62,12 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
         ...prev,
         theme: {
           primaryColor: activeTheme.primaryColor,
+          accentColor: activeTheme.accentColor,
+          textColor: activeTheme.textColor,
           backgroundColor: activeTheme.bgColor,
-          fontStyle: activeTheme.fontStyle.replace('font-', '')
+          fontStyle: activeTheme.fontStyle.replace('font-', ''),
+          fontSizeBase: activeTheme.fontSizeBase || 16,
+          fontSizeHeading: activeTheme.fontSizeHeading || 40
         }
       }));
       lastThemeId.current = activeTheme.id;

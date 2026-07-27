@@ -102,7 +102,7 @@ export default function Offline({ navigate }: NavigationProps) {
               You're Offline
             </h1>
             <p className="text-xs sm:text-sm text-on-surface-variant max-w-xs mx-auto leading-relaxed">
-              Your data is safe and cached. You can still view your schedule while we wait for connection.
+              Your data is safe and cached. Any changes you make (bookings, profile edits) will be queued and synced automatically when you're back online.
             </p>
           </div>
 

@@ -37,6 +37,8 @@ interface DaySchedule {
   closeTime: string;
 }
 
+import { queueAction } from '../lib/sync-manager';
+
 export default function Profile({ navigate }: NavigationProps) {
   const [activeTab, setActiveTab] = useState<'business' | 'personal'>('business');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -188,7 +190,8 @@ export default function Profile({ navigate }: NavigationProps) {
     setSchedules(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
   };
 
-  const handleSaveBusiness = () => {
+  const handleSaveBusiness = async () => {
+    // 1. Save to localStorage for immediate local feedback
     localStorage.setItem('nexora_business_name', businessName);
     localStorage.setItem('nexora_gst_number', gstNumber);
     localStorage.setItem('nexora_address', address);
@@ -201,17 +204,46 @@ export default function Profile({ navigate }: NavigationProps) {
     localStorage.setItem('nexora_sms_notifications', String(smsNotifications));
     localStorage.setItem('nexora_marketing_reminders', String(marketingReminders));
 
-    triggerToast('Business profile and configurations saved successfully!');
+    // 2. Queue for remote sync
+    try {
+      await queueAction('UPDATE_PROFILE', {
+        id: 'business_profile', // In a real app, this would be a real ID
+        business_name: businessName,
+        gst_number: gstNumber,
+        address: address,
+        city: city,
+        postal_code: postalCode,
+        schedules: schedules
+      });
+      triggerToast('Business profile saved (will sync when online)!');
+    } catch (err) {
+      console.error('Failed to queue business update', err);
+      triggerToast('Business profile saved locally.');
+    }
   };
 
-  const handleSavePersonal = () => {
+  const handleSavePersonal = async () => {
+    // 1. Save to localStorage
     localStorage.setItem('nexora_full_name', fullName);
     localStorage.setItem('nexora_email', email);
     localStorage.setItem('nexora_phone', phone);
     localStorage.setItem('nexora_personal_avatar', personalAvatar);
     localStorage.setItem('nexora_owner_role', ownerRole);
 
-    triggerToast('Personal contact details saved successfully!');
+    // 2. Queue for remote sync
+    try {
+      await queueAction('UPDATE_PROFILE', {
+        id: 'personal_profile',
+        full_name: fullName,
+        email: email,
+        phone: phone,
+        role: ownerRole
+      });
+      triggerToast('Personal details saved (will sync when online)!');
+    } catch (err) {
+      console.error('Failed to queue personal update', err);
+      triggerToast('Personal details saved locally.');
+    }
   };
 
   // Image upload triggers

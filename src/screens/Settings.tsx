@@ -204,14 +204,21 @@ export default function Settings({ navigate }: NavigationProps) {
               
               {/* Connection Status Badge */}
               <div className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                  isStandalone 
-                    ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' 
-                    : 'bg-amber-500/10 text-amber-700 border-amber-500/20'
-                }`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${isStandalone ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                  {isStandalone ? 'Installed' : 'Not Installed'}
-                </div>
+                {isStandalone ? (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-emerald-500/10 text-emerald-700 border-emerald-500/20">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>Installed</span>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => navigate('install-app')}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border bg-amber-500/10 text-amber-700 border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>Web Version</span>
+                    <Download className="w-2.5 h-2.5 ml-0.5" />
+                  </button>
+                )}
                 
                 <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
                   isSupabaseConnected === true 

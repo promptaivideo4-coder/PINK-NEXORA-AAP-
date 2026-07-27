@@ -47,6 +47,8 @@ export interface Theme {
   textColor: string;
   accentColor: string;
   fontStyle: string;
+  fontSizeBase?: number;
+  fontSizeHeading?: number;
   features: string[];
 }
 
@@ -157,7 +159,19 @@ export interface WebsiteConfig {
   };
   theme: {
     primaryColor: string;
+    accentColor: string;
+    textColor: string;
     backgroundColor: string;
     fontStyle: string;
+    fontSizeBase: number;
+    fontSizeHeading: number;
+  };
+  layoutToggles: {
+    showHero: boolean;
+    showServices: boolean;
+    showReviews: boolean;
+    showContact: boolean;
+    showGallery: boolean;
+    showFooter: boolean;
   };
 }

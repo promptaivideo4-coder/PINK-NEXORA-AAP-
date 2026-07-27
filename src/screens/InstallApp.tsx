@@ -136,7 +136,20 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
   const [copyToast, setCopyToast] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [qrLarge, setQrLarge] = useState(false);
   const [helpTab, setHelpTab] = useState<'ios' | 'android' | 'desktop'>('ios');
+
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+    return () => {
+      window.removeEventListener('online', handleStatus);
+      window.removeEventListener('offline', handleStatus);
+    };
+  }, []);
 
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();
@@ -533,6 +546,28 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
           }}
           className="w-full bg-surface-container-lowest/85 backdrop-blur-2xl rounded-[22px] border border-outline-variant/40 shadow-[0px_12px_45px_rgba(0,0,0,0.08)] p-6 sm:p-8 flex flex-col items-center text-center"
         >
+          {/* Offline Status Header Indicator */}
+          <div className="w-full -mt-2 mb-6">
+            <div className={`px-4 py-2 rounded-2xl border flex items-center justify-between gap-3 transition-all duration-500 ${
+              isOnline 
+                ? 'bg-surface-variant/20 border-outline-variant/10 text-on-surface-variant/60' 
+                : 'bg-amber-500/10 border-amber-500/20 text-amber-700 shadow-sm'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-outline-variant' : 'bg-amber-500 animate-pulse'}`} />
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                  {isOnline ? 'System Online' : 'Offline Mode'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <WifiOff size={12} className={isOnline ? 'opacity-20' : 'opacity-100'} />
+                <span className="text-[9px] font-bold">
+                  {isOnline ? 'PWA Ready' : 'Schedule Saved Offline'}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Toast Notice */}
           <AnimatePresence>
             {showToast && (
@@ -653,9 +688,30 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="w-full max-w-lg bg-surface-container-lowest rounded-[28px] shadow-2xl border border-outline-variant/40 overflow-hidden flex flex-col"
+              className="w-full max-w-lg bg-surface-container-lowest rounded-[28px] shadow-2xl border border-outline-variant/40 overflow-hidden flex flex-col manual-installation-modal relative"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Floating Download Badge */}
+              <div className="absolute top-4 -right-12 rotate-45 z-10">
+                <a 
+                  href={helpTab === 'ios' ? "https://apps.apple.com" : helpTab === 'android' ? "https://play.google.com" : "#"} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    const events = JSON.parse(localStorage.getItem('install_tracking_events') || '[]');
+                    events.push({
+                      event: 'direct_store_link_click',
+                      platform: helpTab,
+                      timestamp: new Date().toISOString()
+                    });
+                    localStorage.setItem('install_tracking_events', JSON.stringify(events));
+                  }}
+                  className="bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] px-12 py-1.5 shadow-lg flex items-center justify-center hover:brightness-110 transition-all"
+                >
+                  {helpTab === 'ios' ? 'App Store' : helpTab === 'android' ? 'Play Store' : 'Desktop App'}
+                </a>
+              </div>
+
               <div className="p-6 flex flex-col gap-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -667,12 +723,26 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                       <p className="text-xs text-on-surface-variant">Get Nexora on your home screen</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => setShowHelp(false)}
-                    className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.href);
+                        setCopyToast(true);
+                        setTimeout(() => setCopyToast(false), 2000);
+                      }}
+                      className="p-2 rounded-xl hover:bg-surface-container-high transition-all text-primary flex items-center gap-2 px-3 group"
+                      title="Copy Link"
+                    >
+                      <Copy className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">Copy Link</span>
+                    </button>
+                    <button 
+                      onClick={() => setShowHelp(false)}
+                      className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Tabs */}
@@ -723,10 +793,37 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-outline-variant/20"
+                  className={`flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-outline-variant/20 transition-all duration-500 ${qrLarge ? 'scale-100' : 'scale-100'}`}
                 >
-                  <p className="text-xs font-bold text-on-surface mb-3">Scan to open on mobile</p>
-                  <QRCodeCanvas value={window.location.href} size={128} />
+                  <div className="flex items-center justify-between w-full mb-3">
+                    <p className="text-xs font-bold text-on-surface">Scan to open on mobile</p>
+                    <button 
+                      onClick={() => setQrLarge(!qrLarge)}
+                      className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-container-high text-[10px] font-bold text-primary transition-all hover:bg-primary/10"
+                    >
+                      <span>{qrLarge ? 'Show Small' : 'Show Large'}</span>
+                      <div className={`w-7 h-4 rounded-full relative transition-colors ${qrLarge ? 'bg-primary' : 'bg-outline-variant'}`}>
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${qrLarge ? 'right-0.5' : 'left-0.5'}`} />
+                      </div>
+                    </button>
+                  </div>
+                  <div className={`flex items-center justify-center transition-all duration-500 overflow-hidden relative ${qrLarge ? 'w-full aspect-square' : 'w-32 h-32'}`}>
+                    <QRCodeCanvas 
+                      value={window.location.href} 
+                      size={qrLarge ? 512 : 128} 
+                      style={{ width: '100%', height: '100%' }}
+                    />
+                    {/* Scanning Laser Line */}
+                    <motion.div 
+                      className="absolute left-0 right-0 h-0.5 bg-primary/60 shadow-[0_0_15px_rgba(230,0,126,0.8)] z-10"
+                      animate={{ top: ['0%', '100%', '0%'] }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
+                  </div>
                 </motion.div>
 
                 {/* Content */}
