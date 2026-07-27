@@ -240,7 +240,7 @@ export default function AddToHomeScreenPrompt({
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
-          className="manual-installation-modal w-full max-w-md max-h-[92vh] sm:max-h-[85vh] flex flex-col justify-between bg-surface border border-outline-variant rounded-3xl p-4 sm:p-6 shadow-2xl space-y-3 sm:space-y-4 overflow-y-auto"
+          className="manual-installation-modal w-full max-w-md max-h-[95vh] sm:max-h-[85vh] flex flex-col bg-surface border border-outline-variant rounded-3xl p-3 sm:p-6 shadow-2xl space-y-2 sm:space-y-4 overflow-y-auto"
         >
           <div className="flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5 sm:gap-3">
@@ -262,9 +262,9 @@ export default function AddToHomeScreenPrompt({
           </div>
 
           {/* QR Code Container dynamically calculated based on modal width */}
-          <div className="flex flex-col items-center justify-center p-3 bg-surface-container-low rounded-2xl border border-outline-variant/30 text-center space-y-2 shrink-0">
+          <div className="flex flex-col items-center justify-center p-2 sm:p-3 bg-surface-container-low rounded-2xl border border-outline-variant/30 text-center space-y-1 sm:space-y-2 shrink-0 min-h-0">
             <div className="flex items-center justify-between w-full px-1">
-              <span className="text-[11px] font-bold text-on-surface">Scan QR Code to Open</span>
+              <span className="text-[10px] sm:text-[11px] font-bold text-on-surface">Scan QR Code to Open</span>
               <button
                 type="button"
                 onClick={() => setShowQrCode(!showQrCode)}
@@ -273,29 +273,31 @@ export default function AddToHomeScreenPrompt({
                 {showQrCode ? 'Collapse' : 'Expand'}
               </button>
             </div>
-            <div
-              style={{ width: `${computedPromptQrSize}px`, height: `${computedPromptQrSize}px` }}
-              className="mx-auto flex items-center justify-center transition-all duration-300 overflow-hidden relative rounded-xl bg-white p-2 shadow-sm border border-outline-variant/20 shrink-0"
-            >
-              <QRCodeCanvas
-                value={window.location.href}
-                size={computedPromptQrSize - 16}
-                style={{ width: '100%', height: '100%' }}
-              />
-            </div>
+            {showQrCode && (
+              <div
+                style={{ width: `${computedPromptQrSize}px`, height: `${computedPromptQrSize}px` }}
+                className="mx-auto flex items-center justify-center transition-all duration-300 overflow-hidden relative rounded-xl bg-white p-2 shadow-sm border border-outline-variant/20 shrink-0"
+              >
+                <QRCodeCanvas
+                  value={window.location.href}
+                  size={computedPromptQrSize - 16}
+                  style={{ width: '100%', height: '100%' }}
+                />
+              </div>
+            )}
             <p className="text-[10px] sm:text-[11px] text-on-surface-variant font-medium flex items-center justify-center gap-1 mt-1">
               <Camera className="w-3 h-3 text-primary shrink-0" />
-              <span>Scan with your phone's native camera app to open</span>
+              <span>Scan to open installation page</span>
             </p>
           </div>
 
-          <div className="space-y-2.5 sm:space-y-3 bg-surface-container-low p-3 sm:p-4 rounded-2xl border border-outline-variant/30 text-xs my-auto">
+          <div className="space-y-2 sm:space-y-3 bg-surface-container-low p-3 sm:p-4 rounded-2xl border border-outline-variant/30 text-xs flex-grow overflow-y-auto">
             <div className="flex items-start gap-2.5 sm:gap-3">
               <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary text-white flex items-center justify-center text-[11px] sm:text-xs font-bold shrink-0">1</span>
               <div>
                 <p className="font-semibold text-on-surface leading-snug">Tap the Share button</p>
                 <p className="text-on-surface-variant text-[11px] flex items-center gap-1 mt-0.5">
-                  Look for <Share className="w-3.5 h-3.5 text-primary inline shrink-0" /> in Safari navigation bar or browser menu.
+                  Look for <Share className="w-3.5 h-3.5 text-primary inline shrink-0" /> in Safari navigation bar.
                 </p>
               </div>
             </div>
@@ -315,13 +317,13 @@ export default function AddToHomeScreenPrompt({
               <div>
                 <p className="font-semibold text-on-surface leading-snug">Tap 'Add' to confirm</p>
                 <p className="text-on-surface-variant text-[11px] mt-0.5">
-                  Nexora will appear on your device's home screen alongside native apps.
+                  Nexora will appear on your device's home screen.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 pt-2">
             <button
               onClick={handleShareApp}
               className={`flex-1 font-semibold py-2.5 sm:py-3 rounded-2xl text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all border ${

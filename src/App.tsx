@@ -391,7 +391,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className={`max-w-md mx-auto w-full min-h-screen relative shadow-2xl bg-surface overflow-x-hidden ${!isOnline ? 'pt-7' : ''}`}>
+      <div className={`w-full h-screen relative shadow-2xl bg-surface overflow-x-hidden overflow-y-auto ${!isOnline ? 'pt-7' : ''}`}>
         {renderScreen()}
       </div>
 

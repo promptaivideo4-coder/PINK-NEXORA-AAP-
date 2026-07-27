@@ -851,39 +851,24 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
 
                 {/* QR Code */}
                 <motion.div
-                  animate={{
-                    boxShadow: [
-                      '0 0 0px rgba(230, 0, 126, 0)',
-                      '0 0 20px rgba(230, 0, 126, 0.2)',
-                      '0 0 0px rgba(230, 0, 126, 0)',
-                    ],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className={`flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-outline-variant/20 transition-all duration-500 ${qrLarge ? 'scale-100' : 'scale-100'}`}
+                  className={`flex flex-col items-center justify-center p-3 bg-surface-container-low rounded-2xl border border-outline-variant/20 transition-all duration-500 shrink-0`}
                 >
-                  <div className="flex items-center justify-between w-full mb-3">
-                    <p className="text-xs font-bold text-on-surface">Scan to open on mobile</p>
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-on-surface">Scan to open on mobile</p>
                     <button 
                       onClick={() => setQrLarge(!qrLarge)}
-                      className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-container-high text-[10px] font-bold text-primary transition-all hover:bg-primary/10"
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-[9px] font-bold text-primary transition-all hover:bg-primary/10"
                     >
-                      <span>{qrLarge ? 'Show Small' : 'Show Large'}</span>
-                      <div className={`w-7 h-4 rounded-full relative transition-colors ${qrLarge ? 'bg-primary' : 'bg-outline-variant'}`}>
-                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${qrLarge ? 'right-0.5' : 'left-0.5'}`} />
-                      </div>
+                      {qrLarge ? 'Small' : 'Large'}
                     </button>
                   </div>
                   {(() => {
-                    const computedQrSize = Math.max(96, Math.min(manualModalWidth - 64, qrLarge ? 220 : 128));
+                    const computedQrSize = Math.max(96, Math.min(manualModalWidth - 64, qrLarge ? 180 : 120));
                     return (
                       <div className="flex flex-col items-center gap-1.5 w-full">
                         <div 
                           style={{ width: `${computedQrSize}px`, height: `${computedQrSize}px` }}
-                          className="mx-auto flex items-center justify-center transition-all duration-300 overflow-hidden relative shrink-0 rounded-xl"
+                          className="mx-auto flex items-center justify-center transition-all duration-300 overflow-hidden relative shrink-0 rounded-xl bg-white p-1"
                         >
                           {/* Reactive Glow Effect */}
                           <motion.div 
@@ -919,7 +904,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                         </div>
                         <p className="text-[10px] text-on-surface-variant font-medium flex items-center justify-center gap-1 text-center">
                           <Camera className="w-3 h-3 text-primary shrink-0" />
-                          <span>Scan with your phone's native camera app to open</span>
+                          <span>Scan to open installation page</span>
                         </p>
                       </div>
                     );
