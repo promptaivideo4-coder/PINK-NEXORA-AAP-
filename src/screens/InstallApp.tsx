@@ -127,6 +127,64 @@ function ConfettiOverlay() {
   );
 }
 
+interface PlatformDetectionResult {
+  os: 'ios' | 'android' | 'macos' | 'windows' | 'linux' | 'unknown';
+  browser: 'safari' | 'chrome' | 'firefox' | 'edge' | 'samsung' | 'opera' | 'unknown';
+  tab: 'ios' | 'android' | 'desktop';
+}
+
+function detectUserPlatform(): PlatformDetectionResult {
+  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+  const ua = userAgent.toLowerCase();
+  
+  let os: 'ios' | 'android' | 'macos' | 'windows' | 'linux' | 'unknown' = 'unknown';
+  let browser: 'safari' | 'chrome' | 'firefox' | 'edge' | 'samsung' | 'opera' | 'unknown' = 'unknown';
+
+  // 1. Detect OS
+  if (/android/i.test(ua)) {
+    os = 'android';
+  } else if (/iphone|ipad|ipod/i.test(ua)) {
+    os = 'ios';
+  } else if (/macintosh|mac os x/i.test(ua)) {
+    // iPadOS 13+ reports as Macintosh on Safari by default, but supports touch
+    const isIPad = navigator.maxTouchPoints && navigator.maxTouchPoints > 1 && !(window as any).MSStream;
+    if (isIPad) {
+      os = 'ios';
+    } else {
+      os = 'macos';
+    }
+  } else if (/windows|win32/i.test(ua)) {
+    os = 'windows';
+  } else if (/linux/i.test(ua)) {
+    os = 'linux';
+  }
+
+  // 2. Detect Browser
+  if (/samsungbrowser/i.test(ua)) {
+    browser = 'samsung';
+  } else if (/opr\/|opera/i.test(ua)) {
+    browser = 'opera';
+  } else if (/edg/i.test(ua)) {
+    browser = 'edge';
+  } else if (/firefox|fxios/i.test(ua)) {
+    browser = 'firefox';
+  } else if (/chrome|crios/i.test(ua)) {
+    browser = 'chrome';
+  } else if (/safari/i.test(ua) && !/chrome/i.test(ua) && !/chromium/i.test(ua)) {
+    browser = 'safari';
+  }
+
+  // 3. Map to helpTab ('ios' | 'android' | 'desktop')
+  let tab: 'ios' | 'android' | 'desktop' = 'desktop';
+  if (os === 'android') {
+    tab = 'android';
+  } else if (os === 'ios') {
+    tab = 'ios';
+  }
+
+  return { os, browser, tab };
+}
+
 interface InstallAppProps extends NavigationProps {
   onInstalled?: () => void;
 }
@@ -140,6 +198,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
   const [showHelp, setShowHelp] = useState(false);
   const [qrLarge, setQrLarge] = useState(false);
   const [helpTab, setHelpTab] = useState<'ios' | 'android' | 'desktop'>('ios');
+  const [detectedPlatform, setDetectedPlatform] = useState<PlatformDetectionResult | null>(null);
   const [manualModalWidth, setManualModalWidth] = useState<number>(360);
   const manualModalRef = React.useRef<HTMLDivElement>(null);
 
@@ -169,16 +228,9 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
   }, []);
 
   useEffect(() => {
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isAndroid = /android/.test(userAgent);
-    const isIOS = /iphone|ipad|ipod/.test(userAgent);
-    if (isAndroid) {
-        setHelpTab('android');
-    } else if (isIOS) {
-        setHelpTab('ios');
-    } else {
-        setHelpTab('desktop');
-    }
+    const platformResult = detectUserPlatform();
+    setDetectedPlatform(platformResult);
+    setHelpTab(platformResult.tab);
   }, []);
 
   // Install Animation State
@@ -831,7 +883,14 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                       </div>
                       <div>
                         <h2 className="text-xl font-bold text-on-surface md:text-lg lg:text-xl">Install Instructions</h2>
-                        <p className="text-xs text-on-surface-variant">Get Nexora on your home screen</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 mt-0.5">
+                          <p className="text-xs text-on-surface-variant">Get Nexora on your home screen</p>
+                          {detectedPlatform && (
+                            <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-md bg-primary/10 text-primary border border-primary/15">
+                              Detected: {detectedPlatform.os} • {detectedPlatform.browser}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 md:hidden">
