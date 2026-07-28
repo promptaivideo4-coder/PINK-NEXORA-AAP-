@@ -4,7 +4,7 @@ import { NavigationProps, Customer, WhatsAppTemplate, Tag as TagInterface } from
 import CustomerDetailModal from '../components/CustomerDetailModal';
 import WhatsAppTemplateModal from '../components/WhatsAppTemplateModal';
 import TagModal from '../components/TagModal';
-import { Search, Plus, X, UserPlus, User, RotateCcw, Upload, Check, Mail, Phone, Sparkles, Download, MessageCircle, Settings, Tag as TagIcon, Trash2 } from 'lucide-react';
+import { Search, Plus, X, UserPlus, User, RotateCcw, Upload, Check, Mail, Phone, Sparkles, Download, MessageCircle, Settings, Tag as TagIcon, Trash2, ChevronDown } from 'lucide-react';
 import { exportCustomersToCSV } from '../utils/export';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -24,8 +24,8 @@ const INITIAL_CUSTOMERS: Customer[] = [
     phone: '+91 98765 11223',
     whatsappNumber: '+91 98765 11223',
     email: 'neha.gupta@example.com',
-    address: 'Vasant Vihar, New Delhi',
-    city: 'New Delhi',
+    address: 'Vaishali Nagar, Jaipur',
+    city: 'Vaishali Nagar, Jaipur',
     joinDate: '10 Jan 2024',
     notes: 'Allergic to specific brand of PPD hair dye. Ensure use of PPD-free color lines only.',
     history: [
@@ -43,8 +43,8 @@ const INITIAL_CUSTOMERS: Customer[] = [
     phone: '+91 98765 43210',
     whatsappNumber: '+91 98765 43210',
     email: 'ananya.sharma@example.com',
-    address: 'Bandra West, Mumbai, MH 400050',
-    city: 'Mumbai',
+    address: 'Malviya Nagar, Jaipur, RJ 302017',
+    city: 'Malviya Nagar, Jaipur',
     joinDate: '15 Jan 2024',
     notes: 'Prefers quiet sessions. Always books with Rohan. Allergic to lavender products.',
     history: [
@@ -63,8 +63,8 @@ const INITIAL_CUSTOMERS: Customer[] = [
     phone: '+91 98765 87654',
     whatsappNumber: '+91 98765 87654',
     email: 'priya.kapoor@example.com',
-    address: 'Connaught Place, New Delhi, DL 110001',
-    city: 'New Delhi',
+    address: 'Raja Park, Jaipur, RJ 302004',
+    city: 'Raja Park, Jaipur',
     joinDate: '01 Feb 2024',
     notes: 'Likes to chat during appointments. Prefers morning slots.',
     history: [
@@ -82,8 +82,8 @@ const INITIAL_CUSTOMERS: Customer[] = [
     phone: '+91 98765 32109',
     whatsappNumber: '+91 98765 32109',
     email: 'rohan.verma@example.com',
-    address: 'Koramangala, Bengaluru, KA 560034',
-    city: 'Bengaluru',
+    address: 'Mansarovar, Jaipur, RJ 302020',
+    city: 'Mansarovar, Jaipur',
     joinDate: '15 Mar 2024',
     notes: 'Usually books last minute.',
     history: [
@@ -100,20 +100,40 @@ const INITIAL_CUSTOMERS: Customer[] = [
     phone: '+91 98765 65432',
     whatsappNumber: '+91 98765 65432',
     email: 'amit.patel@example.com',
-    address: 'Jubilee Hills, Hyderabad, TS 500033',
-    city: 'Hyderabad',
+    address: 'C-Scheme, Jaipur, RJ 302001',
+    city: 'C-Scheme, Jaipur',
     joinDate: '01 Apr 2024',
     notes: 'First time client. Referred by Priya Kapoor.',
     history: []
   }
 ];
 
+const ZONES = [
+  'Central Jaipur',
+  'East Jaipur',
+  'North Jaipur',
+  'South Jaipur',
+  'West Jaipur'
+];
+
+const ZONE_AREAS: Record<string, string[]> = {
+  'Central Jaipur': ['C-Scheme', 'MI Road', 'Sindhi Camp', 'Bani Park', 'Station Road', 'Chandpole', 'Johari Bazaar', 'Tripolia Bazaar', 'Kishanpole Bazaar', 'Ajmeri Gate', 'Chaura Rasta', 'Civil Lines', 'Secretariat Area', 'Ram Niwas Bagh', 'SMS Hospital Area'],
+  'East Jaipur': ['Malviya Nagar', 'Jagatpura', 'Jawahar Nagar', 'Adarsh Nagar', 'Tilak Nagar', 'Transport Nagar', 'Sanganer', 'Pratap Nagar', 'Sitapura', 'Goner Road', 'Agra Road', 'Kho Nagoriyan', 'Bambala', 'Vidyadhar Enclave'],
+  'North Jaipur': ['Vaishali Nagar', 'Jhotwara', 'Vidhyadhar Nagar', 'Murlipura', 'Harmada', 'Kalwar Road', 'Niwaru Road', 'Ambabari', 'Shastri Nagar', 'Banipark Extension', 'Sirsi Road', 'Chomu Road', 'Amer', 'Kukas'],
+  'South Jaipur': ['Mansarovar', 'Muhana', 'Patrakar Colony', 'Iskcon Road', 'New Sanganer Road', 'Durgapura', 'Mahesh Nagar', 'Gopalpura', 'Tonk Road', 'Airport Area', 'Shivdaspura', 'Vatika', 'Chaksu Road'],
+  'West Jaipur': ['Ajmer Road', 'Heerapura', 'Bhankrota', 'Gandhi Path', 'Lalarpura', 'Kanakpura', 'Sirsi Road', 'Khatipura', 'Queens Road', 'Nirman Nagar', 'Shyam Nagar', 'Sodala', 'Vaishali West']
+};
+
 export default function Customers({ navigate }: NavigationProps) {
   const { t } = useLanguage();
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
-  const [cityFilter, setCityFilter] = useState<string>('All');
+  const [zoneFilter, setZoneFilter] = useState<string>('');
+  const [areaFilter, setAreaFilter] = useState<string>('');
+  const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
+  const [zoneSearch, setZoneSearch] = useState('');
+  const [areaSearch, setAreaSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -136,7 +156,9 @@ export default function Customers({ navigate }: NavigationProps) {
   const [inviteType, setInviteType] = useState<Customer['type']>('New');
   const [successToast, setSuccessToast] = useState('');
 
-  const cities = Array.from(new Set(customers.map(c => c.city).filter(Boolean))) as string[];
+  // Dropdown states
+  const [isZoneMenuOpen, setIsZoneMenuOpen] = useState(false);
+  const [isAreaMenuOpen, setIsAreaMenuOpen] = useState(false);
 
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -149,7 +171,7 @@ export default function Customers({ navigate }: NavigationProps) {
         const message = template.content
           .replace('{client_name}', customer.name)
           .replace('{service_name}', customer.history[0]?.service || 'your service');
-        window.open(`https://wa.me/${customer.whatsappNumber.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+        window.open(`https://wa.me/${customer.whatsappNumber.replace(/\\s+/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
       }
     });
     setSelectedIds([]);
@@ -164,7 +186,13 @@ export default function Customers({ navigate }: NavigationProps) {
       (activeFilter === 'Members' && customer.type === 'Gold Member') ||
       (activeFilter === 'New' && customer.type === 'New');
 
-    const matchesCity = cityFilter === 'All' || customer.city === cityFilter;
+    const matchesLocation = (() => {
+      if (!zoneFilter) return true;
+      if (zoneFilter && !areaFilter) {
+        return ZONE_AREAS[zoneFilter].some(area => customer.city?.includes(area));
+      }
+      return customer.city?.includes(areaFilter);
+    })();
 
     const matchesSearch =
       searchQuery.trim() === '' ||
@@ -172,7 +200,7 @@ export default function Customers({ navigate }: NavigationProps) {
       customer.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return matchesFilter && matchesCity && matchesSearch;
+    return matchesFilter && matchesLocation && matchesSearch;
   });
 
   const handleClearAll = () => {
@@ -377,14 +405,123 @@ export default function Customers({ navigate }: NavigationProps) {
                 <option value="Members">Gold Members</option>
                 <option value="New">New</option>
               </select>
-              <select 
-                value={cityFilter} 
-                onChange={(e) => setCityFilter(e.target.value)}
-                className="flex-1 bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-2.5 px-4 focus:outline-none focus:border-primary text-sm shadow-xs"
-              >
-                <option value="All">All Cities</option>
-                {cities.map(city => <option key={city} value={city}>{city}</option>)}
-              </select>
+              {/* Zone Dropdown */}
+              <div className="flex-1 relative z-30">
+                <button 
+                  onClick={() => setIsZoneMenuOpen(!isZoneMenuOpen)}
+                  className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-2.5 px-4 focus:outline-none focus:border-primary text-sm shadow-xs flex items-center justify-between text-left"
+                >
+                  <span className="truncate pr-2">
+                    {zoneFilter || 'Select Zone'}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-on-surface-variant/60 shrink-0" />
+                </button>
+                
+                <AnimatePresence>
+                  {isZoneMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsZoneMenuOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full right-0 left-0 mt-2 bg-white shadow-xl rounded-xl border border-outline-variant/30 p-2 z-50 flex flex-col gap-2 min-w-[200px]"
+                      >
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant/50" />
+                          <input 
+                            type="text" 
+                            placeholder="Search zone..." 
+                            value={zoneSearch}
+                            onChange={(e) => setZoneSearch(e.target.value)}
+                            className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-lg py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+                          <button
+                            onClick={() => { setZoneFilter(''); setAreaFilter(''); setZoneSearch(''); setAreaSearch(''); setIsZoneMenuOpen(false); }}
+                            className={`text-left px-2 py-1.5 text-xs rounded-md ${!zoneFilter ? 'bg-primary-container/10 text-primary font-bold' : 'hover:bg-surface-variant'}`}
+                          >
+                            All Zones
+                          </button>
+                          {ZONES.filter(z => z.toLowerCase().includes(zoneSearch.toLowerCase())).map(zone => (
+                            <button
+                              key={zone}
+                              onClick={() => { 
+                                setZoneFilter(zone); 
+                                setAreaFilter(''); 
+                                setAreaSearch(''); 
+                                setIsZoneMenuOpen(false);
+                              }}
+                              className={`text-left px-2 py-1.5 text-xs rounded-md ${zoneFilter === zone ? 'bg-primary-container/10 text-primary font-bold' : 'hover:bg-surface-variant'}`}
+                            >
+                              {zone}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Area Dropdown */}
+              <div className="flex-1 relative z-20">
+                <button 
+                  onClick={() => zoneFilter && setIsAreaMenuOpen(!isAreaMenuOpen)}
+                  disabled={!zoneFilter}
+                  className={`w-full bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-2.5 px-4 focus:outline-none focus:border-primary text-sm shadow-xs flex items-center justify-between text-left ${!zoneFilter ? 'opacity-50 cursor-not-allowed bg-surface-variant/30' : ''}`}
+                >
+                  <span className="truncate pr-2">
+                    {zoneFilter && areaFilter 
+                      ? `${zoneFilter} > ${areaFilter}` 
+                      : 'Select Area'}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-on-surface-variant/60 shrink-0" />
+                </button>
+                
+                <AnimatePresence>
+                  {isAreaMenuOpen && zoneFilter && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsAreaMenuOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full right-0 left-[-50%] sm:left-0 mt-2 bg-white shadow-xl rounded-xl border border-outline-variant/30 p-2 z-50 flex flex-col gap-2 min-w-[200px]"
+                      >
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant/50" />
+                          <input 
+                            type="text" 
+                            placeholder="Search area..." 
+                            value={areaSearch}
+                            onChange={(e) => setAreaSearch(e.target.value)}
+                            className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-lg py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+                          <button
+                            onClick={() => { setAreaFilter(''); setAreaSearch(''); setIsAreaMenuOpen(false); }}
+                            className={`text-left px-2 py-1.5 text-xs rounded-md ${!areaFilter ? 'bg-primary-container/10 text-primary font-bold' : 'hover:bg-surface-variant'}`}
+                          >
+                            All Areas in {zoneFilter}
+                          </button>
+                          {ZONE_AREAS[zoneFilter].filter(a => a.toLowerCase().includes(areaSearch.toLowerCase())).map(area => (
+                            <button
+                              key={area}
+                              onClick={() => { setAreaFilter(area); setIsAreaMenuOpen(false); }}
+                              className={`text-left px-2 py-1.5 text-xs rounded-md ${areaFilter === area ? 'bg-primary-container/10 text-primary font-bold' : 'hover:bg-surface-variant'}`}
+                            >
+                              {area}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         )}

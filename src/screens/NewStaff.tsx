@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavigationProps } from '../types';
+import ProfilePhotoUploader from '../components/ProfilePhotoUploader';
 import { 
   ArrowLeft, 
   Camera, 
@@ -168,27 +169,16 @@ export default function NewStaff({ navigate }: NavigationProps) {
           <h2 className="text-lg font-bold text-on-surface">Basic Profile</h2>
           
           {/* Photo Upload Area */}
-          <div 
-            onClick={handleRandomAvatar}
-            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-outline-variant/50 rounded-[18px] bg-surface-bright cursor-pointer hover:bg-surface-container-low transition-colors group"
-          >
-            {avatar ? (
-              <div className="relative w-20 h-20 rounded-full overflow-hidden shadow-md border border-outline-variant mb-3">
-                <img src={avatar} alt="Staff preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="w-5 h-5 text-white" />
-                </div>
-              </div>
-            ) : (
-              <div className="w-20 h-20 bg-primary-fixed/30 rounded-full flex items-center justify-center mb-3 text-primary-container group-hover:scale-105 transition-transform">
-                <Camera className="w-8 h-8 text-primary" />
-              </div>
-            )}
-            <p className="text-xs font-bold text-on-surface-variant/80">
-              {avatar ? 'Tap to change professional photo' : 'Tap to upload professional photo'}
-            </p>
-            <p className="text-[10px] text-on-surface-variant/50 mt-1">Simulates uploading high-resolution portrait</p>
-          </div>
+          <ProfilePhotoUploader 
+            avatar={avatar}
+            onUpload={(file) => {
+              const reader = new FileReader();
+              reader.onloadend = () => setAvatar(reader.result as string);
+              reader.readAsDataURL(file);
+              triggerToast('Profile photo updated!');
+            }}
+            onRemove={() => setAvatar(undefined)}
+          />
 
           {/* Grid Layout for Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

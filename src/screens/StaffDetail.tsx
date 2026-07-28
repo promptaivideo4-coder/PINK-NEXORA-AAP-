@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
+import ProfilePhotoUploader from '../components/ProfilePhotoUploader';
 import { 
   ArrowLeft, 
   Star, 
@@ -19,7 +20,8 @@ import {
   ChevronDown,
   UserCheck,
   CheckCircle2,
-  Trash
+  Trash,
+  Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -184,6 +186,7 @@ export default function StaffDetail({ navigate }: NavigationProps) {
 
   // Modal / Toast states
   const [showEditModal, setShowEditModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -371,6 +374,30 @@ export default function StaffDetail({ navigate }: NavigationProps) {
     triggerToast(`${day} status updated`);
   };
 
+  const handleAvatarUpload = (file: File) => {
+    if (!activeStaff) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+        const updated: StaffMember = { ...activeStaff, avatar: reader.result as string };
+        const newList = staffList.map(s => s.id === updated.id ? updated : s);
+        setStaffList(newList);
+        localStorage.setItem('nexora_staff_list', JSON.stringify(newList));
+        setActiveStaff(updated);
+        triggerToast('Profile photo updated!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarRemove = () => {
+    if (!activeStaff) return;
+    const updated: StaffMember = { ...activeStaff, avatar: undefined };
+    const newList = staffList.map(s => s.id === updated.id ? updated : s);
+    setStaffList(newList);
+    localStorage.setItem('nexora_staff_list', JSON.stringify(newList));
+    setActiveStaff(updated);
+    triggerToast('Profile photo removed!');
+  };
+
   const handleScheduleTimeChange = (day: string, type: 'start' | 'end', value: string) => {
     if (!activeStaff || !activeStaff.schedule) return;
     const currentDay = activeStaff.schedule[day];
@@ -445,23 +472,12 @@ export default function StaffDetail({ navigate }: NavigationProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-primary-container/5 to-transparent pointer-events-none" />
           
           {/* Avatar Area */}
-          <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden shrink-0 border-4 border-white shadow-md z-10">
-            {activeStaff.avatar ? (
-              <img 
-                className="w-full h-full object-cover" 
-                src={activeStaff.avatar} 
-                alt={activeStaff.name} 
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="w-full h-full bg-primary-container/10 flex items-center justify-center font-bold text-primary-container text-3xl">
-                {activeStaff.initials || 'ST'}
-              </div>
-            )}
-            <div className={`absolute bottom-1 right-1 w-4 h-4 rounded-full border-2 border-white ${
-              activeStaff.status === 'Available' ? 'bg-[#10B981]' : activeStaff.status === 'In-Session' ? 'bg-[#F59E0B]' : 'bg-surface-variant'
-            }`} />
-          </div>
+          <ProfilePhotoUploader
+            avatar={activeStaff.avatar}
+            onUpload={handleAvatarUpload}
+            onRemove={handleAvatarRemove}
+            variant="circle"
+          />
 
           {/* Profile Basic Info */}
           <div className="flex-1 text-center md:text-left z-10 flex flex-col justify-between h-full pt-1">
@@ -721,6 +737,16 @@ export default function StaffDetail({ navigate }: NavigationProps) {
               </div>
 
               <form onSubmit={handleSaveEdit} className="space-y-4">
+                <div className="flex justify-center mb-4">
+                  <ProfilePhotoUploader
+                    avatar={activeStaff.avatar}
+                    onUpload={handleAvatarUpload}
+                    onRemove={handleAvatarRemove}
+                    variant="circle"
+                    onUploadStart={() => setIsUploading(true)}
+                    onUploadEnd={() => setIsUploading(false)}
+                  />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-on-surface mb-1">Full Name *</label>
@@ -885,9 +911,10 @@ export default function StaffDetail({ navigate }: NavigationProps) {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-3 bg-primary-container text-white rounded-xl text-xs font-bold hover:bg-primary transition-colors shadow-md uppercase tracking-wider"
+                    disabled={isUploading}
+                    className="flex-1 py-3 bg-primary-container text-white rounded-xl text-xs font-bold hover:bg-primary transition-colors shadow-md uppercase tracking-wider disabled:opacity-50"
                   >
-                    Save Changes
+                    {isUploading ? 'Uploading...' : 'Save Changes'}
                   </button>
                 </div>
               </form>

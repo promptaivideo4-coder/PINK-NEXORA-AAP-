@@ -1,5 +1,8 @@
 import React, { useState, useRef } from 'react';
 import Layout from '../components/Layout';
+import PasswordField from '../components/PasswordField';
+import OtpVerificationModal from '../components/OtpVerificationModal';
+import SuccessModal from '../components/SuccessModal';
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
 import { 
@@ -170,6 +173,8 @@ export default function Profile({ navigate }: NavigationProps) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [isOtpOpen, setIsOtpOpen] = useState(false);
+  const [passwordChangeStep, setPasswordChangeStep] = useState<'form' | 'otp' | 'success'>('form');
 
   const timeOptions = [
     '07:00 AM', '08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
@@ -328,8 +333,8 @@ export default function Profile({ navigate }: NavigationProps) {
       setPasswordError('Please enter your current password.');
       return;
     }
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters long.');
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -337,12 +342,16 @@ export default function Profile({ navigate }: NavigationProps) {
       return;
     }
 
+    // Simulate current password verification
+    if (currentPassword !== 'password123') {
+        setPasswordError('Current password is incorrect.');
+        return;
+    }
+
     setPasswordError('');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setIsChangePasswordOpen(false);
-    triggerToast('Password changed successfully!');
+    setIsOtpOpen(true);
+    setPasswordChangeStep('otp');
+    triggerToast('Verification code has been sent to your registered email.');
   };
 
   // Switch account user list
@@ -691,8 +700,8 @@ export default function Profile({ navigate }: NavigationProps) {
 
                 <div className="space-y-3.5 pt-1">
                   {schedules.map((schedule, idx) => (
-                    <div key={schedule.day} className={`flex items-center justify-between p-2 rounded-xl transition-colors ${schedule.isOpen ? 'bg-surface-container-low/50' : 'opacity-60'}`}>
-                      <div className="flex items-center gap-3">
+                    <div key={schedule.day} className={`flex flex-wrap items-center justify-between gap-y-3 p-3 rounded-xl transition-colors ${schedule.isOpen ? 'bg-surface-container-low/50' : 'bg-surface-container-low/20 opacity-70'}`}>
+                      <div className="flex items-center gap-3 shrink-0">
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input 
                             type="checkbox" 
@@ -709,31 +718,31 @@ export default function Profile({ navigate }: NavigationProps) {
                       </div>
 
                       {schedule.isOpen ? (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2 grow justify-end min-w-[200px]">
                           <select 
                             value={schedule.openTime}
                             onChange={(e) => {
                               handleTimeChange(idx, 'openTime', e.target.value);
                               triggerToast(`Updated ${schedule.day} opening time to ${e.target.value}`);
                             }}
-                            className="bg-surface border border-outline-variant/60 text-on-surface font-semibold text-[11px] rounded-lg py-1 px-2 focus:ring-1 focus:ring-primary outline-none"
+                            className="bg-surface border border-outline-variant/60 text-on-surface font-semibold text-[11px] rounded-lg py-1 px-2 focus:ring-1 focus:ring-primary outline-none flex-1 min-w-[80px]"
                           >
                             {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
-                          <span className="text-on-surface-variant text-xs">-</span>
+                          <span className="text-on-surface-variant text-xs shrink-0">-</span>
                           <select 
                             value={schedule.closeTime}
                             onChange={(e) => {
                               handleTimeChange(idx, 'closeTime', e.target.value);
                               triggerToast(`Updated ${schedule.day} closing time to ${e.target.value}`);
                             }}
-                            className="bg-surface border border-outline-variant/60 text-on-surface font-semibold text-[11px] rounded-lg py-1 px-2 focus:ring-1 focus:ring-primary outline-none"
+                            className="bg-surface border border-outline-variant/60 text-on-surface font-semibold text-[11px] rounded-lg py-1 px-2 focus:ring-1 focus:ring-primary outline-none flex-1 min-w-[80px]"
                           >
                             {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
                         </div>
                       ) : (
-                        <span className="text-xs font-semibold text-on-surface-variant/70 px-2 py-1 bg-surface-container-high rounded-md">
+                        <span className="text-xs font-semibold text-on-surface-variant/70 px-4 py-1 bg-surface-container-high rounded-lg grow text-center">
                           Closed
                         </span>
                       )}
@@ -742,16 +751,16 @@ export default function Profile({ navigate }: NavigationProps) {
                 </div>
 
                 {/* Save Buttons */}
-                <div className="pt-4 border-t border-outline-variant/40 flex items-center justify-end gap-3">
+                <div className="pt-4 border-t border-outline-variant/40 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                   <button 
                     onClick={() => navigate('dashboard')}
-                    className="px-5 py-2.5 rounded-xl border border-outline-variant text-on-surface text-xs font-semibold hover:bg-surface-variant transition-colors"
+                    className="px-5 py-2.5 rounded-xl border border-outline-variant text-on-surface text-xs font-semibold hover:bg-surface-variant transition-colors w-full sm:w-auto"
                   >
                     Cancel
                   </button>
                   <button 
                     onClick={handleSaveBusiness}
-                    className="px-6 py-2.5 rounded-xl bg-primary-container text-on-primary-container text-xs font-bold hover:bg-primary transition-all flex items-center gap-2 shadow-xs active:scale-95"
+                    className="px-6 py-2.5 rounded-xl bg-primary-container text-on-primary-container text-xs font-bold hover:bg-primary transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95 w-full sm:w-auto"
                   >
                     <Save className="w-3.5 h-3.5" />
                     <span>Save Changes</span>
@@ -981,7 +990,7 @@ export default function Profile({ navigate }: NavigationProps) {
 
       {/* Change Password Modal */}
       <AnimatePresence>
-        {isChangePasswordOpen && (
+        {isChangePasswordOpen && passwordChangeStep === 'form' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
@@ -998,6 +1007,7 @@ export default function Profile({ navigate }: NavigationProps) {
                   onClick={() => {
                     setIsChangePasswordOpen(false);
                     setPasswordError('');
+                    setPasswordChangeStep('form');
                   }}
                   className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
                 >
@@ -1012,41 +1022,24 @@ export default function Profile({ navigate }: NavigationProps) {
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Current Password</label>
-                  <input 
-                    type="password"
-                    required
+                <PasswordField 
+                    label="Current Password"
                     value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-semibold text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                    placeholder="••••••••"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">New Password</label>
-                  <input 
-                    type="password"
-                    required
+                    onChange={setCurrentPassword}
+                />
+                
+                <PasswordField 
+                    label="New Password"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-semibold text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                    placeholder="At least 6 characters"
-                  />
-                </div>
+                    onChange={setNewPassword}
+                    showStrength
+                />
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Confirm New Password</label>
-                  <input 
-                    type="password"
-                    required
+                <PasswordField 
+                    label="Confirm New Password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-semibold text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                    placeholder="Re-type new password"
-                  />
-                </div>
+                    onChange={setConfirmPassword}
+                />
 
                 <div className="flex gap-3 pt-2">
                   <button
@@ -1054,6 +1047,7 @@ export default function Profile({ navigate }: NavigationProps) {
                     onClick={() => {
                       setIsChangePasswordOpen(false);
                       setPasswordError('');
+                      setPasswordChangeStep('form');
                     }}
                     className="flex-1 py-2.5 rounded-xl border border-outline-variant text-on-surface text-xs font-semibold hover:bg-surface-variant transition-colors"
                   >
@@ -1061,7 +1055,8 @@ export default function Profile({ navigate }: NavigationProps) {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:brightness-115 transition-all shadow-sm"
+                    disabled={!currentPassword || newPassword.length < 8 || newPassword !== confirmPassword}
+                    className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:brightness-115 transition-all shadow-sm disabled:bg-surface-container-high disabled:text-on-surface-variant"
                   >
                     Update Password
                   </button>
@@ -1071,6 +1066,31 @@ export default function Profile({ navigate }: NavigationProps) {
           </div>
         )}
       </AnimatePresence>
+
+      <OtpVerificationModal 
+        isOpen={isOtpOpen}
+        onClose={() => setIsOtpOpen(false)}
+        email="user@example.com"
+        onVerify={(otp) => {
+          if (otp === '123456') { // Mock verification
+            setPasswordChangeStep('success');
+            setIsOtpOpen(false);
+          } else {
+            setPasswordError('Invalid verification code.');
+          }
+        }}
+      />
+
+      <SuccessModal 
+        isOpen={passwordChangeStep === 'success'}
+        onClose={() => {
+            setIsChangePasswordOpen(false);
+            setPasswordChangeStep('form');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        }}
+      />
 
       {/* Switch Account Modal */}
       <AnimatePresence>

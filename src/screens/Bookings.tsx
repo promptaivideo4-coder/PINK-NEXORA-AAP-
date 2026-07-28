@@ -6,13 +6,14 @@ import BookingDetailDrawer from '../components/BookingDetailDrawer';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 
-interface BookingItem {
+export interface BookingItem {
   id: string;
   clientName: string;
+  clientPhone: string;
   clientAvatar?: string;
   clientInitials?: string;
   time: string;
-  status: 'Confirmed' | 'In-Progress' | 'Pending';
+  status: 'Confirmed' | 'In-Progress' | 'Pending' | 'Completed';
   service: string;
   stylist: string;
   price: string;
@@ -23,6 +24,7 @@ const initialBookings: BookingItem[] = [
   {
     id: '#BK-7829',
     clientName: 'Ananya Sharma',
+    clientPhone: '919876543210',
     clientAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC-nP9eCkGy2wbdT05CpC-bQQVwQQMLPOBPRJEw2zBFhG1vyLqTne9C4EcMHZQUquCnDF09P9bR3c5sf2te--nBJMG85ltQzCKokwdWGm3bZrpvALaxvEQgK6Vdgp60DPCZNcHoK20HWB3apHSJGxTi0kj0lcRdISfiyzLNPYETPVegam9lBR6ucdt87pKbMUbHzPv5s_UKHwknAkWdo2_IrviELZVHqv8XjQhIhhP6-f4C6rnoevq1DayOWMthqx-CnWVeE1HNgoc',
     time: '09:00 AM - 10:30 AM',
     status: 'Confirmed',
@@ -34,6 +36,7 @@ const initialBookings: BookingItem[] = [
   {
     id: '#BK-7830',
     clientName: 'Amit Patel',
+    clientPhone: '919876543211',
     clientInitials: 'AP',
     time: '10:45 AM - 11:30 AM',
     status: 'In-Progress',
@@ -45,6 +48,7 @@ const initialBookings: BookingItem[] = [
   {
     id: '#BK-7831',
     clientName: 'Priya Kapoor',
+    clientPhone: '919876543212',
     clientAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBNro9Tvx2mCg1vwb2oUbG_H3AMDFPVQ_r9dtXjs0XsvegF1ZbaDuEV5MPvyUlKkxAnamZSwpRbX_F378ZST4-G-lza0X03d1EZH2enioAI8HFWMK3pKsEDMoHBGKPfpRRJ2Gm83L1DWP-fxpBtiPhIvWozKi0CXHv2DXiIOz_7VMcieHpN-zsaHHee5M5CrYh2YU-oe13dPP1VLpJdTPEMJ6UCd9NzRLD1MyH_XuPuQifa-tFa4HNUrkxCpSOkX1QoAn2T5X8ES94',
     time: '01:00 PM - 02:00 PM',
     status: 'Pending',
@@ -70,7 +74,7 @@ export default function Bookings({ navigate }: NavigationProps) {
   const handleWhatsAppReminder = (item: BookingItem) => {
     const message = `Hello ${item.clientName}! This is a friendly reminder for your appointment at Nexora Salon.\n\nService: ${item.service}\nTime: ${item.time}\nStylist: ${item.stylist}\n\nनमस्ते! हम आपको नेक्सोरा सैलून में आपकी अपॉइंटमेंट की याद दिला रहे हैं।\n\nWe look forward to seeing you!`;
     const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    window.open(`https://wa.me/+${item.clientPhone.replace(/^\+/, '')}?text=${encodedMessage}`, '_blank');
   };
 
 
@@ -125,15 +129,15 @@ export default function Bookings({ navigate }: NavigationProps) {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-3 overflow-x-auto pb-2 mb-8 -mx-5 px-5 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4 mb-8 -mx-5 px-5 md:mx-0 md:px-0 md:justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] w-full flex-nowrap">
           {filters.map(f => (
             <button 
               key={f}
               onClick={() => setActiveFilter(f)}
-              className={`px-6 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all active:scale-95 border ${
+              className={`px-[18px] py-[12px] rounded-full text-[13px] font-semibold whitespace-nowrap transition-all active:scale-95 border flex-shrink-0 ${
                 activeFilter === f 
                   ? 'bg-on-surface text-surface border-on-surface shadow-md' 
-                  : 'bg-surface-container text-on-surface-variant border-outline-variant/30 hover:bg-surface-variant'
+                  : 'bg-surface text-on-surface-variant border-outline-variant/30 hover:bg-surface-variant'
               }`}
             >
               {filterLabels[f]}
@@ -159,7 +163,7 @@ export default function Bookings({ navigate }: NavigationProps) {
                   className="bg-white/70 backdrop-blur-[10px] border border-white/50 rounded-[18px] p-5 relative overflow-hidden group hover:shadow-[0px_10px_40px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${style.bar}`}></div>
-                  <div className="flex justify-between items-start mb-4 pl-2">
+                  <div className="flex justify-between items-center pl-2">
                     <div className="flex items-center gap-3">
                       {item.clientAvatar ? (
                         <div className="w-12 h-12 rounded-full bg-surface-variant overflow-hidden shrink-0">
@@ -171,47 +175,15 @@ export default function Bookings({ navigate }: NavigationProps) {
                         </div>
                       )}
                       <div>
-                        <h3 className="text-[18px] font-semibold text-on-surface">{item.clientName}</h3>
-                        <p className="text-[13px] font-medium text-on-surface-variant flex items-center gap-1 mt-0.5">
-                          <Clock className="w-4 h-4" /> {item.time}
+                        <h3 className="text-[16px] font-semibold text-on-surface">{item.clientName}</h3>
+                        <p className="text-[12px] font-medium text-on-surface-variant flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3.5 h-3.5" /> {item.time} • {item.service}
                         </p>
                       </div>
                     </div>
                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${style.tagBg} ${style.tagText}`}>
                       {filterLabels[item.status]}
                     </span>
-                  </div>
-
-                  <div className="bg-surface-container/50 rounded-xl p-4 mb-4 ml-2">
-                    <div className="flex items-center gap-2 mb-2">
-                      {item.serviceIcon === 'scissors' && <Scissors className="text-primary-container w-5 h-5" />}
-                      {item.serviceIcon === 'user' && <User className="text-primary-container w-5 h-5" />}
-                      {item.serviceIcon === 'sparkles' && <Sparkles className="text-primary-container w-5 h-5" />}
-                      <span className="text-base font-medium text-on-surface">{item.service}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-on-surface-variant">{t('stylist_label')}: {item.stylist}</span>
-                      <span className="font-semibold text-on-surface">{item.price}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 ml-2">
-                    {item.status === 'Confirmed' && (
-                      <>
-                        <button onClick={(e) => { e.stopPropagation(); handleWhatsAppReminder(item); }} className="flex-1 py-2.5 rounded-lg border border-outline-variant text-[13px] font-medium text-on-surface hover:bg-surface-variant transition-colors flex justify-center items-center gap-1"><MessageSquare className="w-3.5 h-3.5 text-emerald-600" /> WhatsApp</button>
-                        <button className="flex-1 py-2.5 rounded-lg bg-surface-container text-[13px] font-medium text-primary hover:bg-primary/5 transition-colors">{t('details')}</button>
-                      </>
-                    )}
-                    {item.status === 'In-Progress' && (
-                      <button onClick={(e) => { e.stopPropagation(); setCheckoutBooking(item); }} className="flex-1 py-2.5 rounded-lg bg-primary-container text-white text-[13px] font-medium hover:opacity-90 transition-colors shadow-xs">{t('checkout')}</button>
-                    )}
-                    {item.status === 'Pending' && (
-                      <>
-                        <button className="flex-1 py-2.5 rounded-lg bg-surface-container text-[13px] font-medium text-primary hover:bg-primary/5 transition-colors">{t('approve')}</button>
-                        <button onClick={(e) => { e.stopPropagation(); setAssignBooking(item); }} className="flex-1 py-2.5 rounded-lg border border-outline-variant text-[13px] font-medium text-on-surface hover:bg-surface-variant transition-colors">Assign Stylist</button>
-                        <button className="flex-1 py-2.5 rounded-lg border border-outline-variant text-[13px] font-medium text-error hover:bg-error/5 transition-colors">{t('decline')}</button>
-                      </>
-                    )}
                   </div>
                 </article>
               );
@@ -459,9 +431,17 @@ export default function Bookings({ navigate }: NavigationProps) {
         )}
       </AnimatePresence>
 
-      {selectedBooking && (
-        <BookingDetailDrawer onClose={() => setSelectedBooking(null)} />
-      )}
+      <AnimatePresence>
+        {selectedBooking && (
+          <BookingDetailDrawer 
+            booking={selectedBooking} 
+            onClose={() => setSelectedBooking(null)} 
+            onWhatsApp={handleWhatsAppReminder}
+            onCheckout={setCheckoutBooking}
+            onAssign={setAssignBooking}
+          />
+        )}
+      </AnimatePresence>
     </Layout>
   );
 }

@@ -21,12 +21,9 @@ import {
   Sun,
   Laptop,
   Smartphone,
-  WifiOff,
   Download,
   Users,
   AlertCircle,
-  Layers,
-  Table,
   Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -309,23 +306,6 @@ export default function Settings({ navigate }: NavigationProps) {
                 <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
               </div>
 
-              {/* Offline Mode Status Screen */}
-              <div 
-                onClick={() => navigate('offline')}
-                className="p-6 flex items-center justify-between group cursor-pointer hover:bg-surface-container-low/50 transition-colors border-b border-surface-container-highest/60"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-tertiary-container/20 flex items-center justify-center text-tertiary-container shrink-0">
-                    <WifiOff className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{t('offline_status')}</h4>
-                    <p className="text-xs text-on-surface-variant mt-0.5">{t('offline_status_desc')}</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
-              </div>
-
               {/* App Update Interstitial */}
               <div 
                 onClick={() => navigate('app-update')}
@@ -366,7 +346,7 @@ export default function Settings({ navigate }: NavigationProps) {
               {/* Server Error Screen */}
               <div 
                 onClick={() => navigate('server-error')}
-                className="p-6 flex items-center justify-between group cursor-pointer hover:bg-surface-container-low/50 transition-colors border-b border-surface-container-highest/60"
+                className="p-6 flex items-center justify-between group cursor-pointer hover:bg-surface-container-low/50 transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center text-error shrink-0">
@@ -375,57 +355,6 @@ export default function Settings({ navigate }: NavigationProps) {
                   <div>
                     <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Server Error Interstitial</h4>
                     <p className="text-xs text-on-surface-variant mt-0.5">Preview system connection error and retry state</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
-              </div>
-
-              {/* Component Library */}
-              <div 
-                onClick={() => navigate('component-library')}
-                className="p-6 flex items-center justify-between group cursor-pointer hover:bg-surface-container-low/50 transition-colors border-b border-surface-container-highest/60"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center text-primary-container shrink-0">
-                    <Layers className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">UI Component Library</h4>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Showcase of buttons, form elements, card tokens, and dialogs</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
-              </div>
-
-              {/* Data Overview Responsive Tables */}
-              <div 
-                onClick={() => navigate('responsive-tables')}
-                className="p-6 flex items-center justify-between group cursor-pointer hover:bg-surface-container-low/50 transition-colors border-b border-surface-container-highest/60"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-tertiary-container/10 flex items-center justify-center text-tertiary-container shrink-0">
-                    <Table className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Data Overview & Tables</h4>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Responsive client directory & transaction records table layout</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
-              </div>
-
-              {/* Skeletons & Loading States */}
-              <div 
-                onClick={() => navigate('skeleton-showcase')}
-                className="p-6 flex items-center justify-between group cursor-pointer hover:bg-surface-container-low/50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary shrink-0">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">System Loading & Skeletons</h4>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Visual shimmer placeholders and data retrieval simulation</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />

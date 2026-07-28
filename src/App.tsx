@@ -24,7 +24,6 @@ import Settings from './screens/Settings';
 import InstallApp from './screens/InstallApp';
 import FloatingInstallBadge from './components/FloatingInstallBadge';
 import { triggerCelebration } from './utils/celebration';
-import Offline from './screens/Offline';
 import AppUpdate from './screens/AppUpdate';
 import StaffManagement from './screens/StaffManagement';
 import NewStaff from './screens/NewStaff';
@@ -32,9 +31,6 @@ import StaffDetail from './screens/StaffDetail';
 import ServerError from './screens/ServerError';
 import CancellationRefundPolicy from './screens/CancellationRefundPolicy';
 import RoleConflict from './screens/RoleConflict';
-import ComponentLibrary from './screens/ComponentLibrary';
-import ResponsiveTables from './screens/ResponsiveTables';
-import SkeletonShowcase from './screens/SkeletonShowcase';
 import ResetPassword from './screens/ResetPassword';
 import Marketing from './screens/Marketing';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -303,8 +299,6 @@ export default function App() {
             onInstalled={() => setIsAppInstalled(true)} 
           />
         );
-      case 'offline':
-        return <Offline navigate={navigate} />;
       case 'app-update':
         return <AppUpdate navigate={navigate} />;
       case 'staff':
@@ -315,12 +309,6 @@ export default function App() {
         return <StaffDetail navigate={navigate} />;
       case 'server-error':
         return <ServerError navigate={navigate} />;
-      case 'component-library':
-        return <ComponentLibrary navigate={navigate} />;
-      case 'responsive-tables':
-        return <ResponsiveTables navigate={navigate} />;
-      case 'skeleton-showcase':
-        return <SkeletonShowcase navigate={navigate} />;
       case 'marketing':
         return <Marketing navigate={navigate} />;
       default:

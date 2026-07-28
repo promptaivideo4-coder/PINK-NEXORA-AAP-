@@ -26,15 +26,11 @@ export type ScreenName =
   | 'analytics'
   | 'reviews'
   | 'install-app'
-  | 'offline'
   | 'app-update'
   | 'staff'
   | 'new-staff'
   | 'staff-detail'
   | 'server-error'
-  | 'component-library'
-  | 'responsive-tables'
-  | 'skeleton-showcase'
   | 'marketing';
 
 export const VALID_SCREENS: ScreenName[] = [
@@ -43,9 +39,9 @@ export const VALID_SCREENS: ScreenName[] = [
   'help-center', 'profile', 'settings', 'customers', 'customer-profile',
   'theme-selection', 'cancellation-refund-policy', 'role-conflict',
   'website-dashboard', 'website-gallery', 'wallet', 'transaction-detail',
-  'revenue-analytics', 'analytics', 'reviews', 'install-app', 'offline',
+  'revenue-analytics', 'analytics', 'reviews', 'install-app',
   'app-update', 'staff', 'new-staff', 'staff-detail', 'server-error',
-  'component-library', 'responsive-tables', 'skeleton-showcase', 'marketing'
+  'marketing'
 ];
 
 export interface Theme {

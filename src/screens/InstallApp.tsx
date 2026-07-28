@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavigationProps } from '../types';
 import ShaderBackground from '../components/ShaderBackground';
 import { triggerCelebration } from '../utils/celebration';
+import SuccessCheckmark from '../components/SuccessCheckmark';
 import { 
   Diamond, 
   Zap, 
@@ -637,8 +638,8 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
           {/* Benefits List */}
           <div className="w-full flex flex-col gap-3 mb-6">
             {/* Benefit 1 */}
-            <div className="flex items-center gap-3.5 bg-surface-container-low/60 p-3.5 rounded-[16px] border border-outline-variant/20 text-left transition-all hover:bg-surface-container-low">
-              <div className="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center shrink-0 text-secondary-container">
+            <div className="flex items-center gap-3.5 bg-surface-container-low/60 p-3.5 rounded-[16px] border border-outline-variant/20 text-left transition-all duration-300 hover:bg-surface-container-low hover:scale-[1.02] cursor-default">
+              <div className="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center shrink-0 text-secondary-container transition-transform duration-300 hover:scale-110">
                 <Zap className="w-5 h-5 fill-current" />
               </div>
               <div>
@@ -648,8 +649,8 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
             </div>
 
             {/* Benefit 2 */}
-            <div className="flex items-center gap-3.5 bg-surface-container-low/60 p-3.5 rounded-[16px] border border-outline-variant/20 text-left transition-all hover:bg-surface-container-low">
-              <div className="w-10 h-10 rounded-full bg-tertiary-container/20 flex items-center justify-center shrink-0 text-tertiary-container">
+            <div className="flex items-center gap-3.5 bg-surface-container-low/60 p-3.5 rounded-[16px] border border-outline-variant/20 text-left transition-all duration-300 hover:bg-surface-container-low hover:scale-[1.02] cursor-default">
+              <div className="w-10 h-10 rounded-full bg-tertiary-container/20 flex items-center justify-center shrink-0 text-tertiary-container transition-transform duration-300 hover:scale-110">
                 <Bell className="w-5 h-5 fill-current" />
               </div>
               <div>
@@ -659,8 +660,8 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
             </div>
 
             {/* Benefit 3 */}
-            <div className="flex items-center gap-3.5 bg-surface-container-low/60 p-3.5 rounded-[16px] border border-outline-variant/20 text-left transition-all hover:bg-surface-container-low">
-              <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center shrink-0 text-primary-container">
+            <div className="flex items-center gap-3.5 bg-surface-container-low/60 p-3.5 rounded-[16px] border border-outline-variant/20 text-left transition-all duration-300 hover:bg-surface-container-low hover:scale-[1.02] cursor-default">
+              <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center shrink-0 text-primary-container transition-transform duration-300 hover:scale-110">
                 <WifiOff className="w-5 h-5" />
               </div>
               <div>
@@ -672,20 +673,31 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
 
           {/* Action Buttons */}
           <div className="w-full flex flex-col gap-2.5">
-            <button
-              onClick={handleInstallClick}
-              disabled={isInstalled}
-              className="w-full bg-primary-container hover:bg-primary text-on-primary-container font-bold text-sm py-3.5 rounded-[16px] transition-all active:scale-[0.98] shadow-md shadow-primary-container/25 flex items-center justify-center gap-2"
-            >
-              {isInstalled ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>App Already Installed</span>
-                </>
-              ) : (
-                <span>Install Now</span>
-              )}
-            </button>
+            <div className="w-full flex gap-2.5">
+              <button
+                onClick={handleInstallClick}
+                disabled={isInstalled}
+                className="flex-[2] bg-primary-container hover:bg-primary text-on-primary-container font-bold text-sm py-3.5 rounded-[16px] transition-all active:scale-[0.98] shadow-md shadow-primary-container/25 flex items-center justify-center gap-2"
+              >
+                {isInstalled ? (
+                  <>
+                    <SuccessCheckmark className="w-4 h-4" />
+                    <span>Installed</span>
+                  </>
+                ) : (
+                  <span>Install Now</span>
+                )}
+              </button>
+
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent('Check out the Nexora Salon management app! ' + window.location.href)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-[1] bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm py-3.5 rounded-[16px] transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+              </a>
+            </div>
 
             <button
               onClick={() => navigate('dashboard')}
@@ -703,12 +715,61 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                 How to Install manually?
               </button>
             )}
-          </div>
+
+            {navigator.share && (
+              <button
+                onClick={() => {
+                  navigator.share({
+                    title: 'Nexora Salon',
+                    text: 'Check out the Nexora Salon management app!',
+                    url: window.location.href,
+                  }).catch(console.error);
+                }}
+                className="w-full mt-2 bg-surface-container-high hover:bg-surface-container text-on-surface font-bold text-sm py-3.5 rounded-[16px] transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
+              >
+                <Share className="w-4 h-4" />
+                <span>Share App</span>
+              </button>
+            )}
+
+           </div>
 
           {/* Instructions fallback hint */}
           <p className="text-[11px] text-on-surface-variant/70 mt-5 flex items-center justify-center gap-1">
             Tap <Share className="w-3.5 h-3.5 mx-0.5 text-primary" /> then 'Add to Home Screen'
           </p>
+
+          {/* Supported Browsers */}
+          <div className="mt-5 pt-4 border-t border-outline-variant/30 flex flex-col items-center gap-2.5 group relative cursor-default">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant/70">Supported Browsers</span>
+            <div className="flex items-center gap-4 text-on-surface-variant/80 group-hover:text-primary transition-colors">
+              {/* Chrome */}
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="4"></circle>
+                <line x1="21.17" y1="8" x2="12" y2="8"></line>
+                <line x1="3.95" y1="6.06" x2="8.54" y2="14"></line>
+                <line x1="10.88" y1="21.94" x2="15.46" y2="14"></line>
+              </svg>
+              {/* Safari (Compass) */}
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+              </svg>
+              {/* Edge */}
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2A10 10 0 1 0 22 12c0-5.5-4.5-10-10-10z"></path>
+                <path d="M7.7 17.3A7.5 7.5 0 1 1 20.3 8"></path>
+                <path d="M7 10.5C9 9 12 9 15 11c3.5 2.5 5 7 5 7"></path>
+              </svg>
+            </div>
+            
+            {/* Tooltip */}
+            <div className="absolute top-[110%] left-1/2 -translate-x-1/2 mt-2 bg-surface-container-highest text-on-surface text-[10px] font-medium px-3 py-2 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-10 shadow-lg border border-outline-variant/20 text-center translate-y-1 group-hover:translate-y-0">
+              'Standalone' app mode requires installing<br/>via Chrome, Safari, or Edge.
+              <div className="absolute -top-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-b-surface-container-highest"></div>
+            </div>
+          </div>
         </motion.div>
       </div>
 
@@ -728,7 +789,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full max-w-lg bg-surface-container-lowest rounded-[28px] shadow-2xl border border-outline-variant/40 overflow-hidden flex flex-col manual-installation-modal relative"
+              className="w-full max-w-lg md:max-w-3xl bg-surface-container-lowest rounded-[28px] shadow-2xl border border-outline-variant/40 overflow-y-auto max-h-[90vh] flex flex-col manual-installation-modal relative"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Floating Download Badge */}
@@ -752,174 +813,186 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                 </a>
               </div>
 
-              <div className="p-6 flex flex-col gap-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary">
-                      <Smartphone className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-on-surface">Install Instructions</h2>
-                      <p className="text-xs text-on-surface-variant">Get Nexora on your home screen</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText(window.location.href);
-                        setCopyToast(true);
-                        setTimeout(() => setCopyToast(false), 2000);
-                      }}
-                      className="p-2 rounded-xl hover:bg-surface-container-high transition-all text-primary flex items-center gap-2 px-3 group min-w-[110px]"
-                      title="Copy Link"
-                    >
-                      <motion.div
-                        initial={false}
-                        animate={{ rotate: copyToast ? 360 : 0, scale: copyToast ? 1.2 : 1 }}
-                        className="relative w-4 h-4 flex items-center justify-center"
-                      >
-                        <AnimatePresence mode="wait">
-                          {copyToast ? (
-                            <motion.div
-                              key="check"
-                              initial={{ opacity: 0, scale: 0.5 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.5 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <Check className="w-4 h-4 text-green-500" />
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              key="copy"
-                              initial={{ opacity: 0, scale: 0.5 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.5 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <Copy className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                      <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">
-                        {copyToast ? 'Copied!' : 'Copy Link'}
-                      </span>
-                    </button>
-                    <button 
-                      onClick={() => setShowHelp(false)}
-                      className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
+              {/* Desktop Modal Close Button (absolute for layout) */}
+              <button 
+                onClick={() => setShowHelp(false)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-surface-container-highest hover:bg-surface-variant text-on-surface-variant transition-colors z-20 hidden md:flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
 
-                {/* Tabs */}
-                <div className="flex p-1 bg-surface-container-low rounded-2xl border border-outline-variant/20">
-                  <button
-                    onClick={() => setHelpTab('ios')}
-                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                      helpTab === 'ios' 
-                        ? 'bg-white shadow-sm text-primary' 
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }`}
-                  >
-                    iOS
-                  </button>
-                  <button
-                    onClick={() => setHelpTab('android')}
-                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                      helpTab === 'android' 
-                        ? 'bg-white shadow-sm text-primary' 
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }`}
-                  >
-                    Android
-                  </button>
-                  <button
-                    onClick={() => setHelpTab('desktop')}
-                    className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                      helpTab === 'desktop' 
-                        ? 'bg-white shadow-sm text-primary' 
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }`}
-                  >
-                    Desktop
-                  </button>
-                </div>
-
-                {/* QR Code */}
-                <motion.div
-                  className={`flex flex-col items-center justify-center p-3 bg-surface-container-low rounded-2xl border border-outline-variant/20 transition-all duration-500 shrink-0`}
-                >
-                  <div className="flex items-center justify-between w-full mb-2">
-                    <p className="text-[10px] sm:text-xs font-bold text-on-surface">Scan to open on mobile</p>
-                    <button 
-                      onClick={() => setQrLarge(!qrLarge)}
-                      className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-[9px] font-bold text-primary transition-all hover:bg-primary/10"
-                    >
-                      {qrLarge ? 'Small' : 'Large'}
-                    </button>
-                  </div>
-                  {(() => {
-                    const computedQrSize = Math.max(96, Math.min(manualModalWidth - 64, qrLarge ? 180 : 120));
-                    return (
-                      <div className="flex flex-col items-center gap-1.5 w-full">
-                        <div 
-                          style={{ width: `${computedQrSize}px`, height: `${computedQrSize}px` }}
-                          className="mx-auto flex items-center justify-center transition-all duration-300 overflow-hidden relative shrink-0 rounded-xl bg-white p-1"
-                        >
-                          {/* Reactive Glow Effect */}
-                          <motion.div 
-                            className="absolute inset-0 -z-10 rounded-full blur-[40px] opacity-20"
-                            style={{
-                              background: `radial-gradient(circle, var(--md-sys-color-primary) 0%, transparent 70%)`
-                            }}
-                            animate={{ 
-                              opacity: [0.1, 0.4, 0.1],
-                              scale: [0.8, 1.1, 0.8]
-                            }}
-                            transition={{
-                              duration: 3,
-                              repeat: Infinity,
-                              ease: "easeInOut"
-                            }}
-                          />
-                          <QRCodeCanvas 
-                            value={window.location.href} 
-                            size={computedQrSize} 
-                            style={{ width: '100%', height: '100%' }}
-                          />
-                          {/* Scanning Laser Line */}
-                          <motion.div 
-                            className="absolute left-0 right-0 h-0.5 bg-primary/60 shadow-[0_0_15px_rgba(230,0,126,0.8)] z-10"
-                            animate={{ top: ['0%', '100%', '0%'] }}
-                            transition={{
-                              duration: 3,
-                              repeat: Infinity,
-                              ease: "easeInOut"
-                            }}
-                          />
-                        </div>
-                        <p className="text-[10px] text-on-surface-variant font-medium flex items-center justify-center gap-1 text-center">
-                          <Camera className="w-3 h-3 text-primary shrink-0" />
-                          <span>Scan to open installation page</span>
-                        </p>
+              <div className="p-6 flex flex-col md:flex-row gap-6 flex-wrap max-w-full">
+                {/* Left Column */}
+                <div className="flex flex-col gap-6 md:w-5/12 shrink-0 w-full md:w-auto">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary">
+                        <Smartphone className="w-6 h-6" />
                       </div>
-                    );
-                  })()}
-                </motion.div>
+                      <div>
+                        <h2 className="text-xl font-bold text-on-surface md:text-lg lg:text-xl">Install Instructions</h2>
+                        <p className="text-xs text-on-surface-variant">Get Nexora on your home screen</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 md:hidden">
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(window.location.href);
+                          setCopyToast(true);
+                          setTimeout(() => setCopyToast(false), 2000);
+                        }}
+                        className="p-2 rounded-xl hover:bg-surface-container-high transition-all text-primary flex items-center gap-2 px-3 group min-w-[110px]"
+                        title="Copy Link"
+                      >
+                        <motion.div
+                          initial={false}
+                          animate={{ rotate: copyToast ? 360 : 0, scale: copyToast ? 1.2 : 1 }}
+                          className="relative w-4 h-4 flex items-center justify-center"
+                        >
+                          <AnimatePresence mode="wait">
+                            {copyToast ? (
+                              <motion.div
+                                key="check"
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <Check className="w-4 h-4 text-green-500" />
+                              </motion.div>
+                            ) : (
+                              <motion.div
+                                key="copy"
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <Copy className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                        <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">
+                          {copyToast ? 'Copied!' : 'Copy Link'}
+                        </span>
+                      </button>
+                      <button 
+                        onClick={() => setShowHelp(false)}
+                        className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
 
-                {/* Content */}
-                <div className="flex flex-col gap-4">
+                  {/* Tabs */}
+                  <div className="flex p-1 bg-surface-container-low rounded-2xl border border-outline-variant/20">
+                    <button
+                      onClick={() => setHelpTab('ios')}
+                      className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                        helpTab === 'ios' 
+                          ? 'bg-white shadow-sm text-primary' 
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      iOS
+                    </button>
+                    <button
+                      onClick={() => setHelpTab('android')}
+                      className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                        helpTab === 'android' 
+                          ? 'bg-white shadow-sm text-primary' 
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      Android
+                    </button>
+                    <button
+                      onClick={() => setHelpTab('desktop')}
+                      className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                        helpTab === 'desktop' 
+                          ? 'bg-white shadow-sm text-primary' 
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      Desktop
+                    </button>
+                  </div>
+
+                  {/* QR Code */}
+                  <motion.div
+                    className={`flex flex-col items-center justify-center p-3 bg-surface-container-low rounded-2xl border border-outline-variant/20 transition-all duration-500 shrink-0`}
+                  >
+                    <div className="flex items-center justify-between w-full mb-2">
+                      <p className="text-[10px] sm:text-xs font-bold text-on-surface">Scan to open on mobile</p>
+                      <button 
+                        onClick={() => setQrLarge(!qrLarge)}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-[9px] font-bold text-primary transition-all hover:bg-primary/10"
+                      >
+                        {qrLarge ? 'Small' : 'Large'}
+                      </button>
+                    </div>
+                    {(() => {
+                      // Adjust size for desktop layout
+                      const computedQrSize = Math.max(96, Math.min(manualModalWidth - 64, qrLarge ? 180 : (window.innerWidth >= 768 ? 160 : 120)));
+                      return (
+                        <div className="flex flex-col items-center gap-1.5 w-full">
+                          <div 
+                            style={{ width: `${computedQrSize}px`, height: `${computedQrSize}px` }}
+                            className="mx-auto flex items-center justify-center transition-all duration-300 overflow-hidden relative shrink-0 rounded-xl bg-white p-1"
+                          >
+                            {/* Reactive Glow Effect */}
+                            <motion.div 
+                              className="absolute inset-0 -z-10 rounded-full blur-[40px] opacity-20"
+                              style={{
+                                background: `radial-gradient(circle, var(--md-sys-color-primary) 0%, transparent 70%)`
+                              }}
+                              animate={{ 
+                                opacity: [0.1, 0.4, 0.1],
+                                scale: [0.8, 1.1, 0.8]
+                              }}
+                              transition={{
+                                duration: 3,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                              }}
+                            />
+                            <QRCodeCanvas 
+                              value={window.location.href} 
+                              size={computedQrSize} 
+                              style={{ width: '100%', height: '100%' }}
+                            />
+                            {/* Scanning Laser Line */}
+                            <motion.div 
+                              className="absolute left-0 right-0 h-0.5 bg-primary/60 shadow-[0_0_15px_rgba(230,0,126,0.8)] z-10"
+                              animate={{ top: ['0%', '100%', '0%'] }}
+                              transition={{
+                                duration: 3,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                              }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-on-surface-variant font-medium flex items-center justify-center gap-1 text-center">
+                            <Camera className="w-3 h-3 text-primary shrink-0" />
+                            <span>Scan to open installation page</span>
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </motion.div>
+                </div>
+
+                {/* Right Column: Content */}
+                <div className="flex flex-col gap-4 flex-1 min-w-0">
                   <div className="aspect-video w-full rounded-2xl bg-surface-container-high overflow-hidden border border-outline-variant/10 relative">
                     {helpTab === 'ios' ? (
                       <>
                         <img 
                           src="/src/assets/images/ios_pwa_install_steps_1784952049729.jpg" 
                           alt="iOS Install Steps" 
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover max-w-full"
                           referrerPolicy="no-referrer"
                         />
                         {/* Visual cue for iOS Share Button (typically bottom center) */}
@@ -933,7 +1006,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                         <img 
                           src="/src/assets/images/android_pwa_install_steps_1784952063366.jpg" 
                           alt="Android Install Steps" 
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover max-w-full"
                           referrerPolicy="no-referrer"
                         />
                         {/* Visual cue for Android Chrome Menu (typically top right) */}
