@@ -32,7 +32,8 @@ import {
   Cloud,
   Sparkles,
   Copy,
-  MoreVertical
+  MoreVertical,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -129,8 +130,10 @@ function ConfettiOverlay() {
 
 interface PlatformDetectionResult {
   os: 'ios' | 'android' | 'macos' | 'windows' | 'linux' | 'unknown';
-  browser: 'safari' | 'chrome' | 'firefox' | 'edge' | 'samsung' | 'opera' | 'unknown';
+  browser: 'safari' | 'chrome' | 'firefox' | 'edge' | 'samsung' | 'opera' | 'ie' | 'unknown';
   tab: 'ios' | 'android' | 'desktop';
+  isCompatible: boolean;
+  unsupportedReason: string | null;
 }
 
 function detectUserPlatform(): PlatformDetectionResult {
@@ -138,7 +141,9 @@ function detectUserPlatform(): PlatformDetectionResult {
   const ua = userAgent.toLowerCase();
   
   let os: 'ios' | 'android' | 'macos' | 'windows' | 'linux' | 'unknown' = 'unknown';
-  let browser: 'safari' | 'chrome' | 'firefox' | 'edge' | 'samsung' | 'opera' | 'unknown' = 'unknown';
+  let browser: 'safari' | 'chrome' | 'firefox' | 'edge' | 'samsung' | 'opera' | 'ie' | 'unknown' = 'unknown';
+  let isCompatible = true;
+  let unsupportedReason: string | null = null;
 
   // 1. Detect OS
   if (/android/i.test(ua)) {
@@ -160,7 +165,11 @@ function detectUserPlatform(): PlatformDetectionResult {
   }
 
   // 2. Detect Browser
-  if (/samsungbrowser/i.test(ua)) {
+  if (/msie|trident/i.test(ua)) {
+    browser = 'ie';
+    isCompatible = false;
+    unsupportedReason = 'Internet Explorer is outdated and does not support modern progressive web app (PWA) features or installation. Please upgrade to Google Chrome, Microsoft Edge, or Firefox.';
+  } else if (/samsungbrowser/i.test(ua)) {
     browser = 'samsung';
   } else if (/opr\/|opera/i.test(ua)) {
     browser = 'opera';
@@ -168,10 +177,40 @@ function detectUserPlatform(): PlatformDetectionResult {
     browser = 'edge';
   } else if (/firefox|fxios/i.test(ua)) {
     browser = 'firefox';
+    const ffMatch = ua.match(/firefox\/(\d+)/i);
+    if (ffMatch) {
+      const version = parseInt(ffMatch[1], 10);
+      if (version < 85) {
+        isCompatible = false;
+        unsupportedReason = `You are running Firefox version ${version}. Firefox 85 or newer is required to support the modern PWA standards and service workers needed for offline sync.`;
+      }
+    }
   } else if (/chrome|crios/i.test(ua)) {
     browser = 'chrome';
+    const chromeMatch = ua.match(/chrome\/(\d+)/i);
+    if (chromeMatch) {
+      const version = parseInt(chromeMatch[1], 10);
+      if (version < 80) {
+        isCompatible = false;
+        unsupportedReason = `You are running Google Chrome version ${version}. Chrome 80 or newer is required for stable PWA functionality and modern offline caching.`;
+      }
+    }
   } else if (/safari/i.test(ua) && !/chrome/i.test(ua) && !/chromium/i.test(ua)) {
     browser = 'safari';
+    const safariMatch = ua.match(/version\/(\d+)/i);
+    if (safariMatch) {
+      const version = parseInt(safariMatch[1], 10);
+      if (version < 13) {
+        isCompatible = false;
+        unsupportedReason = `Your Safari version (${version}) does not fully support progressive web app features. iOS 13+ or macOS Safari 13+ is required.`;
+      }
+    }
+  }
+
+  // General fallback check for ServiceWorker (the absolute engine of PWAs)
+  if (isCompatible && !('serviceWorker' in navigator)) {
+    isCompatible = false;
+    unsupportedReason = 'Service workers are disabled or unsupported in your current browser configuration, which is required to install the app. Please ensure Private Browsing is turned off and cookies are allowed.';
   }
 
   // 3. Map to helpTab ('ios' | 'android' | 'desktop')
@@ -182,7 +221,7 @@ function detectUserPlatform(): PlatformDetectionResult {
     tab = 'ios';
   }
 
-  return { os, browser, tab };
+  return { os, browser, tab, isCompatible, unsupportedReason };
 }
 
 interface InstallAppProps extends NavigationProps {
@@ -687,6 +726,25 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
             Install the app for a faster, seamless salon management experience.
           </p>
 
+          {detectedPlatform && !detectedPlatform.isCompatible && (
+            <div className="w-full mb-6 p-4 rounded-2xl bg-error/10 border border-error/20 text-left flex gap-3.5 items-start">
+              <div className="w-9 h-9 rounded-full bg-error/10 flex items-center justify-center shrink-0 text-error">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-xs sm:text-sm font-bold text-error">Incompatible Browser</h4>
+                <p className="text-[11px] sm:text-xs text-on-surface/85 mt-1 leading-relaxed">
+                  {detectedPlatform.unsupportedReason}
+                </p>
+                <div className="mt-2.5 flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-error bg-error/5 px-2.5 py-0.5 rounded-full border border-error/10 uppercase tracking-wide">
+                    PWA Blocked
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Benefits List */}
           <div className="w-full flex flex-col gap-3 mb-6">
             {/* Benefit 1 */}
@@ -874,6 +932,20 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
               </button>
 
               <div className="p-6 flex flex-col md:flex-row gap-6 flex-wrap max-w-full">
+                {detectedPlatform && !detectedPlatform.isCompatible && (
+                  <div className="w-full mb-2 p-4 rounded-2xl bg-error/10 border border-error/20 text-left flex gap-3.5 items-start">
+                    <div className="w-9 h-9 rounded-full bg-error/10 flex items-center justify-center shrink-0 text-error">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-xs sm:text-sm font-bold text-error">Incompatible Browser</h4>
+                      <p className="text-[11px] sm:text-xs text-on-surface/85 mt-1 leading-relaxed">
+                        {detectedPlatform.unsupportedReason}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Left Column */}
                 <div className="flex flex-col gap-6 md:w-5/12 shrink-0 w-full md:w-auto">
                   <div className="flex items-center justify-between">
@@ -886,7 +958,11 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
                         <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 mt-0.5">
                           <p className="text-xs text-on-surface-variant">Get Nexora on your home screen</p>
                           {detectedPlatform && (
-                            <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-md bg-primary/10 text-primary border border-primary/15">
+                            <span className={`inline-flex items-center gap-1 w-fit px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-md border ${
+                              detectedPlatform.isCompatible
+                                ? 'bg-primary/10 text-primary border-primary/15'
+                                : 'bg-error/10 text-error border-error/15'
+                            }`}>
                               Detected: {detectedPlatform.os} • {detectedPlatform.browser}
                             </span>
                           )}
