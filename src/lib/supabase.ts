@@ -27,3 +27,39 @@ export const supabase = createClient(effectiveUrl, effectiveKey);
 /** True when a usable Supabase client is available. */
 export const isSupabaseConfigured = () =>
   Boolean(effectiveUrl && effectiveKey && !effectiveUrl.includes('placeholder'));
+
+type AuthApiResponse = {
+  access_token?: string;
+  refresh_token?: string;
+  user?: unknown;
+  error?: { message?: string };
+  msg?: string;
+};
+
+/**
+ * Uses Vercel's same-origin function for the initial credentials exchange.
+ * This avoids client-network/CORS failures seen on some installed PWA browsers.
+ */
+export async function authenticateThroughApp(
+  route: 'signup' | 'login',
+  payload: Record<string, unknown>,
+) {
+  const response = await fetch(`/api/auth/${route}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = (await response.json().catch(() => ({}))) as AuthApiResponse;
+  if (!response.ok) throw new Error(result.error?.message || result.msg || 'Authentication request failed.');
+
+  if (result.access_token && result.refresh_token) {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  return { session: null, user: result.user };
+}

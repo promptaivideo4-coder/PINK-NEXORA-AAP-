@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Flower2, Mail, Lock, Eye, EyeOff, Check, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { NavigationProps } from '../types';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isSupabaseConfigured, authenticateThroughApp } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Login({ navigate }: NavigationProps) {
@@ -29,12 +29,7 @@ export default function Login({ navigate }: NavigationProps) {
     }
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) throw authError;
+      const data = await authenticateThroughApp('login', { email, password });
 
       if (data.user) {
         navigate('dashboard');

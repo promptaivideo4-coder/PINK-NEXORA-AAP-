@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, ChevronDown, ArrowRight, AlertCircle, Check } from 'lucide-react';
 import { NavigationProps } from '../types';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured, authenticateThroughApp } from '../lib/supabase';
 
 export default function RegistrationStepper({ navigate }: NavigationProps) {
   const [loading, setLoading] = useState(false);
@@ -32,23 +32,19 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
     }
 
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const data = await authenticateThroughApp('signup', {
         email,
         password,
-        options: {
-          data: {
-            // Match the main Nexora website's role contract so this owner can
-            // use the same Supabase account across all Nexora applications.
-            signup_role: 'business_user',
-            full_name: businessName,
-            business_name: businessName,
-            business_category: businessCategory,
-            contact_number: contactNumber,
-          },
+        data: {
+          // Match the main Nexora website's role contract so this owner can
+          // use the same Supabase account across all Nexora applications.
+          signup_role: 'business_user',
+          full_name: businessName,
+          business_name: businessName,
+          business_category: businessCategory,
+          contact_number: contactNumber,
         },
       });
-
-      if (signUpError) throw signUpError;
 
       if (data.session) {
         navigate('theme-selection');
