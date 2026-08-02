@@ -31,6 +31,9 @@ export const isSupabaseConfigured = () =>
 type AuthApiResponse = {
   access_token?: string;
   refresh_token?: string;
+  expires_in?: number;
+  expires_at?: number;
+  token_type?: string;
   user?: unknown;
   error?: { message?: string };
   msg?: string;
@@ -53,12 +56,30 @@ export async function authenticateThroughApp(
   if (!response.ok) throw new Error(result.error?.message || result.msg || 'Authentication request failed.');
 
   if (result.access_token && result.refresh_token) {
-    const { data, error } = await supabase.auth.setSession({
-      access_token: result.access_token,
-      refresh_token: result.refresh_token,
-    });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+      });
+      if (error) throw error;
+      return data;
+    } catch {
+      // Some installed browsers block direct cross-origin requests after the
+      // server exchange. Keep the authenticated session locally so login is
+      // still successful; the next app load restores it through Supabase.
+      const projectRef = new URL(effectiveUrl).hostname.split('.')[0];
+      const expiresAt = result.expires_at || Math.floor(Date.now() / 1000) + (result.expires_in || 3600);
+      const session = {
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        expires_at: expiresAt,
+        expires_in: result.expires_in || 3600,
+        token_type: result.token_type || 'bearer',
+        user: result.user,
+      };
+      localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(session));
+      return { session, user: result.user };
+    }
   }
 
   return { session: null, user: result.user };
