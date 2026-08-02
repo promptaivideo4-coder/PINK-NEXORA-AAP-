@@ -10,7 +10,14 @@ import { createClient } from '@supabase/supabase-js';
 const DEFAULT_SUPABASE_URL = 'https://qwaehqsmodekbgvnaavz.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3YWVocXNtb2Rla2Jndm5hYXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjQ5MjksImV4cCI6MjEwMDc0MDkyOX0.K92b2vkEb77dyu8fYYZpMTIbTyP98Vo80TaMo_Hmq_E';
 
-const configuredUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+// Accept a normal URL and also recover from accidental Markdown/brackets such as
+// "[https://project.supabase.co](https://project.supabase.co)" pasted into Vercel.
+function normaliseSupabaseUrl(value?: string): string | undefined {
+  const match = value?.trim().match(/https:\/\/[a-z0-9-]+\.supabase\.co/i);
+  return match?.[0];
+}
+
+const configuredUrl = normaliseSupabaseUrl(import.meta.env.VITE_SUPABASE_URL);
 const configuredAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 const effectiveUrl = configuredUrl || DEFAULT_SUPABASE_URL;
 const effectiveKey = configuredAnonKey || DEFAULT_SUPABASE_ANON_KEY;
