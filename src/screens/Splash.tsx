@@ -3,18 +3,18 @@ import { motion } from 'motion/react';
 import { Flower2 } from 'lucide-react';
 import { NavigationProps } from '../types';
 import ShaderBackground from '../components/ShaderBackground';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export default function Splash({ navigate }: NavigationProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          navigate('dashboard');
-        } else {
-          navigate('welcome');
-        }
-      });
+      if (!isSupabaseConfigured()) {
+        navigate('welcome');
+        return;
+      }
+      supabase.auth.getSession()
+        .then(({ data: { session } }) => navigate(session ? 'dashboard' : 'welcome'))
+        .catch(() => navigate('welcome'));
     }, 2500);
     return () => clearTimeout(timer);
   }, [navigate]);

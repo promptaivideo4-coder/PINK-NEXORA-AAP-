@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, ChevronDown, ArrowRight, AlertCircle, Check } from 'lucide-react';
 import { NavigationProps } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export default function RegistrationStepper({ navigate }: NavigationProps) {
   const [loading, setLoading] = useState(false);
@@ -19,6 +19,18 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
     setLoading(true);
     setError(null);
 
+    if (!isSupabaseConfigured()) {
+      setError('Sign-up is not configured yet. Please add the Supabase URL and anon key in Vercel environment variables.');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -34,8 +46,10 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
 
       if (signUpError) throw signUpError;
 
-      if (data.user) {
+      if (data.session) {
         navigate('theme-selection');
+      } else if (data.user) {
+        setError('Account created. Please check your email and verify your account before logging in.');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to sign up.');

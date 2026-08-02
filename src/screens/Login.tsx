@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Flower2, Mail, Lock, Eye, EyeOff, Check, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { NavigationProps } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Login({ navigate }: NavigationProps) {
@@ -21,6 +21,12 @@ export default function Login({ navigate }: NavigationProps) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (!isSupabaseConfigured()) {
+      setError('Authentication is not configured yet. Please add the Supabase URL and anon key in Vercel environment variables.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({
@@ -44,6 +50,12 @@ export default function Login({ navigate }: NavigationProps) {
     e.preventDefault();
     setForgotLoading(true);
     setError(null);
+
+    if (!isSupabaseConfigured()) {
+      setError('Authentication is not configured yet. Please contact the administrator.');
+      setForgotLoading(false);
+      return;
+    }
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(forgotEmail, {

@@ -64,32 +64,41 @@ async function startServer() {
 
   // Helper to generate a fallback offer when Gemini key is missing or fails
   function getFallbackOffer(
-    campaignGoal: string, 
-    customerType: string, 
-    occasion: string, 
-    services: string[], 
-    discountPreference: string, 
-    validity: string, 
-    language: string, 
-    tone: string
+    campaignGoal = 'Bookings',
+    customerType = 'All',
+    occasion = '',
+    services: unknown = [],
+    discountPreference = 'Percentage',
+    validity = '',
+    language = 'English',
+    tone = 'Professional'
   ) {
-    const serviceText = services.length > 0 ? services.join(' & ') : 'luxury services';
-    const discountVal = discountPreference === 'Percentage' ? '20% Off' : discountPreference === 'Fixed' ? '$15 Off' : 'Buy 1 Get 1 Free';
-    const code = ((occasion ? occasion.toUpperCase().substring(0, 4) : 'GLOW') + (discountPreference === 'Percentage' ? '20' : '15')).replace(/\s+/g, '');
-    
+    // API input is untrusted. Normalise it so a malformed request can never
+    // take down the Node process while the fallback response is being built.
+    const safeServices = Array.isArray(services)
+      ? services.filter((service): service is string => typeof service === 'string' && service.trim().length > 0)
+      : [];
+    const safeCustomerType = typeof customerType === 'string' && customerType.trim() ? customerType.trim() : 'All';
+    const safeOccasion = typeof occasion === 'string' ? occasion.trim() : '';
+    const safeValidity = typeof validity === 'string' ? validity.trim() : '';
+    const safeDiscountPreference = typeof discountPreference === 'string' ? discountPreference : 'Percentage';
+    const serviceText = safeServices.length > 0 ? safeServices.join(' & ') : 'luxury services';
+    const discountVal = safeDiscountPreference === 'Percentage' ? '20% Off' : safeDiscountPreference === 'Fixed' ? '₹500 Off' : 'Buy 1 Get 1 Free';
+    const code = ((safeOccasion ? safeOccasion.toUpperCase().substring(0, 4) : 'GLOW') + (safeDiscountPreference === 'Percentage' ? '20' : '15')).replace(/\s+/g, '');
+
     return {
-      title: `${occasion ? occasion + ' ' : ''}Special: ${discountVal} ${serviceText}`,
-      shortPromoText: `Elevate your style with our exclusive ${discountVal} on all ${serviceText}. Designed for ${customerType === 'All' ? 'everyone' : customerType + ' clients'} who deserve the ultimate luxury experience.`,
-      whatsappMessage: `Hi there! ✨ Treat yourself to Nexora's exclusive ${occasion ? occasion : 'seasonal'} offer. Enjoy ${discountVal} on our signature ${serviceText}! Valid until ${validity || 'the end of this month'}. Book your slot now using code ${code}. Click here: [Link]`,
+      title: `${safeOccasion ? safeOccasion + ' ' : ''}Special: ${discountVal} ${serviceText}`,
+      shortPromoText: `Elevate your style with our exclusive ${discountVal} on all ${serviceText}. Designed for ${safeCustomerType === 'All' ? 'everyone' : safeCustomerType + ' clients'} who deserve the ultimate luxury experience.`,
+      whatsappMessage: `Hi there! ✨ Treat yourself to Nexora's exclusive ${safeOccasion || 'seasonal'} offer. Enjoy ${discountVal} on our signature ${serviceText}! Valid until ${safeValidity || 'the end of this month'}. Book your slot now using code ${code}. Click here: [Link]`,
       suggestedCouponCode: code,
-      termsAndConditions: `Offer valid for ${customerType.toLowerCase()} customers only. Cannot be combined with other offers. Validity: ${validity || 'Limited time only'}.`
+      termsAndConditions: `Offer valid for ${safeCustomerType.toLowerCase()} customers only. Cannot be combined with other offers. Validity: ${safeValidity || 'Limited time only'}.`
     };
   }
 
   // API endpoint to generate AI suggested replies for reviews
   app.post("/api/suggest-reply", async (req, res) => {
     try {
-      const { reviewText, customerName, serviceName, rating, tone = "warm" } = req.body;
+      const { reviewText, customerName, serviceName, rating, tone = "warm" } = req.body || {};
 
       if (!reviewText) {
         return res.status(400).json({ error: "reviewText is required" });
@@ -148,7 +157,8 @@ Requirements:
       res.json({ suggestions, source: "gemini" });
     } catch (error) {
       console.error("Error in AI reply suggestion:", error);
-      const fallback = getFallbackReplies(req.body.customerName, req.body.serviceName, req.body.rating, req.body.tone);
+      const body = req.body || {};
+      const fallback = getFallbackReplies(body.customerName, body.serviceName, body.rating, body.tone);
       res.json({ suggestions: fallback, source: "fallback" });
     }
   });
@@ -156,7 +166,7 @@ Requirements:
   // API endpoint to generate custom luxury salon promotional offers using Gemini 1.5-flash
   app.post("/api/generate-offer", async (req, res) => {
     try {
-      const { campaignGoal, customerType, occasion, services = [], discountPreference, validity, language = "English", tone = "Professional" } = req.body;
+      const { campaignGoal = 'Bookings', customerType = 'All', occasion = '', services = [], discountPreference = 'Percentage', validity = '', language = "English", tone = "Professional" } = req.body || {};
 
       if (!process.env.GEMINI_API_KEY) {
         const fallback = getFallbackOffer(campaignGoal, customerType, occasion, services, discountPreference, validity, language, tone);
@@ -224,7 +234,8 @@ Return ONLY a JSON object matching the requested schema. No extra conversational
       res.json({ ...parsed, source: "gemini" });
     } catch (error) {
       console.error("Error generating offer with Gemini:", error);
-      const fallback = getFallbackOffer(req.body.campaignGoal, req.body.customerType, req.body.occasion, req.body.services, req.body.discountPreference, req.body.validity, req.body.language, req.body.tone);
+      const body = req.body || {};
+      const fallback = getFallbackOffer(body.campaignGoal, body.customerType, body.occasion, body.services, body.discountPreference, body.validity, body.language, body.tone);
       res.json({ ...fallback, source: "fallback" });
     }
   });
@@ -291,6 +302,14 @@ Return ONLY the raw JSON object, without markdown formatting or code blocks.`;
       console.error("Error analyzing image:", error);
       res.status(500).json({ error: "Failed to analyze image" });
     }
+  });
+
+  // Return JSON for malformed JSON payloads instead of Express's default HTML error page.
+  app.use((error: Error & { type?: string; status?: number }, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (error instanceof SyntaxError && error.type === 'entity.parse.failed') {
+      return res.status(400).json({ error: 'Invalid JSON request body' });
+    }
+    next(error);
   });
 
   // Vite middleware for development

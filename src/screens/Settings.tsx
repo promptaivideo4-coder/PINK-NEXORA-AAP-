@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -54,17 +54,19 @@ export default function Settings({ navigate }: NavigationProps) {
   React.useEffect(() => {
     // Check Supabase connection
     const checkConnection = async () => {
+      if (!isSupabaseConfigured()) {
+        setIsSupabaseConnected(false);
+        return;
+      }
       try {
-        const { data, error } = await supabase.from('services').select('id').limit(1);
-        if (error) throw error;
-        setIsSupabaseConnected(true);
-      } catch (err) {
-        // Fallback check if services table doesn't exist yet
-        const { data: { session } } = await supabase.auth.getSession();
-        setIsSupabaseConnected(!!session || !import.meta.env.VITE_SUPABASE_URL?.includes('placeholder'));
+        const { error } = await supabase.from('services').select('id').limit(1);
+        // A missing table means the connection is valid; any other API error is not.
+        setIsSupabaseConnected(!error || error.code === '42P01');
+      } catch {
+        setIsSupabaseConnected(false);
       }
     };
-    checkConnection();
+    void checkConnection();
   }, []);
 
   const languages = [
