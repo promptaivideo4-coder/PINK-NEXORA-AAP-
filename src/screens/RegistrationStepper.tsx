@@ -37,6 +37,10 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
         password,
         options: {
           data: {
+            // Match the main Nexora website's role contract so this owner can
+            // use the same Supabase account across all Nexora applications.
+            signup_role: 'business_user',
+            full_name: businessName,
             business_name: businessName,
             business_category: businessCategory,
             contact_number: contactNumber,
