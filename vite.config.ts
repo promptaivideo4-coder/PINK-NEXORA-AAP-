@@ -40,6 +40,11 @@ export default defineConfig(() => {
         },
         workbox: {
           cleanupOutdatedCaches: true,
+          // Let the SW take control immediately after first registration so
+          // Chrome can show the install prompt on the FIRST visit (default
+          // behaviour waits for a reload, which users read as
+          // "download not working").
+          clientsClaim: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           // Don't cache API calls, Supabase calls, or non-GET requests
           navigateFallback: 'index.html',
