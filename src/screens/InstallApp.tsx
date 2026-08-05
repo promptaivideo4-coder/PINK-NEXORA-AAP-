@@ -224,6 +224,11 @@ function detectUserPlatform(): PlatformDetectionResult {
   return { os, browser, tab, isCompatible, unsupportedReason };
 }
 
+function isInAppBrowser(): boolean {
+  const ua = (navigator.userAgent || '').toLowerCase();
+  return /wv|fbav|fban|whatsapp|instagram|line|messenger|snapchat|twitter|tweetdeck/.test(ua);
+}
+
 interface InstallAppProps extends NavigationProps {
   onInstalled?: () => void;
 }
@@ -817,13 +822,22 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
             </button>
 
             {!deferredPrompt && (
-              <button
-                onClick={() => setShowHelp(true)}
-                className="w-full mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-primary hover:underline transition-all"
-              >
-                <Info className="w-3 h-3" />
-                How to Install manually?
-              </button>
+              <>
+                <div className="w-full mt-1 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-[11px] font-medium text-amber-800 leading-relaxed">
+                  {isInAppBrowser() ? (
+                    <>You're viewing this inside an in-app browser (WhatsApp/Instagram etc.). PWA install only works in <strong>Chrome</strong> (Android) or <strong>Safari</strong> (iPhone) — tap ⋮ / Share and open in browser first.</>
+                  ) : (
+                    <>Your browser hasn't enabled the install prompt yet. On Chrome: <strong>reload this page once</strong>, then tap Install Now again — the install dialog will appear. On iPhone: use Safari and follow the manual steps.</>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowHelp(true)}
+                  className="w-full mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-primary hover:underline transition-all"
+                >
+                  <Info className="w-3 h-3" />
+                  How to Install manually?
+                </button>
+              </>
             )}
 
             {navigator.share && (
