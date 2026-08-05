@@ -22,6 +22,8 @@ import {
   Calendar,
   AlertCircle
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { fetchMyShop, listStaff as fetchStaffRows, createStaff as createStaffRow, deleteStaff as deleteStaffRow, ShopStaff } from '../lib/shopRepository';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface StaffMember {
@@ -41,68 +43,12 @@ interface StaffMember {
   statusInfo: string; // e.g. "Next: 2:00 PM", "Ends: 1:15 PM", "Back: Tomorrow"
 }
 
-const INITIAL_STAFF: StaffMember[] = [
-  {
-    id: 'ST-01',
-    name: 'Sanya Rao',
-    role: 'Senior Stylist',
-    specialty: 'Balayage & Color Correction',
-    phone: '+1 (310) 555-0145',
-    email: 'elena.rostova@nexora.com',
-    rating: 4.9,
-    reviewsCount: 124,
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzw-FINsqOVvcGQdzJ6FpXYOgm1eruw1ADnOEIGIePBqAv1Sj0fqUjb4tp-x5F-uPmfj0ee_vU0G-_P1-d29WZYQz5xkPwi8AHhcUT7D87_K2VL8c4zdqu2clG_YALpB6GnrHr5lzMuYu-GDQP5tDmI90XnsGKwiW0MIOfp9ARCuSHPEQ7oErLvv20Z4VnxVGa_tu0kmmGiB5TGJ9kh9Yce6UwwMB4MX_EFrvOmyKtczXXiaPnVA9HoG1IQbvDLPfG4IWjPUc10_s',
-    status: 'Available',
-    weeklyRev: '₹2.4L',
-    bookingsThisWeek: 28,
-    statusInfo: 'Next: 2:00 PM'
-  },
-  {
-    id: 'ST-02',
-    name: 'Kiran Kumar',
-    role: 'Color Specialist',
-    specialty: 'Vibrant Colors & Highlights',
-    phone: '+1 (310) 555-0198',
-    email: 'marcus.chen@nexora.com',
-    rating: 4.8,
-    reviewsCount: 98,
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyga_-IhTVr5NSAbjqjeCoJ1Bu_jl7CY9jLf86be5WQUJqFUT5Axn0Ewctks2h-7-E3S7QfErHnkeFbyI5E5WeoT3e8CrYMtLMgjWVa7DHhSUBdlbuZU-yRK4iULK_XKNSdLf19idGyjyeU96aNDbnSZVFnMrA-TYIVAOqlRc0Kbv7dzC7RzsJN7xZMT9Jj_NlK3v_sNA7Zcz27dIVucRiBYT2vUQNNFHzwo37biqHLLPGyn8TOfEadCHQIqt6ZZSEjukdEbjWwYQ',
-    status: 'In-Session',
-    weeklyRev: '₹3.1L',
-    bookingsThisWeek: 22,
-    statusInfo: 'Ends: 1:15 PM'
-  },
-  {
-    id: 'ST-03',
-    name: 'Suman Gupta',
-    role: 'Junior Stylist',
-    specialty: 'Modern Cuts & Blowouts',
-    phone: '+1 (310) 555-0123',
-    email: 'sarah.j@nexora.com',
-    rating: 4.6,
-    reviewsCount: 45,
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCqnBO6_8zyof5TquhFt61wmjfRvHWi2mmdCuJ25FU1h5bfnEdrhcBMLDsihOIeHQHZy0amhhVqh301sqwb1Kj2JMsw4NmoQgRkUccRmTQjq6H3RLgx45gB61IojoxkbKRmFF32-yDT4LU1D-84iw9fJuEctaeycEQSh18PhPLVuou3ANKAPP2QNMBhRinOkG9H0kK_-DNSWXM1Z60touK72oYpSJWgovXxPfC8zlS3fOYQNHV6Arawl-wkUeHuPHGt-29tkIxUJNs',
-    status: 'Off-Duty',
-    weeklyRev: '₹1.2L',
-    bookingsThisWeek: 14,
-    statusInfo: 'Back: Tomorrow'
-  }
-];
+
 
 type FilterType = 'All' | 'Available' | 'In-Session' | 'Off-Duty';
 
 export default function StaffManagement({ navigate }: NavigationProps) {
-  const [staffList, setStaffList] = useState<StaffMember[]>(() => {
-    const saved = localStorage.getItem('nexora_staff_list');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse nexora_staff_list', e);
-      }
-    }
-    return INITIAL_STAFF;
-  });
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
@@ -119,43 +65,74 @@ export default function StaffManagement({ navigate }: NavigationProps) {
   const [email, setEmail] = useState('');
   const [initialStatus, setInitialStatus] = useState<'Available' | 'In-Session' | 'Off-Duty'>('Available');
 
-  useEffect(() => {
-    localStorage.setItem('nexora_staff_list', JSON.stringify(staffList));
-  }, [staffList]);
+
+  const loadStaff = async () => {
+    try {
+      const shop = await fetchMyShop(supabase);
+      if (!shop) { setStaffList([]); return; }
+      const rows = await fetchStaffRows(supabase, shop.id);
+      setStaffList(rows.map((r: ShopStaff) => ({
+        id: r.id,
+        name: r.name,
+        role: r.role ?? 'Stylist',
+        specialty: r.specialty ?? 'General Styling',
+        phone: '',
+        email: '',
+        rating: 0,
+        reviewsCount: 0,
+        initials: r.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2),
+        status: r.employmentStatus === 'inactive' ? 'Off-Duty' : 'Available',
+        weeklyRev: '',
+        bookingsThisWeek: 0,
+        statusInfo: r.employmentStatus === 'inactive' ? 'Inactive' : 'Ready',
+      })));
+    } catch (err) {
+      console.warn('Staff load failed:', err);
+      setStaffList([]);
+    }
+  };
+
+  useEffect(() => { void loadStaff(); }, []);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleAddStaff = (e: React.FormEvent) => {
+  const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const initials = name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-
-    const newMember: StaffMember = {
-      id: `ST-${Date.now().toString().slice(-4)}`,
+    const shop = await fetchMyShop(supabase).catch(() => null);
+    if (!shop) {
+      triggerToast('Create your shop workspace first');
+      return;
+    }
+    const created = await createStaffRow(supabase, shop.id, {
       name: name.trim(),
-      role,
-      specialty: specialty.trim() || 'General Styling',
-      phone: phone.trim() || '+1 (310) 555-0100',
-      email: email.trim() || `${name.toLowerCase().replace(/\s+/g, '.')}@nexora.com`,
-      rating: 5.0,
-      reviewsCount: 1,
-      initials,
-      status: initialStatus,
-      weeklyRev: '₹0.0L',
-      bookingsThisWeek: 0,
-      statusInfo: initialStatus === 'Available' ? 'Ready' : initialStatus === 'In-Session' ? 'In service' : 'Away'
-    };
+      role: role || null,
+      specialty: specialty.trim() || null,
+    }).catch((err: any) => {
+      triggerToast(err?.message || 'Could not add staff');
+      return null;
+    });
+    if (!created) return;
 
-    setStaffList(prev => [newMember, ...prev]);
+    setStaffList(prev => [{
+      id: created.id,
+      name: created.name,
+      role: created.role ?? 'Stylist',
+      specialty: created.specialty ?? 'General Styling',
+      phone: '',
+      email: '',
+      rating: 0,
+      reviewsCount: 0,
+      initials: created.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2),
+      status: 'Available',
+      weeklyRev: '',
+      bookingsThisWeek: 0,
+      statusInfo: 'Ready',
+    }, ...prev]);
     setShowAddModal(false);
     
     // Reset fields
@@ -164,15 +141,19 @@ export default function StaffManagement({ navigate }: NavigationProps) {
     setPhone('');
     setEmail('');
     setInitialStatus('Available');
-    triggerToast(`${newMember.name} added to the team!`);
+    triggerToast(`${created.name} added to the team!`);
   };
 
-  const handleDeleteStaff = (id: string) => {
+  const handleDeleteStaff = async (id: string) => {
     const staff = staffList.find(s => s.id === id);
     setStaffList(prev => prev.filter(s => s.id !== id));
     setActiveMenuId(null);
-    if (staff) {
-      triggerToast(`${staff.name} removed from staff list`);
+    if (staff) triggerToast(`${staff.name} removed from staff list`);
+    try {
+      await deleteStaffRow(supabase, id);
+    } catch (err: any) {
+      triggerToast(err?.message || 'Could not delete staff');
+      await loadStaff();
     }
   };
 
@@ -189,16 +170,6 @@ export default function StaffManagement({ navigate }: NavigationProps) {
     }));
     setActiveMenuId(null);
     triggerToast('Staff status updated successfully');
-  };
-
-  const handleClearAll = () => {
-    setStaffList([]);
-    triggerToast('All staff cleared (simulated empty state)');
-  };
-
-  const handleRestoreDefaults = () => {
-    setStaffList(INITIAL_STAFF);
-    triggerToast('Demo staff team restored');
   };
 
   const filteredStaff = staffList.filter(s => {
@@ -264,25 +235,8 @@ export default function StaffManagement({ navigate }: NavigationProps) {
               )}
             </div>
 
-            {/* Filter icon button / Simulation buttons */}
+            {/* Filter icon button */}
             <div className="flex gap-1.5 items-center">
-              {staffList.length > 0 ? (
-                <button
-                  onClick={handleClearAll}
-                  className="h-[42px] px-3.5 rounded-[14px] border border-outline-variant bg-surface-container-lowest text-[11px] font-bold text-on-surface hover:bg-surface-container-low transition-colors active:scale-95 whitespace-nowrap"
-                  title="Simulate empty state"
-                >
-                  Clear Staff
-                </button>
-              ) : (
-                <button
-                  onClick={handleRestoreDefaults}
-                  className="h-[42px] px-3.5 rounded-[14px] border border-primary-container/30 bg-surface-container-lowest text-[11px] font-bold text-primary hover:bg-primary/5 transition-colors active:scale-95 whitespace-nowrap"
-                >
-                  Restore Defaults
-                </button>
-              )}
-
               <button 
                 onClick={() => setShowLearnModal(true)}
                 className="h-[42px] px-3 rounded-[14px] border border-outline-variant bg-surface-container-lowest text-on-surface flex items-center justify-center hover:bg-surface-container-low transition-colors active:scale-95"

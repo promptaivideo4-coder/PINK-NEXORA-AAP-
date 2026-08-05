@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
-import { Search, Clock, Plus, X, RotateCcw, Download } from 'lucide-react';
+import { Search, Clock, Plus, X, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { formatPrice } from '../utils/currency';
+import { supabase } from '../lib/supabase';
+import { fetchMyShop, listServices, deleteService, ShopService } from '../lib/shopRepository';
 
 interface ServiceItem {
   id: string;
@@ -13,86 +15,52 @@ interface ServiceItem {
   duration: number;
   price: number;
   image: string;
+  isActive: boolean;
 }
 
-const initialServices: ServiceItem[] = [
-  {
-    id: '1',
-    name: 'Balayage & Styling',
-    description: 'Full balayage treatment with toner, root smudge, and signature blowout styling.',
-    duration: 120,
-    price: 3500,
-    category: 'Hair',
-    image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&q=80&w=800'
-  },
-  {
-    id: '2',
-    name: 'Bridal Makeup Package',
-    description: 'Complete bridal makeup including HD makeup, hair styling, and draping.',
-    duration: 180,
-    price: 15000,
-    category: 'Makeup',
-    image: 'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&q=80&w=800'
-  },
-  {
-    id: '3',
-    name: 'De-tan & Bleach',
-    description: 'O3+ De-tan pack with gentle skin bleach for face and neck.',
-    duration: 45,
-    price: 800,
-    category: 'Skin & Spa',
-    image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&q=80&w=800'
-  },
-  {
-    id: '4',
-    name: 'Eyebrow Threading',
-    description: 'Precision eyebrow shaping and upper lip threading.',
-    duration: 15,
-    price: 100,
-    category: 'Threading',
-    image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&q=80&w=800'
-  },
-  {
-    id: '5',
-    name: 'Bridal Mehendi / Heena',
-    description: 'Intricate traditional bridal mehendi design for hands and feet.',
-    duration: 240,
-    price: 5000,
-    category: 'Mehendi',
-    image: 'https://images.unsplash.com/photo-1596455607563-ad6193f76b17?auto=format&fit=crop&q=80&w=800'
-  },
-  {
-    id: '6',
-    name: 'L\'Oréal Hair Spa',
-    description: 'Deep conditioning L\'Oréal hair spa with scalp massage and steam.',
-    duration: 60,
-    price: 1200,
-    category: 'Hair',
-    image: 'https://images.unsplash.com/photo-1560869713-7d0a29430803?auto=format&fit=crop&q=80&w=800'
-  },
-];
-
 export default function ServicesList({ navigate }: NavigationProps) {
-  const [services, setServices] = React.useState<ServiceItem[]>(() => {
-    const saved = localStorage.getItem('nexora_services');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse nexora_services', e);
-      }
-    }
-    return initialServices;
-  });
-
+  // Live data from the shared Supabase project — no localStorage, no demo menu.
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
 
-  React.useEffect(() => {
-    localStorage.setItem('nexora_services', JSON.stringify(services));
-  }, [services]);
+  const load = useCallback(async () => {
+    try {
+      const shop = await fetchMyShop(supabase);
+      if (!shop) { setServices([]); return; }
+      const rows = await listServices(supabase, shop.id);
+      setServices(rows.map((r: ShopService) => ({
+        id: r.id,
+        name: r.name,
+        category: 'General',
+        description: r.description ?? '',
+        duration: r.durationMinutes,
+        price: r.pricePaise / 100,
+        image: '',
+        isActive: r.isActive,
+      })));
+    } catch (err) {
+      console.warn('Services load failed:', err);
+      setServices([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const categories = ['All', 'Hair', 'Makeup', 'Skin & Spa', 'Threading', 'Mehendi'];
+  useEffect(() => { void load(); }, [load]);
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this service?')) return;
+    try {
+      await deleteService(supabase, id);
+      await load();
+    } catch (err: any) {
+      alert(err?.message || 'Could not delete service.');
+    }
+  };
+
+  const categories = ['All', ...Array.from(new Set(services.map((s) => s.category)))];
 
   const filteredServices = services.filter((srv) => {
     const matchesCat = activeCategory === 'All' || srv.category === activeCategory;
@@ -102,14 +70,6 @@ export default function ServicesList({ navigate }: NavigationProps) {
       srv.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
-
-  const handleClearAll = () => {
-    setServices([]);
-  };
-
-  const handleRestore = () => {
-    setServices(initialServices);
-  };
 
   return (
     <Layout currentScreen="services" navigate={navigate} title="Salon Elite" showSettings>
@@ -127,23 +87,6 @@ export default function ServicesList({ navigate }: NavigationProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {services.length > 0 ? (
-              <button
-                onClick={handleClearAll}
-                className="px-3.5 py-2 rounded-full border border-outline-variant/40 text-xs font-semibold text-on-surface-variant hover:text-error hover:border-error/40 transition-colors"
-              >
-                Simulate Empty Menu
-              </button>
-            ) : (
-              <button
-                onClick={handleRestore}
-                className="px-3.5 py-2 rounded-full border border-primary/30 text-xs font-semibold text-primary hover:bg-primary-fixed/20 transition-colors flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Restore Demo Menu</span>
-              </button>
-            )}
-
             <button
               onClick={() => navigate('new-service')}
               className="bg-primary-container hover:bg-primary text-on-primary-container px-4 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-md shadow-primary-container/20 transition-all active:scale-95"
@@ -205,15 +148,13 @@ export default function ServicesList({ navigate }: NavigationProps) {
                 }} 
                 className="bg-white/70 backdrop-blur-[20px] border border-[#e8e8e8] rounded-[18px] overflow-hidden flex flex-col group hover:shadow-[0px_10px_40px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 cursor-pointer"
               >
-                <div className="h-48 w-full relative overflow-hidden bg-surface-container-low">
-                  <img 
-                    src={service.image} 
-                    alt={service.name} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  />
+                <div className="h-36 w-full relative overflow-hidden bg-gradient-to-br from-primary-fixed/30 to-secondary-fixed/20 flex items-center justify-center">
                   <span className="absolute top-3 right-3 px-3 py-1 bg-white/80 backdrop-blur-md text-[11px] font-bold text-on-surface rounded-full border border-white/60 shadow-xs">
                     {service.category}
                   </span>
+                  {!service.isActive && (
+                    <span className="absolute top-3 left-3 px-2 py-0.5 bg-amber-500/90 text-white text-[10px] font-bold rounded-full">Inactive</span>
+                  )}
                 </div>
                 <div className="p-5 flex-grow flex flex-col justify-between bg-white">
                   <div>
@@ -226,7 +167,16 @@ export default function ServicesList({ navigate }: NavigationProps) {
                     <div className="flex items-center text-on-surface-variant text-[13px] font-semibold gap-1">
                       <Clock className="w-4 h-4 text-primary" /> {service.duration} min
                     </div>
-                    <div className="text-[20px] font-extrabold text-primary">{formatPrice(service.price)}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-[20px] font-extrabold text-primary">{formatPrice(service.price)}</div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); void handleDelete(service.id); }}
+                        className="p-2 rounded-full text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
+                        aria-label="Delete service"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -276,14 +226,9 @@ export default function ServicesList({ navigate }: NavigationProps) {
                   <span>Create Service</span>
                 </button>
 
-                {/* Secondary Action */}
-                <button 
-                  onClick={handleRestore}
-                  className="mt-4 px-6 py-2 text-primary font-bold text-xs hover:bg-secondary-fixed/30 rounded-full transition-colors active:scale-95 duration-200 flex items-center gap-1.5"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Import existing menu</span>
-                </button>
+                {loading && (
+                  <p className="mt-4 text-[13px] text-on-surface-variant">Loading services…</p>
+                )}
               </motion.div>
             </div>
           </div>

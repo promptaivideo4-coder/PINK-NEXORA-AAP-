@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
+import { fetchMyShop, fetchMyBookings } from '../lib/shopRepository';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
 import { Search, Clock, Scissors, User, Sparkles, Plus, Calendar, ArrowLeft, X, MessageSquare, FileText, CheckCircle2 } from 'lucide-react';
@@ -13,54 +15,29 @@ export interface BookingItem {
   clientAvatar?: string;
   clientInitials?: string;
   time: string;
-  status: 'Confirmed' | 'In-Progress' | 'Pending' | 'Completed';
+  status: 'Confirmed' | 'In-Progress' | 'Pending' | 'Completed' | 'Cancelled';
   service: string;
   stylist: string;
   price: string;
   serviceIcon: 'scissors' | 'user' | 'sparkles';
 }
 
-const initialBookings: BookingItem[] = [
-  {
-    id: '#BK-7829',
-    clientName: 'Ananya Sharma',
-    clientPhone: '919876543210',
-    clientAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC-nP9eCkGy2wbdT05CpC-bQQVwQQMLPOBPRJEw2zBFhG1vyLqTne9C4EcMHZQUquCnDF09P9bR3c5sf2te--nBJMG85ltQzCKokwdWGm3bZrpvALaxvEQgK6Vdgp60DPCZNcHoK20HWB3apHSJGxTi0kj0lcRdISfiyzLNPYETPVegam9lBR6ucdt87pKbMUbHzPv5s_UKHwknAkWdo2_IrviELZVHqv8XjQhIhhP6-f4C6rnoevq1DayOWMthqx-CnWVeE1HNgoc',
-    time: '09:00 AM - 10:30 AM',
-    status: 'Confirmed',
-    service: 'Balayage & Styling',
-    stylist: 'Rohan V.',
-    price: '₹3,500.00',
-    serviceIcon: 'scissors',
-  },
-  {
-    id: '#BK-7830',
-    clientName: 'Amit Patel',
-    clientPhone: '919876543211',
-    clientInitials: 'AP',
-    time: '10:45 AM - 11:30 AM',
-    status: 'In-Progress',
-    service: 'Beard Trim & Shape',
-    stylist: 'Rohan V.',
-    price: '₹1,200.00',
-    serviceIcon: 'user',
-  },
-  {
-    id: '#BK-7831',
-    clientName: 'Priya Kapoor',
-    clientPhone: '919876543212',
-    clientAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBNro9Tvx2mCg1vwb2oUbG_H3AMDFPVQ_r9dtXjs0XsvegF1ZbaDuEV5MPvyUlKkxAnamZSwpRbX_F378ZST4-G-lza0X03d1EZH2enioAI8HFWMK3pKsEDMoHBGKPfpRRJ2Gm83L1DWP-fxpBtiPhIvWozKi0CXHv2DXiIOz_7VMcieHpN-zsaHHee5M5CrYh2YU-oe13dPP1VLpJdTPEMJ6UCd9NzRLD1MyH_XuPuQifa-tFa4HNUrkxCpSOkX1QoAn2T5X8ES94',
-    time: '01:00 PM - 02:00 PM',
-    status: 'Pending',
-    service: 'Deep Conditioning',
-    stylist: 'Ananya S.',
-    price: '₹2,500.00',
-    serviceIcon: 'sparkles',
-  },
-];
+
+
+function mapStatus(db: string | null): BookingItem['status'] {
+  switch (db) {
+    case 'confirmed': return 'Confirmed';
+    case 'in_progress': case 'in-progress': return 'In-Progress';
+    case 'completed': return 'Completed';
+    case 'cancelled': case 'no_show': return 'Cancelled';
+    default: return 'Pending';
+  }
+}
 
 export default function Bookings({ navigate }: NavigationProps) {
   const { t } = useLanguage();
+  const [bookings, setBookings] = useState<BookingItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<null | any>(null);
@@ -70,6 +47,39 @@ export default function Bookings({ navigate }: NavigationProps) {
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'UPI' | 'Card'>('UPI');
   const [assignBooking, setAssignBooking] = useState<null | BookingItem>(null);
   const [selectedStylist, setSelectedStylist] = useState<string>('');
+
+  const load = useCallback(async () => {
+    try {
+      const shop = await fetchMyShop(supabase);
+      if (!shop) { setBookings([]); return; }
+      const rows = await fetchMyBookings(supabase, shop.id);
+      setBookings(rows.map((b) => {
+        const start = b.appointmentStart ? new Date(b.appointmentStart) : null;
+        const time = start
+          ? start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' — ' + b.serviceNames.join(', ')
+          : b.serviceNames.join(', ') || 'Booking';
+        return {
+          id: b.id.slice(0, 8).toUpperCase(),
+          clientName: 'Guest',
+          clientPhone: '',
+          clientInitials: 'G',
+          time,
+          status: mapStatus(b.status),
+          service: b.serviceNames.join(', ') || 'Booking',
+          stylist: '',
+          price: b.totalPaise != null ? '₹' + (b.totalPaise / 100).toFixed(2) : '',
+          serviceIcon: 'scissors',
+        };
+      }));
+    } catch (err) {
+      console.warn('Bookings load failed:', err);
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   const handleWhatsAppReminder = (item: BookingItem) => {
     const message = `Hello ${item.clientName}! This is a friendly reminder for your appointment at Nexora Salon.\n\nService: ${item.service}\nTime: ${item.time}\nStylist: ${item.stylist}\n\nनमस्ते! हम आपको नेक्सोरा सैलून में आपकी अपॉइंटमेंट की याद दिला रहे हैं।\n\nWe look forward to seeing you!`;
@@ -88,7 +98,7 @@ export default function Bookings({ navigate }: NavigationProps) {
     'Completed': t('completed'),
   };
 
-  const filteredBookings = initialBookings.filter(item => {
+  const filteredBookings = bookings.filter(item => {
     const matchesFilter = activeFilter === 'All' || item.status === activeFilter;
     const matchesSearch = searchQuery.trim() === '' || 
       item.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -100,6 +110,18 @@ export default function Bookings({ navigate }: NavigationProps) {
   const openDrawer = (booking: BookingItem) => {
     setSelectedBooking(booking);
   };
+
+  if (!loading && bookings.length === 0) {
+    return (
+      <Layout currentScreen="bookings" navigate={navigate} title="NEXORA SALONOS">
+        <div className="px-4 py-6 max-w-md mx-auto w-full min-h-[calc(100vh-120px)] flex flex-col items-center justify-center gap-3 text-center">
+          <Calendar className="w-12 h-12 text-on-surface-variant/40" />
+          <h2 className="text-xl font-bold text-on-surface">No bookings yet</h2>
+          <p className="text-sm text-on-surface-variant">Bookings for your shop will appear here once customers book your published salon.</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout currentScreen="bookings" navigate={navigate} title="NEXORA SALONOS">

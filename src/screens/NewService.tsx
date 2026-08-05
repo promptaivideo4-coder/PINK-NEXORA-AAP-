@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import TopBar from '../components/TopBar';
 import { NavigationProps } from '../types';
 import { ImagePlus, ChevronDown, Clock, X, Sparkles } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { fetchMyShop, createService } from '../lib/shopRepository';
 
 interface ServiceTemplate {
   name: string;
@@ -108,44 +110,29 @@ export default function NewService({ navigate }: NavigationProps) {
     setSelectedPreset(tpl.name);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const saved = localStorage.getItem('nexora_services');
-    let currentList = [];
-    if (saved) {
-      try {
-        currentList = JSON.parse(saved);
-      } catch (err) {
-        console.error('Failed to load current services list', err);
+    if (!serviceName.trim() || !duration || !price) {
+      alert('Name, duration and price are required.');
+      return;
+    }
+    try {
+      const shop = await fetchMyShop(supabase);
+      if (!shop) {
+        alert('Create your shop workspace first (Dashboard → Create your shop workspace).');
+        return;
       }
+      await createService(supabase, shop.id, {
+        name: serviceName,
+        description: description || null,
+        durationMinutes: Number(duration),
+        pricePaise: Math.round(Number(price) * 100),
+        isBookableOnline: true,
+      });
+      navigate('services');
+    } catch (err: any) {
+      alert(err?.message || 'Could not save the service.');
     }
-
-    let mappedCat: 'Hair' | 'Nails' | 'Spa' | 'Aesthetic' = 'Hair';
-    if (category === 'haircut' || category === 'color' || category === 'extensions') {
-      mappedCat = 'Hair';
-    } else if (category === 'nails') {
-      mappedCat = 'Nails';
-    } else if (category === 'treatment') {
-      mappedCat = 'Spa';
-    } else if (category === 'makeup') {
-      mappedCat = 'Aesthetic';
-    }
-
-    const newService = {
-      id: `SRV-${Date.now()}`,
-      name: serviceName,
-      category: mappedCat,
-      description: description,
-      duration: Number(duration),
-      price: Number(price),
-      image: imagePreview || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDw9naRZ0loBzUpQG7MWjsnG_zY_PI1ow606HO1hgOtQCN7eS4F9SNU82vaAlJuI9nP_pA0lqH-3gDIl6BedEJ2KMYBqnjLPx81IRT1u-5ZNCXvIV96G4Of2THK_tGUJkjAF49lnh5VyTsaPI3VJQphCIO6fflhrL6Ti0deu6eq955lQwvQeJMhwk4SF5FbCjnmV9Y9Trz0r3lSW_Q3EebSRGkhUrv5A2V-0u9qwXA2pdms4WzmRAD_jB30b5KUn6FaIv6bVeXayw0'
-    };
-
-    currentList.push(newService);
-    localStorage.setItem('nexora_services', JSON.stringify(currentList));
-
-    navigate('services');
   };
 
   return (

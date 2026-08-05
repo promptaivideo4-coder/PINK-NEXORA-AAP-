@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, ChevronDown, ArrowRight, AlertCircle, Check } from 'lucide-react';
 import { NavigationProps } from '../types';
-import { isSupabaseConfigured, authenticateThroughApp } from '../lib/supabase';
+import { supabase, isSupabaseConfigured, authenticateThroughApp } from '../lib/supabase';
+import { bootstrapMyShop } from '../lib/shopRepository';
 
 export default function RegistrationStepper({ navigate }: NavigationProps) {
   const [loading, setLoading] = useState(false);
@@ -47,6 +48,19 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
       });
 
       if (data.session) {
+        // Phase 3: create the owner's shop workspace (draft — verified=false,
+        // invisible to customers until the proposal publish workflow). The RPC
+        // is idempotent-safe: if it fails (e.g. workspace already exists), we
+        // still proceed — Dashboard shows the shop and its status.
+        try {
+          await bootstrapMyShop(supabase, {
+            businessName,
+            businessCategory,
+            contactNumber,
+          });
+        } catch (err: any) {
+          console.warn('Shop workspace bootstrap skipped:', err?.message || err);
+        }
         navigate('theme-selection');
       } else if (data.user) {
         setError('Account created. Please check your email and verify your account before logging in.');
