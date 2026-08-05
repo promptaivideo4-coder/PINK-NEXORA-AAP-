@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
+import { fetchWalletOverview } from '../lib/shopRepository';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
 import { 
@@ -53,119 +55,40 @@ interface PayoutMethod {
   meta: string;
 }
 
-const initialTransactions: Transaction[] = [
-  {
-    id: 'tx-1',
-    client: 'Ananya Sharma',
-    service: 'Balayage & Cut',
-    date: 'Oct 22, 2:30 PM',
-    isoDate: '2026-10-22',
-    amount: '+₹28,500.00',
-    isPositive: true,
-    status: 'Completed',
-    iconType: 'hair',
-    method: 'Visa ending in 8842',
-    fee: '₹855.00',
-    net: '₹27,645.00',
-    transactionId: 'TXN-90418294'
-  },
-  {
-    id: 'tx-2',
-    client: 'Priya Kapoor',
-    service: 'Deep Conditioning',
-    date: 'Oct 21, 11:15 AM',
-    isoDate: '2026-10-21',
-    amount: '+₹12,000.00',
-    isPositive: true,
-    status: 'Completed',
-    iconType: 'spa',
-    method: 'Mastercard ending in 1042',
-    fee: '₹360.00',
-    net: '₹11,640.00',
-    transactionId: 'TXN-88219401'
-  },
-  {
-    id: 'tx-3',
-    client: 'Product Sale',
-    service: 'Olaplex No.3 Hair Perfector',
-    date: 'Oct 21, 4:45 PM',
-    isoDate: '2026-10-21',
-    amount: '+₹3,000.00',
-    isPositive: true,
-    status: 'Completed',
-    iconType: 'shop',
-    method: 'Apple Pay / UPI',
-    fee: '₹90.00',
-    net: '₹2,910.00',
-    transactionId: 'TXN-88210399'
-  },
-  {
-    id: 'tx-4',
-    client: 'Rohan Verma',
-    service: 'Blowout',
-    date: 'Oct 19, 1:00 PM',
-    isoDate: '2026-10-19',
-    amount: '-₹4,500.00',
-    isPositive: false,
-    status: 'Refunded',
-    iconType: 'refund',
-    method: 'Refund to Visa ending in 3319',
-    fee: '₹0.00',
-    net: '-₹4,500.00',
-    transactionId: 'TXN-77319400'
-  },
-  {
-    id: 'tx-5',
-    client: 'Amit Patel',
-    service: 'Full Highlights & Style',
-    date: 'Oct 18, 3:15 PM',
-    isoDate: '2026-10-18',
-    amount: '+₹31,000.00',
-    isPositive: true,
-    status: 'Completed',
-    iconType: 'hair',
-    method: 'Visa ending in 5510',
-    fee: '₹930.00',
-    net: '₹30,070.00',
-    transactionId: 'TXN-76104921'
-  },
-  {
-    id: 'tx-6',
-    client: 'Sunita Rao',
-    service: 'Keratin Treatment',
-    date: 'Sep 15, 2026',
-    isoDate: '2026-09-15',
-    amount: '+₹35,000.00',
-    isPositive: true,
-    status: 'Completed',
-    iconType: 'hair',
-    method: 'Visa ending in 1092',
-    fee: '₹1,050.00',
-    net: '₹33,950.00',
-    transactionId: 'TXN-65104882'
-  },
-  {
-    id: 'tx-7',
-    client: 'Neha Gupta',
-    service: 'Manicure & Spa Pedicure',
-    date: 'Aug 30, 2026',
-    isoDate: '2026-08-30',
-    amount: '+₹9,500.00',
-    isPositive: true,
-    status: 'Completed',
-    iconType: 'spa',
-    method: 'Mastercard ending in 5501',
-    fee: '₹285.00',
-    net: '₹9,215.00',
-    transactionId: 'TXN-54019283'
-  }
-];
+
 
 export default function Wallet({ navigate }: NavigationProps) {
   const { t } = useLanguage();
-  const [balance, setBalance] = useState(425000.00);
-  const [pendingSettlement, setPendingSettlement] = useState(85000.00);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [balance, setBalance] = useState(0);
+  const [pendingSettlement, setPendingSettlement] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  const load = useCallback(async () => {
+    try {
+      const overview = await fetchWalletOverview(supabase);
+      setBalance(overview.balancePaise / 100);
+      setPendingSettlement(overview.pendingPaise / 100);
+      setTransactions(overview.transactions.map((tx, i) => ({
+        id: `tx-${i}-${tx.id.slice(0, 8)}`,
+        client: tx.txType === 'credit' ? 'Nexora credit' : 'Nexora debit',
+        service: tx.reason ?? (tx.refType ?? 'Ledger entry'),
+        date: tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+        isoDate: tx.createdAt ? new Date(tx.createdAt).toISOString().slice(0, 10) : '',
+        amount: (tx.txType === 'credit' ? '+' : '-') + getCurrencySymbol() + (tx.amountPaise / 100).toFixed(2),
+        isPositive: tx.txType === 'credit',
+        status: 'Completed',
+        iconType: tx.txType === 'credit' ? 'spa' : 'shop',
+        method: 'Wallet',
+        fee: '',
+        net: '',
+        transactionId: tx.id,
+      })));
+    } catch (err) {
+      console.warn('Wallet load failed:', err);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
   const [filter, setFilter] = useState<'All' | 'Completed' | 'Refunded'>('All');
   
   // Date Range Picker state
@@ -267,35 +190,12 @@ export default function Wallet({ navigate }: NavigationProps) {
 
   const handleWithdraw = (e: React.FormEvent) => {
     e.preventDefault();
-    const amt = parseFloat(withdrawAmount);
-    if (isNaN(amt) || amt <= 0 || amt > balance) return;
-
-    setBalance(prev => prev - amt);
-    
-    const todayIso = new Date().toISOString().split('T')[0];
-    const selectedMethod = payoutMethods.find(m => m.id === selectedPayoutId);
-    
-    // Add transaction record
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      client: 'Bank Withdrawal',
-      service: selectedMethod?.type === 'upi' ? 'Instant IMPS Transfer' : 'NEFT Bank Payout',
-      date: 'Just now',
-      isoDate: todayIso,
-      amount: `-₹${amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      isPositive: false,
-      status: 'Completed',
-      iconType: 'refund',
-      method: selectedMethod?.meta || 'Withdrawal',
-      fee: selectedMethod?.type === 'upi' ? `₹${(amt * 0.015).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '₹0.00',
-      net: `-₹${amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      transactionId: `WD-${Math.floor(10000000 + Math.random() * 90000000)}`
-    };
-
-    setTransactions([newTx, ...transactions]);
+    // Phase 3: wallet is READ-ONLY. No client-side money movement — Razorpay
+    // payout processing comes in a later phase (per PDR). Ledger rows are
+    // only ever created server-side.
     setIsWithdrawOpen(false);
-    setIsSuccessMessage(`Successfully requested withdrawal of ${formatPrice(amt, true)}!`);
-    setTimeout(() => setIsSuccessMessage(null), 4000);
+    setIsSuccessMessage('Withdrawals are not available yet — payouts arrive via the secure Razorpay pipeline in a later phase.');
+    setTimeout(() => setIsSuccessMessage(null), 5000);
   };
 
   const validateNewMethod = () => {
