@@ -34,6 +34,8 @@ export interface MyShop {
   address: string | null;
   area: string | null;
   city: string | null;
+  latitude: number | null;
+  longitude: number | null;
   verified: boolean;
   acceptsOnlineBookings: boolean;
   ratingAverage: number;
@@ -160,7 +162,7 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
 
   const { data: salons, error: salonsError } = await client
     .from('salons')
-    .select('id, organization_id, name, business_category, phone, address, area, city, verified, accepts_online_bookings, rating_average')
+    .select('id, organization_id, name, business_category, phone, address, area, city, latitude, longitude, verified, accepts_online_bookings, rating_average')
     .in('organization_id', orgIds)
     .is('deleted_at', null);
   if (salonsError) throw salonsError;
@@ -189,6 +191,8 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
     address: salon.address ?? null,
     area: salon.area ?? null,
     city: salon.city ?? null,
+    latitude: typeof salon.latitude === 'number' ? salon.latitude : null,
+    longitude: typeof salon.longitude === 'number' ? salon.longitude : null,
     verified: Boolean(salon.verified),
     acceptsOnlineBookings: Boolean(salon.accepts_online_bookings),
     ratingAverage: Number(salon.rating_average ?? 0),

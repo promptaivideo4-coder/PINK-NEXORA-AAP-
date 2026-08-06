@@ -33,6 +33,7 @@ import CancellationRefundPolicy from './screens/CancellationRefundPolicy';
 import RoleConflict from './screens/RoleConflict';
 import ResetPassword from './screens/ResetPassword';
 import Marketing from './screens/Marketing';
+import NearbySalons from './screens/NearbySalons';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { OfflineSyncProvider } from './contexts/OfflineSyncContext';
 import AddToHomeScreenPrompt from './components/AddToHomeScreenPrompt';
@@ -311,6 +312,8 @@ export default function App() {
         return <ServerError navigate={navigate} />;
       case 'marketing':
         return <Marketing navigate={navigate} />;
+      case 'nearby-salons':
+        return <NearbySalons navigate={navigate} />;
       default:
         return <Dashboard navigate={navigate} />;
     }

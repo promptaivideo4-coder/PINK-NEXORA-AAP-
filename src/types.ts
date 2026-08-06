@@ -31,7 +31,8 @@ export type ScreenName =
   | 'new-staff'
   | 'staff-detail'
   | 'server-error'
-  | 'marketing';
+  | 'marketing'
+  | 'nearby-salons';
 
 export const VALID_SCREENS: ScreenName[] = [
   'splash', 'welcome', 'login', 'reset-password', 'register-stepper', 'dashboard',
@@ -41,7 +42,7 @@ export const VALID_SCREENS: ScreenName[] = [
   'website-dashboard', 'website-gallery', 'wallet', 'transaction-detail',
   'revenue-analytics', 'analytics', 'reviews', 'install-app',
   'app-update', 'staff', 'new-staff', 'staff-detail', 'server-error',
-  'marketing'
+  'marketing', 'nearby-salons'
 ];
 
 export interface Theme {

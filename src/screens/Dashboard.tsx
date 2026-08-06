@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import InstallAppBanner from '../components/InstallAppBanner';
 import { NavigationProps } from '../types';
-import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket } from 'lucide-react';
+import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket, MapPin } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
@@ -86,6 +86,23 @@ export default function Dashboard({ navigate }: NavigationProps) {
 
         {/* PWA Install Banner — hamesha dikhta hai (jab tak installed nahi) */}
         <InstallAppBanner navigate={navigate as (path: string) => void} />
+
+        {/* Nearby Salons — GPS location system entry */}
+        <button
+          onClick={() => navigate('nearby-salons')}
+          className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 hover:shadow-md transition-all active:scale-[0.99] text-left"
+        >
+          <div className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-md">
+            <MapPin className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-bold text-on-surface">Nearby Salons</h3>
+            <p className="text-[11px] text-on-surface-variant">
+              GPS se salons ko distance ke hisaab se sorted dekho (nearest first)
+            </p>
+          </div>
+          <span className="text-primary text-xs font-extrabold">Open →</span>
+        </button>
 
         {/* Welcome Section — live shop + publish status */}
         <section className="flex flex-col gap-2">
