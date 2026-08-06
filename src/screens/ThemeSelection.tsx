@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle, Eye, Star, X, Laptop, Smartphone, Tablet, Spark
 import { motion, AnimatePresence } from 'motion/react';
 import { NavigationProps, Theme } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
+import { SALON_THEMES } from '../lib/siteTemplates';
 import ThemePreview from '../components/ThemePreview';
 
 export default function ThemeSelection({ navigate }: NavigationProps) {
@@ -12,65 +13,7 @@ export default function ThemeSelection({ navigate }: NavigationProps) {
   const [previewTab, setPreviewTab] = useState<'home' | 'services' | 'gallery' | 'booking'>('home');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const themes: Theme[] = [
-    // ... same theme array as before
-    {
-      id: 'modern-minimal',
-      name: 'Modern Minimal',
-      description: 'Clean, airy, and focused on your work.',
-      tagline: 'Luminous & Free-spirited style for natural beauty',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBvyCJ7cKwxcz80EPFX3_SsAiZI7j5BG8scu-eroiZOeA97VyqVD9R2y8TYR4yDsFrNjGmRREO2ZboLA-b83HfsaAlbSUwkrNW0uUrXXIY2tiW8Nve3whlWtcVG4sVfQCbFsGgmVABmXESQ2tlP_NGestX1dfHr-YB7bcsi3A6n_eVx-XCxxPHAttVorxQIj76QlsM1cZYBJcyUOJ8QOfPw2uHJmQ-rw4YSec0rnTKcZG24WjFzm9Dnvq3Q9Bn136eC68N1q7gv5dg',
-      recommended: false,
-      primaryColor: '#2D2A26',
-      bgColor: '#FAF8F5',
-      textColor: '#1A1816',
-      accentColor: '#C5A059',
-      fontStyle: 'font-sans',
-      features: ['Spacious Layout', 'Soft Warm Tones', 'High Contrast Cards', 'Minimal Navigation']
-    },
-    {
-      id: 'classic-elegance',
-      name: 'Classic Elegance',
-      description: 'Timeless sophistication for luxury salons.',
-      tagline: 'Opulent & Refined luxury cuts for a statement look',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAYjwetOJmL1oAyY1bVaI8WrK4Z4pNN4nMwEyWkeENyXoMif0X96hmpiT-Whp01-QojPyt-ofEQaiC7cK1GQdRjzvK3T9aNVFsO3c0bAA8Eb2IHmznvRcU4yeUx9HNmlnoz7TWIyqfTcGEvyMKRlTYkIoq7XggHYHytrmiSC1_m93UtbdcR0j0MYsv8NNORH9gBeNMvjk1ig6mOp5uK_Y9dOsm2VggPtJMswa4bQ_35hCnLC8FnwiFTpTdegVAyChsM6eY-_k8hUkk',
-      recommended: true,
-      primaryColor: '#b90064',
-      bgColor: '#fcf9f8',
-      textColor: '#1c1b1b',
-      accentColor: '#db227b',
-      fontStyle: 'font-serif',
-      features: ['Gold & Rose Accents', 'Serif Display Fonts', 'Marble Aesthetic', 'Hero Video/Carousel Ready']
-    },
-    {
-      id: 'bold-luxury',
-      name: 'Bold Luxury',
-      description: 'Make a statement with high-contrast design.',
-      tagline: 'Avant-Garde Hair Artistry & High Energy Atmosphere',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBkoIlcVMX0FoA7CDC8KPZ9CPiTvnPq9ag69qyMdFykSMR_lZxMyitgySGdMh_-D-MgKp0tTRPxtEh-c_Y8WbFkf_aymNlBZ9JShAogAnn6OGLQEQ2NLinqmzqvJXv0x6ngEQFWLTzOc7AQP9O_kzuLPO8IPMQ8tSO9zfU4aZvg1JSTb00uZSkBxIVznyzgnprU9ptdyF8kwkkgliSX9qNbtfwgaGDlpU0wxQEfaxTAnBt8hegTqQa_uz4AzRiK_1WcI4lpXT1VjAg',
-      recommended: false,
-      primaryColor: '#FF007A',
-      bgColor: '#0F0F12',
-      textColor: '#F3F0EF',
-      accentColor: '#00F0FF',
-      fontStyle: 'font-sans',
-      features: ['Dark Mode Aesthetic', 'Neon Glowing Buttons', 'Bold Typography', 'Edge-to-edge Gallery']
-    },
-    {
-      id: 'summer-vibes',
-      name: 'Summer Vibes',
-      description: 'Bright, energetic, and full of sunshine.',
-      tagline: 'Sun-Kissed Glow & Vibrant Summer Styling',
-      image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=800',
-      recommended: false,
-      primaryColor: '#F97316',
-      bgColor: '#FFFBEB',
-      textColor: '#7C2D12',
-      accentColor: '#FACC15',
-      fontStyle: 'font-sans',
-      features: ['Tropical Palette', 'Vibrant Animations', 'Sunny Accents', 'Relaxed Layout']
-    },
-  ];
+  const themes: Theme[] = SALON_THEMES;
 
   const handleSelectTheme = (theme: Theme) => {
     updateThemeSettings(theme);

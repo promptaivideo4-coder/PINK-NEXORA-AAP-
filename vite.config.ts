@@ -105,7 +105,9 @@ export default defineConfig(() => {
           // navigateFallbackDenylist is also useful if we had specific API routes handled by the same origin
         },
         devOptions: {
-          enabled: false, // Don't block debugging in dev
+          // Register the service worker in dev too, so beforeinstallprompt
+          // fires and the PWA install option is actually available/testable.
+          enabled: true,
         }
       })
     ],
@@ -120,6 +122,8 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Allow preview hosts (e.g. sandboxed live previews) to access the dev server.
+      allowedHosts: true as const,
     },
   };
 });

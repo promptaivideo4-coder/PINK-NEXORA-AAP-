@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Generated live websites (publish/<slug>/index.html)
+publish/
+
+# VitePWA dev service worker build output
+dev-dist/

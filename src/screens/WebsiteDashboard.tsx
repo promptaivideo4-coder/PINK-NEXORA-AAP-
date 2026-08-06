@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { NavigationProps, WebsiteConfig } from '../types';
 import WebsiteConfigEditor from '../components/WebsiteConfigEditor';
 import LivePreview from '../components/LivePreview';
+import { renderSiteHTML } from '../lib/siteTemplates';
 import { 
   Eye, 
   CalendarCheck, 
@@ -14,7 +15,10 @@ import {
   ImagePlus, 
   Users, 
   ArrowUpRight,
-  Palette
+  Palette,
+  Copy,
+  Check,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../contexts/ThemeContext';
@@ -80,25 +84,57 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
   ]);
 
   const liveUrl = "https://luxe-salon-app.web.app";
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const getSlug = () => {
+    const slug = (websiteConfig.businessName || 'mysalon')
+      .toLowerCase().trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'mysalon';
+    return slug;
+  };
 
   const handleOpenPreviewModal = () => {
     setShowSuccessModal(true);
   };
 
-  const confirmAndPublish = () => {
+  const confirmAndPublish = async () => {
     setIsPublishing(true);
-    setTimeout(() => {
+    setPublishError(null);
+    try {
+      const html = renderSiteHTML(websiteConfig, activeTheme.id);
+      const res = await fetch('/api/publish-site', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html, slug: getSlug() }),
+      });
+      const data = await res.json();
+      if (data.ok && data.url) {
+        const url = new URL(data.url, window.location.origin).toString();
+        setPublishedUrl(url);
+        setShowSuccessModal(false);
+      } else {
+        setPublishError(data.error || 'Unknown error');
+      }
+    } catch (e) {
+      setPublishError(String(e && (e as Error).message ? (e as Error).message : e));
+    } finally {
       setIsPublishing(false);
-      setShowSuccessModal(false);
-      // Here you would trigger actual deployment.
-      // For this prototype, just show a success toast.
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-    }, 1500);
+    }
   };
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(liveUrl);
+  const copyLink = async () => {
+    if (!publishedUrl) return;
+    try {
+      await navigator.clipboard.writeText(publishedUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
   };
 
   return (
@@ -113,11 +149,70 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
                 <h2 className="text-xl font-bold">Interactive Preview</h2>
                 <div className="flex gap-2">
                     <button onClick={() => setShowSuccessModal(false)} className="px-4 py-2 rounded-xl bg-surface-variant">Back to Edit</button>
-                    <button onClick={confirmAndPublish} className="px-4 py-2 rounded-xl bg-primary text-white">Confirm & Publish Live</button>
+                    <button onClick={confirmAndPublish} disabled={isPublishing} className="px-4 py-2 rounded-xl bg-primary text-white disabled:opacity-70">
+                      {isPublishing ? 'Publishing...' : 'Confirm & Publish Live'}
+                    </button>
                 </div>
               </div>
+              {publishError && (
+                <div className="px-4 py-3 bg-error/10 border-b border-error/20 text-error text-sm font-semibold">
+                  ⚠️ Publish failed: {publishError} — check that the server is running, then try again.
+                </div>
+              )}
               <div className="flex-1 overflow-auto p-4">
                 <LivePreview config={websiteConfig} />
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Publish Success Modal — real live URL */}
+        <AnimatePresence>
+          {publishedUrl && (
+            <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-outline-variant">
+                <div className="bg-emerald-600 px-6 py-8 text-center">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-white/20 flex items-center justify-center mb-3">
+                    <Check className="w-9 h-9 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-white">🎉 Your website is LIVE!</h2>
+                  <p className="text-emerald-100 text-sm mt-1">
+                    Template <b>{activeTheme.name}</b> — {websiteConfig.businessName}
+                  </p>
+                </div>
+                <div className="p-6 space-y-5">
+                  <div>
+                    <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Live URL — kisi ko bhi bhejein</p>
+                    <div className="flex items-center gap-2 bg-surface-container-high rounded-xl p-2 border border-outline-variant">
+                      <a href={publishedUrl} target="_blank" rel="noopener noreferrer" className="flex-1 text-primary font-bold text-sm truncate px-2">
+                        {publishedUrl}
+                      </a>
+                      <button onClick={copyLink} className="px-3 py-2 rounded-lg bg-surface-variant hover:bg-surface-container-high transition-colors shrink-0" title="Copy link">
+                        {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {copied && <p className="text-emerald-600 text-xs font-bold mt-1">✅ Link copied!</p>}
+                  </div>
+                  <div className="flex gap-3">
+                    <a
+                      href={publishedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90"
+                    >
+                      <ExternalLink className="w-4 h-4" /> View Live Site
+                    </a>
+                    <button
+                      onClick={() => setPublishedUrl(null)}
+                      className="px-4 py-3 rounded-xl bg-surface-variant text-on-surface font-bold text-sm"
+                    >
+                      Done
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-on-surface-variant text-center">
+                    💡 Naya template select karke dubara publish karo — purana live link apni jagah rahega, naya alag link banega.
+                  </p>
+                </div>
               </div>
             </div>
           )}

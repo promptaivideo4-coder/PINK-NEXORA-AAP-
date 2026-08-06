@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import multer from "multer";
 import helmet from "helmet";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -310,6 +311,66 @@ Return ONLY the raw JSON object, without markdown formatting or code blocks.`;
       return res.status(400).json({ error: 'Invalid JSON request body' });
     }
     next(error);
+  });
+
+  /* ------------------------------------------------------------------
+     PUBLISHED WEBSITES — the "GO LIVE" part
+     POST /api/publish-site → saves the generated salon website
+     GET  /site/:slug/      → serves the live website (same HTML that was
+                              shown in the Interactive Preview)
+     ------------------------------------------------------------------ */
+  const PUBLISH_DIR = path.join(process.cwd(), "publish");
+  fs.mkdirSync(PUBLISH_DIR, { recursive: true });
+
+  function sanitizeSlug(s: unknown): string {
+    return (
+      String(s || "mysalon")
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || "mysalon"
+    );
+  }
+
+  app.post("/api/publish-site", (req, res) => {
+    try {
+      const { html, slug } = req.body || {};
+      if (typeof html !== "string" || html.length < 50) {
+        return res.status(400).json({ ok: false, error: "html is missing or empty" });
+      }
+      const base = sanitizeSlug(slug);
+      let dir = path.join(PUBLISH_DIR, base);
+      let n = 2;
+      while (fs.existsSync(dir)) {
+        dir = path.join(PUBLISH_DIR, `${base}-${n++}`);
+      }
+      fs.mkdirSync(dir, { recursive: true });
+      const finalSlug = path.basename(dir);
+      fs.writeFileSync(path.join(dir, "index.html"), html, "utf8");
+      res.json({ ok: true, url: `/site/${finalSlug}/`, slug: finalSlug });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String((e as Error)?.message || e) });
+    }
+  });
+
+  app.get(["/site/:slug", "/site/:slug/*"], (req, res) => {
+    try {
+      const slug = sanitizeSlug(req.params.slug);
+      const rest = (req.params[0] as string | undefined) || "";
+      let file = rest ? rest.split("/").pop() || "index.html" : "index.html";
+      if (!file || file === ".") file = "index.html";
+      const safeFile = path.normalize(file).replace(/^(\.\.(\/|\\|$))+/, "");
+      const target = path.join(PUBLISH_DIR, slug, safeFile);
+      if (!target.startsWith(PUBLISH_DIR)) {
+        return res.status(404).json({ ok: false, error: "Not found" });
+      }
+      if (!fs.existsSync(target) || !fs.statSync(target).isFile()) {
+        return res.status(404).json({ ok: false, error: "Site not found" });
+      }
+      res.sendFile(target);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String((e as Error)?.message || e) });
+    }
   });
 
   // Vite middleware for development

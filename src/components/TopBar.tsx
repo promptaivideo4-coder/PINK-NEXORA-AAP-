@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, ArrowLeft, Settings, MoreVertical, Megaphone } from 'lucide-react';
+import { Bell, ArrowLeft, Settings, MoreVertical, Megaphone, Download } from 'lucide-react';
 import { ScreenName } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import OfflineSyncStatus from './OfflineSyncStatus';
@@ -53,6 +53,16 @@ export default function TopBar({
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Offline Sync Status Indicator */}
         <OfflineSyncStatus />
+
+        {/* Always-visible PWA install shortcut */}
+        <button
+          onClick={() => navigate('install-app')}
+          title="Install App"
+          className="flex items-center gap-1.5 text-white bg-primary hover:bg-primary/90 px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm"
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span className="hidden xs:inline">{t('install_app')}</span>
+        </button>
 
         {!showBack && (
           <button 

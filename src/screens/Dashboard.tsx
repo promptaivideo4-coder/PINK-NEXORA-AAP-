@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
+import InstallAppBanner from '../components/InstallAppBanner';
 import { NavigationProps } from '../types';
 import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
@@ -82,6 +83,9 @@ export default function Dashboard({ navigate }: NavigationProps) {
   return (
     <Layout currentScreen="dashboard" navigate={navigate} title="NEXORA SALONOS">
       <div className="px-5 md:px-10 py-8 flex flex-col gap-8">
+
+        {/* PWA Install Banner — hamesha dikhta hai (jab tak installed nahi) */}
+        <InstallAppBanner navigate={navigate as (path: string) => void} />
 
         {/* Welcome Section — live shop + publish status */}
         <section className="flex flex-col gap-2">
