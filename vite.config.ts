@@ -10,12 +10,23 @@ export default defineConfig(() => {
       react(), 
       tailwindcss(),
       VitePWA({
-        registerType: 'prompt', // Prompt user for updates to avoid stale app
+        registerType: 'autoUpdate', // SW auto-activates + controls page on FIRST visit,
+        // so Chrome fires beforeinstallprompt / shows the address-bar install icon
+        // immediately instead of requiring a reload. (More reliable installability;
+        // your custom Install button still works via the beforeinstallprompt event.)
         includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
+        // Keep the generated file name stable so the <head> link + Vercel headers match.
+        manifestFilename: 'manifest.webmanifest',
         manifest: {
           name: 'Nexora Salon App',
           short_name: 'Nexora',
           description: 'Premium Salon Management Platform',
+          // --- Explicit start_url/scope are REQUIRED by Chrome's installability ---
+          start_url: '/',
+          scope: '/',
+          lang: 'en',
+          orientation: 'portrait',
+          display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
           theme_color: '#8e004b',
           background_color: '#fff8f8',
           display: 'standalone',
