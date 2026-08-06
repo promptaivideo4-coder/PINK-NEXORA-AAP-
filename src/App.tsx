@@ -43,8 +43,11 @@ import { Session } from '@supabase/supabase-js';
 import { Download, X, WifiOff, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { useLocation } from './contexts/LocationContext';
 
 export default function App() {
+  const { requestLocation } = useLocation();
+  const locationAutoAskedRef = React.useRef(false);
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('splash');
   const currentScreenRef = React.useRef(currentScreen);
   const [session, setSession] = useState<Session | null>(null);
@@ -164,9 +167,24 @@ export default function App() {
     };
     window.addEventListener('appinstalled', handleAppInstalledGlobal);
 
-    // Initial session check
+    // Initial session check — already-logged-in user reload par bhi location auto-maango
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session && !locationAutoAskedRef.current) {
+        locationAutoAskedRef.current = true;
+        setTimeout(() => requestLocation(), 800);
+      }
+    });
+
+    // 🔹 LOGIN KE TURANT BAAD LOCATION AUTO-REQUEST (requirement: login hote hi location)
+    // Jab bhi login hota hai (SIGNED_IN), ek baar (per browser session) location permission
+    // maang lo → browser ka prompt turant aata hai.
+    const unsubscribeAuth = supabase.auth.onAuthStateChange((_event, s) => {
+      if (s && !locationAutoAskedRef.current) {
+        locationAutoAskedRef.current = true;
+        // Thoda sa delay taaki dashboard render ho jaye, phir permission prompt
+        setTimeout(() => requestLocation(), 800);
+      }
     });
 
     // Handle initial hash routing and hash changes
@@ -210,11 +228,12 @@ export default function App() {
 
     return () => {
       subscription.unsubscribe();
+      unsubscribeAuth.data.subscription.unsubscribe();
       window.removeEventListener('hashchange', handleHashRouting);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalledGlobal);
     };
-  }, []);
+  }, [requestLocation]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;

@@ -1,19 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
-import { Navigation as NavIcon, MapPin, LocateFixed, ShieldAlert, RefreshCw, WifiOff, Clock, Ruler, Satellite } from 'lucide-react';
+import { Navigation as NavIcon, MapPin, LocateFixed, ShieldAlert, WifiOff, Clock, Ruler, Satellite } from 'lucide-react';
 import {
-  LocationTracker,
-  GeoLocation,
-  LocationPermission,
   SalonWithCoords,
   SalonDistance,
   sortSalonsByDistance,
-  getLocationLog,
-  clearLocationLog,
   LOCATION_CONFIG,
   PERMISSION_DENIED_MESSAGE,
 } from '../lib/geolocation';
+import { useLocation } from '../contexts/LocationContext';
 
 /* Demo salon dataset — DB me lat/lng hon to yahan se replace ho jayega.
    Coordinates: Jaipur ke aas-paas. */
@@ -41,94 +37,31 @@ function fmtDistance(km: number | null): string {
 }
 
 export default function NearbySalons({ navigate }: NavigationProps) {
-  const trackerRef = useRef<LocationTracker | null>(null);
-  if (!trackerRef.current) {
-    trackerRef.current = new LocationTracker();
-  }
-  const tracker = trackerRef.current;
+  const {
+    permission,
+    acceptedFix,
+    rawFix,
+    watchOn,
+    errorMsg,
+    permissionDenied,
+    movedNotif,
+    logs,
+    requestLocation,
+    stopLocation,
+    clearLogs,
+  } = useLocation();
 
-  const [watchOn, setWatchOn] = useState(false);
-  const [acceptedFix, setAcceptedFix] = useState<GeoLocation | null>(null);
-  const [rawFix, setRawFix] = useState<GeoLocation | null>(null);
-  const [permission, setPermission] = useState<LocationPermission>('unknown');
-  const [permissionDenied, setPermissionDenied] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [movedNotif, setMovedNotif] = useState<string | null>(null);
-  const [logs, setLogs] = useState(getLocationLog());
   const [sorted, setSorted] = useState<SalonDistance[]>(() => sortSalonsByDistance(DEMO_SALONS, null));
   const logEndRef = useRef<HTMLDivElement>(null);
 
-  // Wire tracker callbacks once
+  // Accepted fix badla → salons dobara nearest-se-sort
   useEffect(() => {
-    const t = trackerRef.current!;
+    if (acceptedFix) {
+      setSorted(sortSalonsByDistance(DEMO_SALONS, { latitude: acceptedFix.latitude, longitude: acceptedFix.longitude }));
+    }
+  }, [acceptedFix]);
 
-    // Wrapper jo React state me mirror karta hai
-    const origStart = t.start.bind(t);
-    const origStop = t.stop.bind(t);
-    const origRestart = t.restart.bind(t);
-
-    (t as unknown as { __mirror: unknown }).__mirror = true;
-
-    // Simple approach: re-create tracker with callbacks on mount
-    const live = new LocationTracker({
-      onRawUpdate: (_fix, s) => {
-        setRawFix(s.lastFix);
-        setPermission(s.permission);
-        setLogs(getLocationLog());
-      },
-      onAcceptedFix: (fix, s) => {
-        setAcceptedFix(fix);
-        setPermission(s.permission);
-        setLogs(getLocationLog());
-        setMovedNotif(null);
-        setSorted(sortSalonsByDistance(DEMO_SALONS, { latitude: fix.latitude, longitude: fix.longitude }));
-      },
-      onMoved: (_from, to, dist) => {
-        setMovedNotif(`📡 Moved ${dist} m — location refreshed (${to.latitude.toFixed(5)}, ${to.longitude.toFixed(5)})`);
-        setLogs(getLocationLog());
-      },
-      onPermissionDenied: () => {
-        setPermissionDenied(true);
-        setErrorMsg(PERMISSION_DENIED_MESSAGE);
-        setLogs(getLocationLog());
-      },
-      onError: (_code, msg) => {
-        setErrorMsg(msg);
-        setLogs(getLocationLog());
-      },
-      onWatchStateChange: (active) => setWatchOn(active),
-    });
-
-    // Tracker ko start/stop ke liye expose karo
-    (trackerRef as unknown as { live: LocationTracker }).live = live;
-
-    return () => {
-      live.stop();
-      void origStart; void origStop; void origRestart;
-    };
-  }, []);
-
-  const doStart = () => {
-    setPermissionDenied(false);
-    setErrorMsg(null);
-    setMovedNotif(null);
-    const live = (trackerRef as unknown as { live?: LocationTracker }).live;
-    (live || tracker).restart();
-    setLogs(getLocationLog());
-  };
-
-  const doStop = () => {
-    const live = (trackerRef as unknown as { live?: LocationTracker }).live;
-    (live || tracker).stop();
-    setLogs(getLocationLog());
-  };
-
-  const doClearLogs = () => {
-    clearLocationLog();
-    setLogs([]);
-  };
-
-  // Auto-scroll log
+  // Log auto-scroll
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [logs]);
@@ -164,7 +97,7 @@ export default function NearbySalons({ navigate }: NavigationProps) {
           {/* Config row */}
           <div className="flex flex-wrap gap-2 text-[10.5px] font-bold text-on-surface-variant">
             <span className="bg-surface-container-high px-2 py-1 rounded-lg inline-flex items-center gap-1"><Ruler className="w-3 h-3" /> acc ≤ {LOCATION_CONFIG.ACCEPT_ACCURACY_M}m</span>
-            <span className="bg-surface-container-high px-2 py-1 rounded-lg inline-flex items-center gap-1"><RefreshCw className="w-3 h-3" /> refresh ≥ {LOCATION_CONFIG.MOVEMENT_THRESHOLD_M}m move</span>
+            <span className="bg-surface-container-high px-2 py-1 rounded-lg inline-flex items-center gap-1"><Clock className="w-3 h-3" /> refresh ≥ {LOCATION_CONFIG.MOVEMENT_THRESHOLD_M}m move</span>
             <span className="bg-surface-container-high px-2 py-1 rounded-lg inline-flex items-center gap-1"><Clock className="w-3 h-3" /> timeout {LOCATION_CONFIG.timeout / 1000}s</span>
           </div>
 
@@ -191,7 +124,7 @@ export default function NearbySalons({ navigate }: NavigationProps) {
               <p className="text-on-surface-variant text-[11px]">
                 {watchOn
                   ? '⏳ GPS fix ka wait… (accuracy ≤ 30m hone par hi location accept hogi)'
-                  : 'Location abhi nahi — "Start GPS Tracking" dabao.'}
+                  : 'Location abhi nahi — "Start GPS Tracking" dabao (ya login par auto-prompt aaya tha).'}
               </p>
             )}
           </div>
@@ -216,15 +149,15 @@ export default function NearbySalons({ navigate }: NavigationProps) {
           {/* Controls */}
           <div className="flex gap-2 pt-1">
             {!watchOn ? (
-              <button onClick={doStart} className="flex-1 bg-primary text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md">
+              <button onClick={requestLocation} className="flex-1 bg-primary text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md">
                 <LocateFixed className="w-4 h-4" /> Start GPS Tracking
               </button>
             ) : (
-              <button onClick={doStop} className="flex-1 bg-surface-container-high text-on-surface font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+              <button onClick={stopLocation} className="flex-1 bg-surface-container-high text-on-surface font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
                 <WifiOff className="w-4 h-4" /> Stop
               </button>
             )}
-            <button onClick={doClearLogs} className="px-3 py-3 rounded-xl bg-surface-variant text-on-surface-variant text-xs font-bold active:scale-95">
+            <button onClick={clearLogs} className="px-3 py-3 rounded-xl bg-surface-variant text-on-surface-variant text-xs font-bold active:scale-95">
               Clear log
             </button>
           </div>

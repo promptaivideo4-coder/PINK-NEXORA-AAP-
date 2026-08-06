@@ -2,10 +2,12 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import InstallAppBanner from '../components/InstallAppBanner';
 import { NavigationProps } from '../types';
-import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket, MapPin } from 'lucide-react';
+import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket, MapPin, LocateFixed, Navigation } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
+import { useLocation } from '../contexts/LocationContext';
+import { PERMISSION_DENIED_MESSAGE } from '../lib/geolocation';
 import {
   bootstrapMyShop, fetchMyShop, fetchMyBookings, listServices, listStaff, fetchWalletOverview,
   MyShop, ShopBooking,
@@ -19,6 +21,14 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function Dashboard({ navigate }: NavigationProps) {
   const { t } = useLanguage();
+  const {
+    acceptedFix: locFix,
+    permission: locPermission,
+    permissionDenied: locDenied,
+    watchOn: locWatching,
+    requestLocation: requestLoc,
+    movedNotif: locMoved,
+  } = useLocation();
 
   const [shop, setShop] = useState<MyShop | null>(null);
   const [shopLoading, setShopLoading] = useState(true);
@@ -87,22 +97,62 @@ export default function Dashboard({ navigate }: NavigationProps) {
         {/* PWA Install Banner — hamesha dikhta hai (jab tak installed nahi) */}
         <InstallAppBanner navigate={navigate as (path: string) => void} />
 
-        {/* Nearby Salons — GPS location system entry */}
-        <button
-          onClick={() => navigate('nearby-salons')}
-          className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 hover:shadow-md transition-all active:scale-[0.99] text-left"
-        >
-          <div className="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-md">
-            <MapPin className="w-5 h-5" />
+        {/* Nearby Salons — LIVE location status (login ke baad auto-le lete hain) */}
+        <div className={`w-full rounded-2xl border p-4 flex flex-col gap-3 transition-all ${
+          locDenied
+            ? 'bg-error/5 border-error/30'
+            : locFix
+              ? 'bg-emerald-500/5 border-emerald-500/30'
+              : 'bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md ${locFix ? 'bg-emerald-600 text-white' : 'bg-primary text-white'}`}>
+              <MapPin className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-bold text-on-surface">Nearby Salons</h3>
+              {locDenied ? (
+                <p className="text-[11px] font-semibold text-error">{PERMISSION_DENIED_MESSAGE}</p>
+              ) : locFix ? (
+                <p className="text-[11px] text-emerald-700 font-semibold truncate">
+                  📍 Location mil gayi — {locFix.latitude.toFixed(5)}, {locFix.longitude.toFixed(5)} (acc {locFix.accuracy}m)
+                </p>
+              ) : locWatching ? (
+                <p className="text-[11px] text-amber-700 font-semibold">
+                  ⏳ GPS fix ka wait… (accuracy ≤ 30m hone par location accept hogi)
+                </p>
+              ) : (
+                <p className="text-[11px] text-on-surface-variant">
+                  {locPermission === 'denied'
+                    ? 'Browser me location allow karo'
+                    : 'Login hote hi location apne aap maangi jati hai'}
+                </p>
+              )}
+            </div>
+            <span className="text-primary text-xs font-extrabold shrink-0">Open →</span>
           </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-bold text-on-surface">Nearby Salons</h3>
-            <p className="text-[11px] text-on-surface-variant">
-              GPS se salons ko distance ke hisaab se sorted dekho (nearest first)
-            </p>
+
+          {locMoved && (
+            <p className="text-[10.5px] text-primary bg-primary/10 rounded-lg px-2.5 py-1.5">{locMoved}</p>
+          )}
+
+          <div className="flex gap-2">
+            {!locFix && !locDenied && (
+              <button
+                onClick={requestLoc}
+                className="flex-1 bg-primary text-white text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              >
+                <LocateFixed className="w-3.5 h-3.5" /> Location abhi le
+              </button>
+            )}
+            <button
+              onClick={() => navigate('nearby-salons')}
+              className={`${!locFix && !locDenied ? 'flex-1' : 'w-full'} bg-surface-container-high text-on-surface text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all`}
+            >
+              <Navigation className="w-3.5 h-3.5" /> Salons by Distance
+            </button>
           </div>
-          <span className="text-primary text-xs font-extrabold">Open →</span>
-        </button>
+        </div>
 
         {/* Welcome Section — live shop + publish status */}
         <section className="flex flex-col gap-2">
