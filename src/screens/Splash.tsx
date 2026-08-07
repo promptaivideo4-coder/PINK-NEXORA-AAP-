@@ -17,7 +17,7 @@ export default function Splash({ navigate }: NavigationProps) {
         .catch(() => navigate('welcome'));
     }, 2500);
     return () => clearTimeout(timer);
-  }, [navigate]);
+  }, []);
 
   return (
     <div className="relative h-screen w-full flex flex-col items-center justify-center bg-black overflow-hidden selection:bg-primary-container selection:text-white pt-safe pb-safe">

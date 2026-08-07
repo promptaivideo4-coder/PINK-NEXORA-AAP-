@@ -254,10 +254,10 @@ export default function App() {
     localStorage.setItem('nexora-install-dismissed', 'true');
   };
 
-  const navigate = (screen: ScreenName) => {
+  const navigate = React.useCallback((screen: ScreenName) => {
     setCurrentScreen(screen);
     window.scrollTo(0, 0);
-  };
+  }, []);
 
   const renderScreen = () => {
     switch (currentScreen) {

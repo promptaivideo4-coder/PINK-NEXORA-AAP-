@@ -98,14 +98,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   const initializedRef = useRef(false);
 
-  // Keep logs synced via polling (old API) + also subscribe to store for new logs
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLogs(getLocationLog());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   useEffect(() => {
     // Initialize once – production service
     if (initializedRef.current) return;
