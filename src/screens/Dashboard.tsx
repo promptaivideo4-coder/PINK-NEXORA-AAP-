@@ -97,61 +97,29 @@ export default function Dashboard({ navigate }: NavigationProps) {
         {/* PWA Install Banner — hamesha dikhta hai (jab tak installed nahi) */}
         <InstallAppBanner navigate={navigate as (path: string) => void} />
 
-        {/* Nearby Salons — LIVE location status (login ke baad auto-le lete hain) */}
-        <div className={`w-full rounded-2xl border p-4 flex flex-col gap-3 transition-all ${
-          locDenied
-            ? 'bg-error/5 border-error/30'
-            : locFix
-              ? 'bg-emerald-500/5 border-emerald-500/30'
-              : 'bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md ${locFix ? 'bg-emerald-600 text-white' : 'bg-primary text-white'}`}>
+        {/* Nearby Salons — MINIMAL ONLY LOCATION (user ne bola only location show ho) */}
+        <div
+          onClick={() => navigate('nearby-salons')}
+          className="w-full rounded-[16px] border border-[#f8d7e3] bg-[#fdf2f6] p-4 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer"
+        >
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-[12px] bg-[#c6005c] text-white flex items-center justify-center shrink-0">
               <MapPin className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-on-surface">Nearby Salons</h3>
-              {locDenied ? (
-                <p className="text-[11px] font-semibold text-error">{PERMISSION_DENIED_MESSAGE}</p>
-              ) : locFix ? (
-                <p className="text-[11px] text-emerald-700 font-semibold truncate">
-                  📍 Location mil gayi — {locFix.latitude.toFixed(5)}, {locFix.longitude.toFixed(5)} (acc {locFix.accuracy}m)
+              <h3 className="text-[14px] font-bold text-[#1f1f1f] leading-none">Nearby Salons</h3>
+              {locFix ? (
+                <p className="text-[12px] text-[#6b6b6b] mt-1 truncate">
+                  📍 {locFix.latitude.toFixed(4)}, {locFix.longitude.toFixed(4)} • {Math.round(locFix.accuracy)}m
                 </p>
-              ) : locWatching ? (
-                <p className="text-[11px] text-amber-700 font-semibold">
-                  ⏳ GPS fix ka wait… (accuracy ≤ 30m hone par location accept hogi)
-                </p>
+              ) : locDenied ? (
+                <p className="text-[12px] text-[#d32f2f] mt-1 font-medium">{PERMISSION_DENIED_MESSAGE}</p>
               ) : (
-                <p className="text-[11px] text-on-surface-variant">
-                  {locPermission === 'denied'
-                    ? 'Browser me location allow karo'
-                    : 'Login hote hi location apne aap maangi jati hai'}
-                </p>
+                <p className="text-[12px] text-[#c6005c] mt-1">Detecting your location...</p>
               )}
             </div>
-            <span className="text-primary text-xs font-extrabold shrink-0">Open →</span>
           </div>
-
-          {locMoved && (
-            <p className="text-[10.5px] text-primary bg-primary/10 rounded-lg px-2.5 py-1.5">{locMoved}</p>
-          )}
-
-          <div className="flex gap-2">
-            {!locFix && !locDenied && (
-              <button
-                onClick={requestLoc}
-                className="flex-1 bg-primary text-white text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-              >
-                <LocateFixed className="w-3.5 h-3.5" /> Location abhi le
-              </button>
-            )}
-            <button
-              onClick={() => navigate('nearby-salons')}
-              className={`${!locFix && !locDenied ? 'flex-1' : 'w-full'} bg-surface-container-high text-on-surface text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all`}
-            >
-              <Navigation className="w-3.5 h-3.5" /> Salons by Distance
-            </button>
-          </div>
+          <span className="text-[#c6005c] text-[13px] font-bold shrink-0 ml-3">Open →</span>
         </div>
 
         {/* Welcome Section — live shop + publish status */}
