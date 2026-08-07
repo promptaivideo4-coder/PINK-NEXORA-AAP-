@@ -2,12 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import InstallAppBanner from '../components/InstallAppBanner';
 import { NavigationProps } from '../types';
-import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket, MapPin, LocateFixed, Navigation } from 'lucide-react';
+import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
-import { useLocation } from '../contexts/LocationContext';
-import { PERMISSION_DENIED_MESSAGE } from '../lib/geolocation';
 import {
   bootstrapMyShop, fetchMyShop, fetchMyBookings, listServices, listStaff, fetchWalletOverview,
   MyShop, ShopBooking,
@@ -21,14 +19,6 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function Dashboard({ navigate }: NavigationProps) {
   const { t } = useLanguage();
-  const {
-    acceptedFix: locFix,
-    permission: locPermission,
-    permissionDenied: locDenied,
-    watchOn: locWatching,
-    requestLocation: requestLoc,
-    movedNotif: locMoved,
-  } = useLocation();
 
   const [shop, setShop] = useState<MyShop | null>(null);
   const [shopLoading, setShopLoading] = useState(true);
@@ -96,31 +86,6 @@ export default function Dashboard({ navigate }: NavigationProps) {
 
         {/* PWA Install Banner — hamesha dikhta hai (jab tak installed nahi) */}
         <InstallAppBanner navigate={navigate as (path: string) => void} />
-
-        {/* Nearby Salons — MINIMAL ONLY LOCATION (user ne bola only location show ho) */}
-        <div
-          onClick={() => navigate('nearby-salons')}
-          className="w-full rounded-[16px] border border-[#f8d7e3] bg-[#fdf2f6] p-4 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer"
-        >
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-[12px] bg-[#c6005c] text-white flex items-center justify-center shrink-0">
-              <MapPin className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-[14px] font-bold text-[#1f1f1f] leading-none">Nearby Salons</h3>
-              {locFix ? (
-                <p className="text-[12px] text-[#6b6b6b] mt-1 truncate">
-                  📍 {locFix.latitude.toFixed(4)}, {locFix.longitude.toFixed(4)} • {Math.round(locFix.accuracy)}m
-                </p>
-              ) : locDenied ? (
-                <p className="text-[12px] text-[#d32f2f] mt-1 font-medium">{PERMISSION_DENIED_MESSAGE}</p>
-              ) : (
-                <p className="text-[12px] text-[#c6005c] mt-1">Detecting your location...</p>
-              )}
-            </div>
-          </div>
-          <span className="text-[#c6005c] text-[13px] font-bold shrink-0 ml-3">Open →</span>
-        </div>
 
         {/* Welcome Section — live shop + publish status */}
         <section className="flex flex-col gap-2">

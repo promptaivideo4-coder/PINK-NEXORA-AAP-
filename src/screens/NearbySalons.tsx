@@ -1,22 +1,18 @@
 /**
- * NearbySalons.tsx – MINIMAL UI (Only Location Show)
- * User ne bola: "IS TARAH SE NHI BANANA HAI ONLY LOCATION HI SHOW HO NA YE ITNA SAB KUCH"
- * Isliye ab sirf location aur nearby salons dikhega, koi debug log / config / zyada detail nahi
- *
- * Production GPS logic same hai (watchPosition only, 0-15 excellent, 16-30 good, 31-50 wait 10s, 51-100 improving, >100 reject, Haversine R=6371000, >100m recalc)
- * Par UI minimal clean
+ * NearbySalons – Ultra Minimal (Only Salons, Location Silent)
+ * Dashboard se hata diya, sirf yahan location use hoga
+ * No drama UI – no big black buttons, no pink status pills
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
-import { MapPin, LocateFixed, AlertTriangle } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import {
   SalonWithCoords,
   SalonDistance,
   groupSalonsByDistance,
   PERMISSION_DENIED_MESSAGE,
-  STATUS_MESSAGES,
 } from '../lib/geolocation';
 import { useLocation } from '../contexts/LocationContext';
 import { supabase } from '../lib/supabase';
@@ -24,7 +20,7 @@ import { supabase } from '../lib/supabase';
 const DEMO_SALONS: SalonWithCoords[] = [
   { id: 's1', name: 'Glamour Salon — C-Scheme', latitude: 26.9124, longitude: 75.7873, address: 'C-Scheme, Jaipur', city: 'Jaipur', ratingAverage: 4.8, rating: 4.8, featured: true, lastActiveAt: Date.now() - 5 * 60 * 1000 },
   { id: 's2', name: 'Luxe Beauty Lounge — MI Road', latitude: 26.892, longitude: 75.796, address: 'MI Road, Jaipur', city: 'Jaipur', ratingAverage: 4.6, rating: 4.6, featured: false, lastActiveAt: Date.now() - 30 * 60 * 1000 },
-  { id: 's3', name: 'Rajwada Salon — Johari Bazar', latitude: 26.926, longitude: 75.8235, address: 'Johari Bazar', city: 'Jaipur', ratingAverage: 4.5, rating: 4.5, featured: false, lastActiveAt: Date.now() - 120 * 60 * 1000 },
+  { id: 's3', name: 'Rajwada Salon — Johari Bazar', latitude: 26.926, longitude: 75.8235, address: 'Johari Bazar, Jaipur', city: 'Jaipur', ratingAverage: 4.5, rating: 4.5, featured: false, lastActiveAt: Date.now() - 120 * 60 * 1000 },
   { id: 's4', name: 'Pink City Cuts — Hawa Mahal', latitude: 26.9239, longitude: 75.8267, address: 'Hawa Mahal Rd, Jaipur', city: 'Jaipur', ratingAverage: 4.9, rating: 4.9, featured: true, lastActiveAt: Date.now() - 2 * 60 * 1000 },
   { id: 's5', name: 'Sunrise Unisex Salon — Tonk Rd', latitude: 26.88, longitude: 75.808, address: 'Tonk Road, Jaipur', city: 'Jaipur', ratingAverage: 4.2, rating: 4.2, featured: false, lastActiveAt: Date.now() - 60 * 60 * 1000 },
   { id: 's6', name: 'Bold Beauty Studio — Malviya Nagar', latitude: 26.8575, longitude: 75.815, address: 'Malviya Nagar, Jaipur', city: 'Jaipur', ratingAverage: 4.4, rating: 4.4, featured: true, lastActiveAt: Date.now() - 10 * 60 * 1000 },
@@ -35,7 +31,7 @@ function fmtDistance(km: number | null, m: number | null): string {
     if (m < 1000) return `${Math.round(m)} m`;
     return `${(m / 1000).toFixed(1)} km`;
   }
-  if (km === null) return '—';
+  if (km === null) return '';
   if (km < 1) return `${Math.round(km * 1000)} m`;
   return `${km.toFixed(1)} km`;
 }
@@ -43,26 +39,26 @@ function fmtDistance(km: number | null, m: number | null): string {
 export default function NearbySalons({ navigate }: NavigationProps) {
   const {
     acceptedFix,
-    permission,
     permissionDenied,
-    watchOn,
-    requestLocation,
     currentLocation,
-    gpsStatus,
-    statusMessage,
     groupedSalons: productionGrouped,
     setSalons: setSalonsToService,
+    requestLocation,
     retryPermission,
   } = useLocation();
 
   const [salons, setSalons] = useState<SalonWithCoords[]>(DEMO_SALONS);
   const [grouped, setGrouped] = useState(() => groupSalonsByDistance(DEMO_SALONS, null));
-  const [isFetching, setIsFetching] = useState(false);
 
-  // Fetch real salons from Supabase (verified) else demo
+  // Auto request location silently when screen opens (no drama)
+  useEffect(() => {
+    requestLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch real salons
   useEffect(() => {
     async function fetchReal() {
-      setIsFetching(true);
       try {
         const { data, error } = await supabase
           .from('salons')
@@ -96,21 +92,17 @@ export default function NearbySalons({ navigate }: NavigationProps) {
         }
       } catch {
         setSalonsToService(DEMO_SALONS as any);
-      } finally {
-        setIsFetching(false);
       }
     }
     fetchReal();
   }, [setSalonsToService]);
 
-  // Local grouping fallback when productionGrouped not yet available
   useEffect(() => {
     if (acceptedFix && !productionGrouped) {
       setGrouped(groupSalonsByDistance(salons, { latitude: acceptedFix.latitude, longitude: acceptedFix.longitude }));
     }
   }, [acceptedFix, salons, productionGrouped]);
 
-  // Use production grouped when available
   useEffect(() => {
     if (productionGrouped) {
       const convert = (arr: any[]): SalonDistance[] =>
@@ -141,103 +133,76 @@ export default function NearbySalons({ navigate }: NavigationProps) {
   }, [productionGrouped]);
 
   const displayLoc = currentLocation || acceptedFix;
-  const isDenied = permissionDenied || permission === 'denied';
-
-  // Minimal status text
-  let statusText = 'Detecting your location...';
-  if (isDenied) statusText = PERMISSION_DENIED_MESSAGE;
-  else if (displayLoc) statusText = `Location updated • ${Math.round(displayLoc.accuracy)}m accuracy`;
-  else if (statusMessage) statusText = statusMessage;
 
   return (
     <Layout currentScreen="nearby-salons" navigate={navigate} title="Nearby Salons" showBack onBack={() => navigate('dashboard')}>
       <div className="px-4 py-5 flex flex-col gap-4 max-w-md mx-auto w-full pb-28">
 
-        {/* Minimal status pill */}
-        <div className={`rounded-2xl px-4 py-3 flex items-center gap-2.5 ${isDenied ? 'bg-red-50 border border-red-200' : displayLoc ? 'bg-[#fdf2f6] border border-[#f8d7e3]' : 'bg-[#fdf2f6] border border-[#f8d7e3]'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDenied ? 'bg-red-500 text-white' : 'bg-[#c6005c] text-white'}`}>
-            {isDenied ? <AlertTriangle className="w-4 h-4" /> : <LocateFixed className="w-4 h-4" />}
+        {/* Permission denied – minimal */}
+        {permissionDenied && (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between">
+            <p className="text-[12px] text-red-700 font-medium">{PERMISSION_DENIED_MESSAGE}</p>
+            <button onClick={retryPermission} className="text-[12px] font-bold text-red-700 underline">Retry</button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className={`text-[13px] font-semibold truncate ${isDenied ? 'text-red-700' : 'text-[#1f1f1f]'}`}>{statusText}</p>
-            <p className="text-[11px] text-[#6b6b6b]">{watchOn ? 'Live GPS active' : 'Tap retry to enable location'}</p>
-          </div>
-          {watchOn && !isDenied && <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />}
-        </div>
-
-        {/* If denied – only retry */}
-        {isDenied && (
-          <button onClick={retryPermission} className="w-full bg-[#c6005c] text-white font-bold text-sm py-3 rounded-xl">
-            Retry Location
-          </button>
         )}
 
-        {/* ONLY LOCATION card – minimal */}
-        <div className="bg-white border border-[#f0f0f0] rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <MapPin className="w-4 h-4 text-[#c6005c]" />
-            <h2 className="text-[14px] font-bold">My Location</h2>
-            {displayLoc && <span className="ml-auto text-[10px] bg-[#fdf2f6] text-[#c6005c] px-2 py-0.5 rounded-full font-bold">{Math.round(displayLoc.accuracy)}m</span>}
-          </div>
-          {displayLoc ? (
-            <div className="space-y-1">
-              <p className="text-[13px] font-mono">Lat: <b>{displayLoc.latitude.toFixed(5)}</b> • Lng: <b>{displayLoc.longitude.toFixed(5)}</b></p>
-              <p className="text-[11px] text-[#6b6b6b]">{displayLoc.latitude.toFixed(6)}, {displayLoc.longitude.toFixed(6)}</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-[13px] text-[#6b6b6b]">Location abhi available nahi hai</p>
-              <button onClick={requestLocation} className="w-full bg-[#1f1f1f] text-white text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5">
-                <LocateFixed className="w-3.5 h-3.5" /> Location abhi le
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Subtle location info – only if available, no big card */}
+        {displayLoc && (
+          <p className="text-[11px] text-[#8a8a8a] px-1">
+            📍 {displayLoc.latitude.toFixed(4)}, {displayLoc.longitude.toFixed(4)} • {Math.round(displayLoc.accuracy)}m away
+          </p>
+        )}
 
-        {/* Nearby salons – clean list only */}
+        {/* Salons list – clean */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[15px] font-bold">Nearby Salons</h2>
-            <span className="text-[11px] text-[#6b6b6b]">{isFetching ? 'Loading...' : displayLoc ? `${grouped.allSorted.length} found` : 'Need location'}</span>
+            <span className="text-[11px] text-[#8a8a8a]">{displayLoc ? `${grouped.allSorted.length} found` : `${salons.length} salons`}</span>
           </div>
 
-          {!displayLoc ? (
-            <div className="bg-white border border-dashed border-[#e0e0e0] rounded-2xl p-6 text-center">
-              <MapPin className="w-8 h-8 mx-auto text-[#c6c6c6] mb-2" />
-              <p className="text-[13px] text-[#6b6b6b]">Enable location to see salons near you</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {grouped.nearby.length > 0 && <Group title="Nearby" km="0–2 km" salons={grouped.nearby} />}
-              {grouped.close.length > 0 && <Group title="Close" km="2–5 km" salons={grouped.close} />}
-              {grouped.aroundYou.length > 0 && <Group title="Around You" km="5–10 km" salons={grouped.aroundYou} />}
-              {grouped.everythingElse.length > 0 && <Group title="Others" km=">10 km" salons={grouped.everythingElse} />}
-              {grouped.allSorted.length === 0 && <p className="text-center text-[13px] text-[#6b6b6b] py-6">No salons found</p>}
-            </div>
-          )}
+          <div className="flex flex-col gap-3">
+            {grouped.nearby.length > 0 && <Group title="Nearby" sub="0–2 km" salons={grouped.nearby} />}
+            {grouped.close.length > 0 && <Group title="Close" sub="2–5 km" salons={grouped.close} />}
+            {grouped.aroundYou.length > 0 && <Group title="Around You" sub="5–10 km" salons={grouped.aroundYou} />}
+            {grouped.everythingElse.length > 0 && <Group title="More" sub="" salons={grouped.everythingElse} />}
+            
+            {/* Fallback when no location – show all unsorted */}
+            {!displayLoc && grouped.allSorted.length === 0 && (
+              <div className="flex flex-col gap-2">
+                {salons.map((s) => (
+                  <div key={s.id} className="bg-white border border-[#f0f0f0] rounded-xl p-3.5 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-bold truncate">{s.name}</p>
+                      <p className="text-[11px] text-[#8a8a8a] truncate">{(s as any).address || 'Jaipur'}</p>
+                    </div>
+                    <MapPin className="w-4 h-4 text-[#c6c6c6] ml-3" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Layout>
   );
 }
 
-function Group({ title, km, salons }: { title: string; km: string; salons: SalonDistance[] }) {
+function Group({ title, sub, salons }: { title: string; sub: string; salons: SalonDistance[] }) {
   if (salons.length === 0) return null;
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-[12px] font-bold">{title}</span>
-        <span className="text-[10px] text-[#6b6b6b]">{km}</span>
-        <span className="text-[10px] bg-[#f5f5f5] px-2 py-0.5 rounded-full">{salons.length}</span>
+        <span className="text-[12px] font-semibold">{title}</span>
+        {sub && <span className="text-[10px] text-[#8a8a8a]">{sub}</span>}
       </div>
       <div className="flex flex-col gap-2">
         {salons.map(({ salon, distanceM, distanceKm, distanceLabel }) => (
-          <div key={salon.id} className="bg-white border border-[#f0f0f0] rounded-xl p-3.5 flex items-center justify-between">
+          <div key={salon.id} className="bg-white border border-[#f0f0f0] rounded-xl p-3.5 flex items-center justify-between active:scale-[0.99] transition-all">
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-bold truncate">{salon.name}</p>
-              <p className="text-[11px] text-[#6b6b6b] truncate">{(salon as any).address || 'Jaipur'}</p>
+              <p className="text-[13px] font-semibold truncate">{salon.name}</p>
+              <p className="text-[11px] text-[#8a8a8a] truncate">{(salon as any).address || 'Jaipur'}{distanceLabel ? ` • ${distanceLabel}` : ''}</p>
             </div>
-            <span className="text-[12px] font-bold text-[#c6005c] ml-3 shrink-0">{distanceLabel || fmtDistance(distanceKm, distanceM)}</span>
+            {distanceLabel && <span className="text-[12px] font-bold text-[#1f1f1f] ml-3 shrink-0">{distanceLabel}</span>}
           </div>
         ))}
       </div>
