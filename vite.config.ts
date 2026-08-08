@@ -51,6 +51,8 @@ export default defineConfig(() => {
         },
         workbox: {
           cleanupOutdatedCaches: true,
+          // Bundle (Leaflet + app) 2MiB cross kar sakta hai — precache limit badhao
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
           // Let the SW take control immediately after first registration so
           // Chrome can show the install prompt on the FIRST visit (default
           // behaviour waits for a reload, which users read as

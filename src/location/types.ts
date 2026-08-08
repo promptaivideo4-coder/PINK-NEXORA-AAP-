@@ -116,10 +116,16 @@ export interface Salon {
   lastActiveAt?: number; // timestamp ms
   /** City as stored on the salon record (e.g. "Jaipur") — service-area catalog */
   city?: string | null;
-  /** Area/locality as stored on the salon record (e.g. "Central Jaipur") */
+  /** Area/locality as stored on the salon record (e.g. "Raja Park") */
   area?: string | null;
   /** Street address (optional) */
   address?: string | null;
+  /** Optional zone (e.g. "Central Jaipur") — owner saved */
+  zone?: string | null;
+  /** Optional landmark — owner saved */
+  landmark?: string | null;
+  /** Optional pincode — owner saved */
+  pincode?: string | null;
   /** Average rating 0-5 (alias of rating, optional) */
   ratingAverage?: number;
   [key: string]: unknown;

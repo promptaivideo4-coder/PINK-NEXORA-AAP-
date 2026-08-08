@@ -1,27 +1,25 @@
 /**
  * salonServiceArea.ts
  * ===================
- * Location-based salon service-area determination — Jaipur service area.
+ * Salon service-area — SHOP'S SAVED LOCATION is the source of truth.
  *
- * GPS → service area → salon catalog filter (actual salon coordinates se
- * distance logic already handles sorting/grouping — NearbySalonService).
+ * HARD RULE: Salon ka area/city uski APNI saved shop location se aata hai
+ * (owner ne Set Shop Location se save kiya). User ke GPS se salon ki location
+ * kabhi nahi badalti — user GPS sirf optional "Near Me"/distance ke liye.
  *
- * IMPORTANT (honesty note — requirement: no invented boundary):
- * Project me Jaipur ka koi real boundary/geofence (GeoJSON polygon) dataset
- * NAHI hai. Isliye strict point-in-polygon filtering NAHI ki ja rahi.
- * Yahan:
- *  - `isJaipurServiceArea()` — reverse geocoding (cached) se city-level hint
- *    milta hai (kis city ka salon catalog load karna hai).
- *  - Actual salon filtering/showing — salon ke apne `city`/`area` fields +
- *    existing GPS+salon-coordinate Haversine distance logic (NearbySalonService).
- *  - Strict boundary check ke liye real Jaipur boundary dataset (GeoJSON)
- *    required hai — wo is project me nahi hai.
+ * Ye module sirf helpers deta hai:
+ *  - SUPPORTED_JAIPUR_ZONES — owner ke "Set Shop Location" form me zone picker
+ *    ke liye reference (Central/East/North/South/West Jaipur).
+ *  - normalizeZone() — free-text zone → canonical zone.
+ *  - salonAreaLabel() — salon ki saved area/city se display label.
+ *  - isJaipurCity() — salon ke apne city field se.
  *
- * Supported Jaipur service-area reference (localities/zones):
- *  Central, East, North, South and West Jaipur.
+ * NOTE: Project me real Jaipur boundary/geofence (GeoJSON polygon) dataset
+ * nahi hai. Isliye strict point-in-polygon filtering nahi ki ja rahi —
+ * salon apni saved coordinates + area se hi identify hota hai.
  */
 
-/** Supported Jaipur service-area zones — reference list */
+/** Supported Jaipur service-area zones — owner picker reference */
 export const SUPPORTED_JAIPUR_ZONES = [
   'Central Jaipur',
   'East Jaipur',
@@ -32,72 +30,62 @@ export const SUPPORTED_JAIPUR_ZONES = [
 
 export type JaipurZone = (typeof SUPPORTED_JAIPUR_ZONES)[number];
 
-/** Plain zone names bhi accept (Central/East/North/South/West) */
 const PLAIN_ZONES = ['Central', 'East', 'North', 'South', 'West'];
 
 /**
- * Normalize a free-text area/zone string into a canonical Jaipur zone.
+ * Normalize a free-text zone into a canonical Jaipur zone.
  * Returns null agar supported zone nahi hai.
  */
-export function normalizeZone(area: string | null | undefined): JaipurZone | null {
-  if (!area) return null;
-  const a = area.trim();
-  const lower = a.toLowerCase();
-
-  // "Central Jaipur" / "Central" / "Central-Jaipur" / "central"
+export function normalizeZone(zone: string | null | undefined): JaipurZone | null {
+  if (!zone) return null;
+  const lower = zone.trim().toLowerCase();
   for (let i = 0; i < SUPPORTED_JAIPUR_ZONES.length; i++) {
-    const zone = SUPPORTED_JAIPUR_ZONES[i];
-    if (lower === zone.toLowerCase()) return zone;
+    const z = SUPPORTED_JAIPUR_ZONES[i];
     const plain = PLAIN_ZONES[i];
-    if (lower === plain.toLowerCase()) return zone;
-    if (lower === `${plain.toLowerCase()}-jaipur`) return zone;
-    if (lower.startsWith(plain.toLowerCase()) && lower.includes('jaipur')) return zone;
+    if (lower === z.toLowerCase()) return z;
+    if (lower === plain.toLowerCase()) return z;
+    if (lower === `${plain.toLowerCase()}-jaipur`) return z;
+    if (lower.startsWith(plain.toLowerCase()) && lower.includes('jaipur')) return z;
   }
   return null;
 }
 
-/** Normalize a salon city string — 'jaipur' match */
+/** Salon ka apna city field — 'jaipur' match (case-insensitive) */
 export function isJaipurCity(city: string | null | undefined): boolean {
   if (!city) return false;
   return city.toLowerCase().includes('jaipur');
 }
 
-/** Salon service area (city catalog) — sirf naam se boundary nahi */
-export interface ServiceArea {
-  /** Reverse-geocoded city (hint ke liye) */
-  city: string | null;
-  /** True when reverse geocode city == Jaipur area → Jaipur catalog load */
-  isJaipur: boolean;
-  /** Resolved locality/zone (agar supported zone me hai) */
-  zone: JaipurZone | null;
-  /** True agar locality supported Jaipur zone me hai */
-  isSupportedZone: boolean;
+/** Salon-like minimal shape */
+export interface SalonAreaInfo {
+  area?: string | null;
+  city?: string | null;
+  address?: string | null;
+  landmark?: string | null;
+  zone?: string | null;
 }
 
 /**
- * Determine service area from reverse-geocoded place.
- * NOTE: ye city-level HINT hai (kis catalog load karna hai) —
- * GPS boundary/polygon nahi. Strict filtering distance logic se hoti hai.
+ * Display label for a salon's OWN saved location.
+ * e.g. "Raja Park, Jaipur" | "Jaipur" | "Address area"
  */
-export function resolveServiceArea(place: {
-  city?: string | null;
-  locality?: string | null;
-} | null): ServiceArea {
-  if (!place) {
-    return { city: null, isJaipur: false, zone: null, isSupportedZone: false };
-  }
-  const city = place.city || null;
-  const isJaipur = isJaipurCity(city) || isJaipurCity(place.locality);
-  const zone = normalizeZone(place.locality);
-  return {
-    city,
-    isJaipur,
-    zone,
-    isSupportedZone: zone !== null,
-  };
+export function salonAreaLabel(s: SalonAreaInfo): string {
+  const parts: string[] = [];
+  if (s.area && s.area.trim()) parts.push(s.area.trim());
+  if (s.city && s.city.trim()) parts.push(s.city.trim());
+  return parts.join(', ');
 }
 
-/** Jaipur salons filter — salon ke apne city field se (GPS boundary nahi) */
-export function filterJaipurSalons<T extends { city?: string | null }>(salons: T[]): T[] {
-  return salons.filter((s) => isJaipurCity(s.city));
+/** Full address-ish label: area, city + landmark/address fallback */
+export function salonFullLabel(s: SalonAreaInfo): string {
+  const base = salonAreaLabel(s);
+  if (base) return base;
+  if (s.landmark && s.landmark.trim()) return s.landmark.trim();
+  if (s.address && s.address.trim()) return s.address.trim();
+  return 'Location set by salon';
+}
+
+/** Get Directions deep link — salon ke saved coordinates se (no API key) */
+export function getDirectionsUrl(latitude: number, longitude: number): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
 }

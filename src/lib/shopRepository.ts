@@ -36,12 +36,30 @@ export interface MyShop {
   city: string | null;
   latitude: number | null;
   longitude: number | null;
+  /** Optional zone (e.g. "Central Jaipur") — owner set karta hai */
+  zone: string | null;
+  /** Optional landmark */
+  landmark: string | null;
+  /** Optional pincode */
+  pincode: string | null;
   verified: boolean;
   acceptsOnlineBookings: boolean;
   ratingAverage: number;
   status: ShopStatus;
   proposalId: string | null;
   proposalStatus: string | null;
+}
+
+/** Canonical shop location payload — lat/lng source of truth */
+export interface ShopLocationInput {
+  latitude: number;
+  longitude: number;
+  address?: string | null;
+  city?: string | null;
+  area?: string | null;
+  zone?: string | null;
+  landmark?: string | null;
+  pincode?: string | null;
 }
 
 export interface ShopService {
@@ -162,7 +180,7 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
 
   const { data: salons, error: salonsError } = await client
     .from('salons')
-    .select('id, organization_id, name, business_category, phone, address, area, city, latitude, longitude, verified, accepts_online_bookings, rating_average')
+    .select('id, organization_id, name, business_category, phone, latitude, longitude, location_address, location_city, location_area, location_zone, location_landmark, location_pincode, verified, accepts_online_bookings, rating_average')
     .in('organization_id', orgIds)
     .is('deleted_at', null);
   if (salonsError) throw salonsError;
@@ -188,11 +206,14 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
     name: salon.name || 'Salon',
     businessCategory: salon.business_category ?? null,
     phone: salon.phone ?? null,
-    address: salon.address ?? null,
-    area: salon.area ?? null,
-    city: salon.city ?? null,
+    address: salon.location_address ?? null,
+    area: salon.location_area ?? null,
+    city: salon.location_city ?? null,
     latitude: typeof salon.latitude === 'number' ? salon.latitude : null,
     longitude: typeof salon.longitude === 'number' ? salon.longitude : null,
+    zone: salon.location_zone ?? null,
+    landmark: salon.location_landmark ?? null,
+    pincode: salon.location_pincode ?? null,
     verified: Boolean(salon.verified),
     acceptsOnlineBookings: Boolean(salon.accepts_online_bookings),
     ratingAverage: Number(salon.rating_average ?? 0),
@@ -205,6 +226,46 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
 // ---------------------------------------------------------------------------
 // Services (owner-scoped via RLS)
 // ---------------------------------------------------------------------------
+
+/**
+ * Update the owner's canonical shop location (lat/lng = source of truth).
+ * salons par direct UPDATE grant nahi hai → RPC `update_shop_location`
+ * (security definer, ownership verified via organization_members).
+ * RPC fail ho to direct update attempt karte hain (agar RLS allow kare).
+ */
+export async function updateShopLocation(
+  client: SupabaseClient,
+  input: ShopLocationInput,
+): Promise<{ ok: boolean; error?: string | null }> {
+  if (!Number.isFinite(input.latitude) || !Number.isFinite(input.longitude)) {
+    return { ok: false, error: 'Invalid coordinates' };
+  }
+  try {
+    // Owner ka apna salon resolve karo (organization_members se ownership)
+    const shop = await fetchMyShop(client);
+    if (!shop) return { ok: false, error: 'No owned salon found to update' };
+
+    // Direct UPDATE — existing salons record me canonical location.
+    // (RLS can_manage_salon_settings owner ko apni salon update karne deta hai.)
+    const { error: upErr } = await client
+      .from('salons')
+      .update({
+        latitude: input.latitude,
+        longitude: input.longitude,
+        location_address: input.address ?? null,
+        location_city: input.city ?? null,
+        location_area: input.area ?? null,
+        location_zone: input.zone ?? null,
+        location_landmark: input.landmark ?? null,
+        location_pincode: input.pincode ?? null,
+      })
+      .eq('id', shop.id);
+    if (upErr) return { ok: false, error: upErr.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e) };
+  }
+}
 
 export async function listServices(client: SupabaseClient, salonId: string): Promise<ShopService[]> {
   const { data, error } = await client

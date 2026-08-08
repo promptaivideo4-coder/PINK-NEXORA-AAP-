@@ -571,26 +571,18 @@ export default function Profile({ navigate }: NavigationProps) {
                   </div>
                 </div>
 
-                {/* Interactive Map Preview */}
-                <div 
-                  className="w-full h-36 rounded-xl bg-surface-variant overflow-hidden border border-outline-variant/40 relative group cursor-pointer"
-                  onClick={() => triggerToast("Map Pin location is locked to current salon registration address")}
+                {/* Set Shop Location — canonical location (map + device location) */}
+                <button
+                  onClick={() => navigate('shop-location')}
+                  className="w-full h-12 bg-primary/10 border border-primary/30 text-primary rounded-xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-primary/20 active:scale-[0.98] transition-all"
                 >
-                  <img 
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoRkcUf8p39Eod1JN3R1hOpCjLTCm6Nkl8rKnmZOL2TQ4DwPUjKv-v6l0d0pWeyUoilyVeZFLvXZ6xbhstioYcjadYBP3LgUcyCgie96DwCInlp3Q0lmDRt9SOiN8BY4X3WOsxnCk7WN1A6C0pMiSmqOvoud4h8fNUmf49KTAPhTV8o_yAetkM_n6aktgr2484uQc8tU-AhwLNGt1Axvpwk1KOGvwr5ib81UwU87dplpSFF3SUfnEVchRTSBV1ltppIJ10J_nJ6yo" 
-                    alt="Map Location" 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent flex items-end justify-between p-3">
-                    <span className="text-xs font-semibold text-white drop-shadow-md flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-primary-fixed" />
-                      {address || 'Avenue Road'}, {city || 'Metropolis'}
-                    </span>
-                    <span className="text-[10px] font-bold text-white bg-black/40 backdrop-blur-xs px-2.5 py-1 rounded-full border border-white/20">
-                      Tap to view GPS
-                    </span>
-                  </div>
-                </div>
+                  <MapPin className="w-4 h-4" />
+                  Set Shop Location
+                </button>
+                <p className="text-[10px] text-on-surface-variant">
+                  Exact map location, lat/lng, address, area — yahi salon ki canonical location hai
+                  (users ko map marker + Get Directions isi se milta hai).
+                </p>
               </div>
 
             </div>

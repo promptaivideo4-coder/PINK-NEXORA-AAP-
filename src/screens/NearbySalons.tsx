@@ -1,23 +1,26 @@
 /**
  * NearbySalons – Ultra Minimal (Only Salons, Location Silent)
  * ==========================================================
- * STEP 12/14: COMPLETE — legacy shim hata diya gaya.
- * Location → useNearbySalons → useNexoraLocation → LocationContext → src/location/*
- * Koi direct GPS / koi old shim import nahi.
+ * Location architecture: SHOP'S SAVED LOCATION = salon ki canonical location.
+ *  - Salon list: verified salons apni saved lat/lng/city/area se.
+ *  - User GPS sirf "Near Me" distance sorting ke liye (NearbySalonService).
+ *  - Salon detail: map marker + Get Directions salon ke saved coordinates se.
+ *  - User GPS salon ki location kabhi overwrite nahi karta.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
-import { MapPin } from 'lucide-react';
+import { MapPin, X, Navigation as NavIcon, Loader2 } from 'lucide-react';
 import { Salon, SalonWithDistance } from '../location/types';
 import { STATUS_MESSAGES } from '../location/constants';
 import { nearbySalonService } from '../location/NearbySalonService';
 import { useLocation } from '../contexts/LocationContext';
 import { useNearbySalons } from '../hooks/useNearbySalons';
+import { salonAreaLabel, salonFullLabel, getDirectionsUrl } from '../lib/salonServiceArea';
 import { supabase } from '../lib/supabase';
-import { reverseGeocodePlace } from '../lib/reverseGeocode';
-import { resolveServiceArea, filterJaipurSalons, ServiceArea } from '../lib/salonServiceArea';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 /** Supabase salon row (verified salons) — typed mapping row */
 interface SalonRow {
@@ -27,9 +30,12 @@ interface SalonRow {
   longitude: number | null;
   rating_average: number | null;
   verified: boolean | null;
-  address: string | null;
-  area: string | null;
-  city: string | null;
+  location_address: string | null;
+  location_area: string | null;
+  location_city: string | null;
+  location_zone: string | null;
+  location_landmark: string | null;
+  location_pincode: string | null;
   updated_at: string | null;
   featured?: boolean | null;
 }
@@ -40,13 +46,122 @@ function salonAddress(s: Salon | SalonWithDistance): string | null {
 }
 
 const DEMO_SALONS: Salon[] = [
-  { id: 's1', name: 'Glamour Salon — C-Scheme', latitude: 26.9124, longitude: 75.7873, address: 'C-Scheme, Jaipur', city: 'Jaipur', rating: 4.8, ratingAverage: 4.8, featured: true, lastActiveAt: Date.now() - 5 * 60 * 1000 },
-  { id: 's2', name: 'Luxe Beauty Lounge — MI Road', latitude: 26.892, longitude: 75.796, address: 'MI Road, Jaipur', city: 'Jaipur', rating: 4.6, ratingAverage: 4.6, featured: false, lastActiveAt: Date.now() - 30 * 60 * 1000 },
-  { id: 's3', name: 'Rajwada Salon — Johari Bazar', latitude: 26.926, longitude: 75.8235, address: 'Johari Bazar, Jaipur', city: 'Jaipur', rating: 4.5, ratingAverage: 4.5, featured: false, lastActiveAt: Date.now() - 120 * 60 * 1000 },
-  { id: 's4', name: 'Pink City Cuts — Hawa Mahal', latitude: 26.9239, longitude: 75.8267, address: 'Hawa Mahal Rd, Jaipur', city: 'Jaipur', rating: 4.9, ratingAverage: 4.9, featured: true, lastActiveAt: Date.now() - 2 * 60 * 1000 },
-  { id: 's5', name: 'Sunrise Unisex Salon — Tonk Rd', latitude: 26.88, longitude: 75.808, address: 'Tonk Road, Jaipur', city: 'Jaipur', rating: 4.2, ratingAverage: 4.2, featured: false, lastActiveAt: Date.now() - 60 * 60 * 1000 },
-  { id: 's6', name: 'Bold Beauty Studio — Malviya Nagar', latitude: 26.8575, longitude: 75.815, address: 'Malviya Nagar, Jaipur', city: 'Jaipur', rating: 4.4, ratingAverage: 4.4, featured: true, lastActiveAt: Date.now() - 10 * 60 * 1000 },
+  { id: 's1', name: 'Star Salon — Raja Park', latitude: 26.8997, longitude: 75.8097, address: 'Raja Park, Jaipur', area: 'Raja Park', city: 'Jaipur', zone: 'East Jaipur', rating: 4.8, ratingAverage: 4.8, featured: true, lastActiveAt: Date.now() - 5 * 60 * 1000 },
+  { id: 's2', name: 'Luxe Beauty Lounge — MI Road', latitude: 26.892, longitude: 75.796, address: 'MI Road, Jaipur', area: 'MI Road', city: 'Jaipur', rating: 4.6, ratingAverage: 4.6, featured: false, lastActiveAt: Date.now() - 30 * 60 * 1000 },
+  { id: 's3', name: 'Rajwada Salon — Johari Bazar', latitude: 26.926, longitude: 75.8235, address: 'Johari Bazar, Jaipur', area: 'Johari Bazar', city: 'Jaipur', rating: 4.5, ratingAverage: 4.5, featured: false, lastActiveAt: Date.now() - 120 * 60 * 1000 },
+  { id: 's4', name: 'Pink City Cuts — Hawa Mahal', latitude: 26.9239, longitude: 75.8267, address: 'Hawa Mahal Rd, Jaipur', area: 'Hawa Mahal', city: 'Jaipur', rating: 4.9, ratingAverage: 4.9, featured: true, lastActiveAt: Date.now() - 2 * 60 * 1000 },
+  { id: 's5', name: 'Sunrise Unisex Salon — Tonk Rd', latitude: 26.88, longitude: 75.808, address: 'Tonk Road, Jaipur', area: 'Tonk Road', city: 'Jaipur', rating: 4.2, ratingAverage: 4.2, featured: false, lastActiveAt: Date.now() - 60 * 60 * 1000 },
+  { id: 's6', name: 'Bold Beauty Studio — Malviya Nagar', latitude: 26.8575, longitude: 75.815, address: 'Malviya Nagar, Jaipur', area: 'Malviya Nagar', city: 'Jaipur', rating: 4.4, ratingAverage: 4.4, featured: true, lastActiveAt: Date.now() - 10 * 60 * 1000 },
 ];
+
+/** Leaflet CSS marker — default icon assets se bachne ke liye */
+const detailMarkerIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:34px;height:34px;background:#e6007e;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.35);"><div style="width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:7px;left:7px;"></div></div>',
+  iconSize: [34, 34],
+  iconAnchor: [17, 32],
+});
+
+/** Salon detail modal — map marker + saved address + Get Directions (salon coords se) */
+function SalonDetailModal({ salon, onClose }: { salon: Salon; onClose: () => void }) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (!mapRef.current || mapInstance.current) return;
+    const hasCoords =
+      typeof salon.latitude === 'number' &&
+      typeof salon.longitude === 'number' &&
+      Number.isFinite(salon.latitude) &&
+      Number.isFinite(salon.longitude);
+    const center: [number, number] = hasCoords
+      ? [salon.latitude as number, salon.longitude as number]
+      : [26.9124, 75.7873];
+    const map = L.map(mapRef.current, { zoomControl: true }).setView(center, 15);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(map);
+    if (hasCoords) {
+      L.marker(center, { icon: detailMarkerIcon }).addTo(map);
+    }
+    mapInstance.current = map;
+    return () => {
+      map.remove();
+      mapInstance.current = null;
+    };
+  }, [salon.latitude, salon.longitude]);
+
+  const hasCoords =
+    typeof salon.latitude === 'number' &&
+    typeof salon.longitude === 'number' &&
+    Number.isFinite(salon.latitude) &&
+    Number.isFinite(salon.longitude);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md bg-surface rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-outline-variant/40">
+          <h2 className="text-base font-bold truncate flex-1">{salon.name}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant" aria-label="Close">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Map — salon ke saved coordinates par marker */}
+        <div className="relative h-52 bg-surface-variant">
+          <div ref={mapRef} className="absolute inset-0" />
+          {!hasCoords && (
+            <div className="absolute inset-0 flex items-center justify-center bg-surface-variant/80 text-xs text-on-surface-variant">
+              Owner ne abhi coordinates set nahi kiye — address saved hai.
+            </div>
+          )}
+        </div>
+
+        {/* Saved location details */}
+        <div className="p-4 space-y-3 overflow-y-auto">
+          <div className="flex items-start gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold">{salonFullLabel(salon)}</p>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                {salonAreaLabel(salon) || (salonAddress(salon) || 'Location set by salon')}
+              </p>
+            </div>
+          </div>
+
+          {hasCoords && (
+            <div className="bg-surface-container-low rounded-xl px-3 py-2 font-mono text-[10.5px] text-on-surface-variant">
+              📍 {Number(salon.latitude).toFixed(6)}, {Number(salon.longitude).toFixed(6)}
+            </div>
+          )}
+
+          {/* Get Directions — salon ke saved coordinates se */}
+          <a
+            href={hasCoords ? getDirectionsUrl(Number(salon.latitude), Number(salon.longitude)) : undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={hasCoords ? undefined : (e) => e.preventDefault()}
+            className={`w-full flex items-center justify-center gap-2 text-xs font-bold py-3 rounded-xl transition-all ${
+              hasCoords
+                ? 'bg-primary text-white hover:opacity-90 active:scale-[0.98] shadow-md'
+                : 'bg-surface-container-high text-on-surface-variant cursor-not-allowed'
+            }`}
+          >
+            <NavIcon className="w-4 h-4" />
+            {hasCoords ? 'Get Directions' : 'Directions unavailable (no coordinates)'}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function NearbySalons({ navigate }: NavigationProps) {
   // Centralized location access (context = global state layer)
@@ -64,69 +179,43 @@ export default function NearbySalons({ navigate }: NavigationProps) {
 
   const [salons, setSalons] = useState<Salon[]>(DEMO_SALONS);
   const [fallbackGrouped, setFallbackGrouped] = useState<import('../location/types').GroupedSalons | null>(null);
-
-  // Service-area state — GPS coords → reverse geocode → Jaipur catalog decide
-  const [serviceArea, setServiceArea] = useState<ServiceArea>({
-    city: null,
-    isJaipur: false,
-    zone: null,
-    isSupportedZone: false,
-  });
-
-  // Location-based service area (Jaipur): GPS coords se, cached reverse geocode.
-  // NOTE: strict point-in-polygon Jaipur boundary dataset project me nahi hai —
-  // ye city-level hint hai (kis catalog load karna hai); salon filtering/distance
-  // actual salon coordinates + Haversine se hoti hai (NearbySalonService).
-  useEffect(() => {
-    const loc = currentLocation || lastKnownFix;
-    if (!loc) return;
-    let cancelled = false;
-    reverseGeocodePlace(loc.latitude, loc.longitude).then((place) => {
-      if (!cancelled) setServiceArea(resolveServiceArea(place));
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [currentLocation?.latitude, currentLocation?.longitude, lastKnownFix?.latitude, lastKnownFix?.longitude]);
-
-  // Service-area filter: Jaipur me ho to sirf Jaipur salons (salon.city field se).
-  // GPS boundary nahi — salon ka apna city/area metadata + distance logic.
-  // Memoized taaki useNearbySalons ka salons-effect har render par na chale.
-  const visibleSalons = useMemo(
-    () => (serviceArea.isJaipur ? filterJaipurSalons(salons) : salons),
-    [serviceArea.isJaipur, salons],
-  );
+  const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
 
   // Composition hook — location (useNexoraLocation) + distance/sort/group (src/location)
-  const { grouped, isLoading, error, isDenied } = useNearbySalons({ salons: visibleSalons });
+  // User GPS sirf distance sorting ke liye — salon locations kabhi nahi badalti.
+  const { grouped, isLoading, error, isDenied } = useNearbySalons({ salons });
 
   // Auto request location silently when screen opens (no drama)
-  // requestLocation useCallback([]) se stable hai — mount par hi ek baar fire hoga.
   useEffect(() => {
     requestLocation();
   }, [requestLocation]);
 
-  // Fetch real salons from Supabase (verified salons with coordinates)
+  // Fetch real salons from Supabase (verified salons with their OWN saved location)
   useEffect(() => {
     async function fetchReal() {
       try {
         const { data, error } = await supabase
           .from('salons')
-          .select('id, name, latitude, longitude, rating_average, verified, address, area, city, updated_at')
+          .select('id, name, latitude, longitude, rating_average, verified, location_address, location_area, location_city, location_zone, location_landmark, location_pincode, updated_at')
           .eq('verified', true)
           .is('deleted_at', null)
           .limit(80);
         if (!error && data && data.length > 0) {
           const mapped: Salon[] = (data as SalonRow[])
+            // NULL coordinates wale salons gracefully skip (koi fake coords nahi) —
+            // owner ne location set nahi ki to salon distance-list me nahi aata.
             .filter((r) => typeof r.latitude === 'number' && typeof r.longitude === 'number')
             .map((r) => ({
               id: String(r.id),
               name: r.name || 'Salon',
               latitude: r.latitude as number,
               longitude: r.longitude as number,
-              address: r.address || null,
-              area: r.area || null,
-              city: r.city || null,
+              address: r.location_address || null,
+              area: r.location_area || null,
+              city: r.location_city || null,
+              zone: r.location_zone || null,
+              landmark: r.location_landmark || null,
+              pincode: r.location_pincode || null,
               rating: Number(r.rating_average ?? 0),
               ratingAverage: Number(r.rating_average ?? 0),
               featured: Boolean(r.featured ?? false),
@@ -144,11 +233,11 @@ export default function NearbySalons({ navigate }: NavigationProps) {
   // STEP 10: low-accuracy fallback — validated location nahi, par lastKnownFix se
   // bhi grouping dikha do (screen low-GPS areas me usable rehti hai).
   useEffect(() => {
-    if (!grouped && lastKnownFix && visibleSalons.length > 0) {
-      const result = nearbySalonService.calculateIfNeeded(lastKnownFix, visibleSalons, true);
+    if (!grouped && lastKnownFix && salons.length > 0) {
+      const result = nearbySalonService.calculateIfNeeded(lastKnownFix, salons, true);
       if (result) setFallbackGrouped(result.grouped);
     }
-  }, [grouped, lastKnownFix, visibleSalons]);
+  }, [grouped, lastKnownFix, salons]);
 
   const displayLoc = currentLocation || lastKnownFix;
   const isLowAccuracy = !!lastKnownFix && !currentLocation;
@@ -207,42 +296,59 @@ export default function NearbySalons({ navigate }: NavigationProps) {
             <span className="text-[11px] text-[#8a8a8a]">
               {displayLoc
                 ? `${displayGrouped?.allSorted.length ?? 0} found`
-                : `${visibleSalons.length} salons`}
+                : `${salons.length} salons`}
             </span>
           </div>
 
           <div className="flex flex-col gap-3">
             {displayGrouped && (
               <>
-                {displayGrouped.nearby.length > 0 && <Group title="Nearby" sub="0–2 km" salons={displayGrouped.nearby} />}
-                {displayGrouped.close.length > 0 && <Group title="Close" sub="2–5 km" salons={displayGrouped.close} />}
-                {displayGrouped.aroundYou.length > 0 && <Group title="Around You" sub="5–10 km" salons={displayGrouped.aroundYou} />}
-                {displayGrouped.everythingElse.length > 0 && <Group title="More" sub="" salons={displayGrouped.everythingElse} />}
+                {displayGrouped.nearby.length > 0 && <Group title="Nearby" sub="0–2 km" salons={displayGrouped.nearby} onOpen={setSelectedSalon} />}
+                {displayGrouped.close.length > 0 && <Group title="Close" sub="2–5 km" salons={displayGrouped.close} onOpen={setSelectedSalon} />}
+                {displayGrouped.aroundYou.length > 0 && <Group title="Around You" sub="5–10 km" salons={displayGrouped.aroundYou} onOpen={setSelectedSalon} />}
+                {displayGrouped.everythingElse.length > 0 && <Group title="More" sub="" salons={displayGrouped.everythingElse} onOpen={setSelectedSalon} />}
               </>
             )}
 
             {/* Fallback when no location – show all unsorted */}
             {!displayLoc && (!displayGrouped || displayGrouped.allSorted.length === 0) && (
               <div className="flex flex-col gap-2">
-                {visibleSalons.map((s) => (
-                  <div key={s.id} className="bg-white border border-[#f0f0f0] rounded-xl p-3.5 flex items-center justify-between">
+                {salons.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedSalon(s)}
+                    className="bg-white border border-[#f0f0f0] rounded-xl p-3.5 flex items-center justify-between text-left active:scale-[0.99] transition-all"
+                  >
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-bold truncate">{s.name}</p>
-                      <p className="text-[11px] text-[#8a8a8a] truncate">{salonAddress(s) || 'Jaipur'}</p>
+                      <p className="text-[11px] text-[#8a8a8a] truncate">{salonAreaLabel(s) || salonAddress(s) || 'Location set by salon'}</p>
                     </div>
-                    <MapPin className="w-4 h-4 text-[#c6c6c6] ml-3" />
-                  </div>
+                    <MapPin className="w-4 h-4 text-[#c6c6c6] ml-3 shrink-0" />
+                  </button>
                 ))}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Salon detail modal — owner ki saved location */}
+      {selectedSalon && <SalonDetailModal salon={selectedSalon} onClose={() => setSelectedSalon(null)} />}
     </Layout>
   );
 }
 
-function Group({ title, sub, salons }: { title: string; sub: string; salons: SalonWithDistance[] }) {
+function Group({
+  title,
+  sub,
+  salons,
+  onOpen,
+}: {
+  title: string;
+  sub: string;
+  salons: SalonWithDistance[];
+  onOpen: (s: Salon) => void;
+}) {
   if (salons.length === 0) return null;
   return (
     <div>
@@ -252,17 +358,22 @@ function Group({ title, sub, salons }: { title: string; sub: string; salons: Sal
       </div>
       <div className="flex flex-col gap-2">
         {salons.map((s) => (
-          <div key={s.id} className="bg-white border border-[#f0f0f0] rounded-xl p-3.5 flex items-center justify-between active:scale-[0.99] transition-all">
+          <button
+            key={s.id}
+            onClick={() => onOpen(s)}
+            className="bg-white border border-[#f0f0f0] rounded-xl p-3.5 flex items-center justify-between text-left active:scale-[0.99] transition-all"
+          >
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-semibold truncate">{s.name}</p>
               <p className="text-[11px] text-[#8a8a8a] truncate">
-                {salonAddress(s) || 'Jaipur'}{s.distanceLabel ? ` • ${s.distanceLabel}` : ''}
+                {salonAreaLabel(s) || salonAddress(s) || 'Location set by salon'}
+                {s.distanceLabel ? ` • ${s.distanceLabel}` : ''}
               </p>
             </div>
             {s.distanceLabel && (
               <span className="text-[12px] font-bold text-[#1f1f1f] ml-3 shrink-0">{s.distanceLabel}</span>
             )}
-          </div>
+          </button>
         ))}
       </div>
     </div>

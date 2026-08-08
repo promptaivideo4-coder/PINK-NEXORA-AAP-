@@ -22,7 +22,7 @@ async function startServer() {
           "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://studio.google.com", "https://*.google.com", "https://cdn.jsdelivr.net"],
           "worker-src": ["'self'", "blob:", "https://studio.google.com", "https://*.google.com"],
           "connect-src": ["'self'", "https:", "wss:", "https://*.google.com", "https://*.googleapis.com", "https://*.supabase.co"],
-          "img-src": ["'self'", "data:", "blob:", "https://*.google.com", "https://*.googleusercontent.com"],
+          "img-src": ["'self'", "data:", "blob:", "https://*.google.com", "https://*.googleusercontent.com", "https://tile.openstreetmap.org", "https://*.tile.openstreetmap.org"],
           "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://studio.google.com"],
           "font-src": ["'self'", "https://fonts.gstatic.com"],
           "frame-ancestors": ["'self'", "https://studio.google.com", "https://*.google.com"],
