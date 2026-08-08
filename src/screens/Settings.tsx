@@ -4,6 +4,8 @@ import { NavigationProps } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { fetchMyShop, updateShopLocation } from '../lib/shopRepository';
+import ShopLocationPicker, { ConfirmedShopLocation } from '../components/ShopLocationPicker';
 import { 
   Palette, 
   Sliders, 
@@ -24,7 +26,10 @@ import {
   Download,
   Users,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  MapPin,
+  Edit3,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -40,6 +45,100 @@ export default function Settings({ navigate }: NavigationProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+
+  // ---- Shop Location section ----
+  const [shopLoc, setShopLoc] = useState<{
+    address: string | null;
+    city: string | null;
+    area: string | null;
+    pincode: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  } | null>(null);
+  const [locLoading, setLocLoading] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [pendingLocation, setPendingLocation] = useState<ConfirmedShopLocation | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [savingLoc, setSavingLoc] = useState(false);
+
+  // Load owner's saved shop location (canonical) — Settings open hone par
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const shop = await fetchMyShop(supabase);
+        if (!cancelled) {
+          setShopLoc({
+            address: shop?.address ?? null,
+            city: shop?.city ?? null,
+            area: shop?.area ?? null,
+            pincode: shop?.pincode ?? null,
+            latitude: typeof shop?.latitude === 'number' ? shop.latitude : null,
+            longitude: typeof shop?.longitude === 'number' ? shop.longitude : null,
+          });
+        }
+      } catch {
+        if (!cancelled) setShopLoc(null);
+      } finally {
+        if (!cancelled) setLocLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const locationSet = !!shopLoc && typeof shopLoc.latitude === 'number' && typeof shopLoc.longitude === 'number' && Number.isFinite(shopLoc.latitude) && Number.isFinite(shopLoc.longitude);
+
+  const handleEditLocation = () => {
+    setPendingLocation(null);
+    setConfirmOpen(false);
+    setEditModalOpen(true);
+  };
+
+  const handleLocationConfirmed = (loc: ConfirmedShopLocation) => {
+    // Owner ne nayi location confirm ki — ab confirmation dialog
+    setPendingLocation(loc);
+    setEditModalOpen(false);
+    setConfirmOpen(true);
+  };
+
+  const handleSaveLocation = async () => {
+    if (!pendingLocation) return;
+    setSavingLoc(true);
+    try {
+      const res = await updateShopLocation(supabase, {
+        latitude: pendingLocation.latitude,
+        longitude: pendingLocation.longitude,
+        address: pendingLocation.address || null,
+        city: pendingLocation.city || null,
+        area: pendingLocation.area || null,
+        zone: pendingLocation.zone || null,
+        landmark: pendingLocation.landmark || null,
+        pincode: pendingLocation.pincode || null,
+      });
+      if (res.ok) {
+        // Immediately reflect on Settings (salon map marker/directions bhi isi se update)
+        setShopLoc({
+          address: pendingLocation.address || null,
+          city: pendingLocation.city || null,
+          area: pendingLocation.area || null,
+          pincode: pendingLocation.pincode || null,
+          latitude: pendingLocation.latitude,
+          longitude: pendingLocation.longitude,
+        });
+        setConfirmOpen(false);
+        setPendingLocation(null);
+        showToast('Shop location updated successfully.');
+      } else {
+        showToast(res.error || 'Failed to update shop location');
+      }
+    } catch (e) {
+      showToast(String((e as Error)?.message ?? e));
+    } finally {
+      setSavingLoc(false);
+    }
+  };
 
   React.useEffect(() => {
     const checkStandalone = () => {
@@ -135,7 +234,80 @@ export default function Settings({ navigate }: NavigationProps) {
         </AnimatePresence>
 
         <div className="space-y-6">
-          
+
+          {/* Shop Location Section — owner's canonical saved location */}
+          <section className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest/80 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] overflow-hidden transition-shadow hover:shadow-[0px_8px_30px_rgba(0,0,0,0.06)] duration-300">
+            <div className="p-5 border-b border-surface-container-highest/60 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-bold text-on-surface">Shop Location</h3>
+                <p className="text-[11px] text-on-surface-variant">
+                  {locLoading
+                    ? 'Loading saved location...'
+                    : locationSet
+                      ? 'Location set'
+                      : 'Location missing'}
+                </p>
+              </div>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                locLoading ? 'bg-surface-variant text-on-surface-variant'
+                : locationSet ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
+                : 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+              }`}>
+                {locLoading ? '...' : locationSet ? '📍 Location set' : '⚠️ Location missing'}
+              </span>
+            </div>
+
+            {/* Current shop location details */}
+            <div className="p-5 space-y-2">
+              {locLoading ? (
+                <div className="flex items-center gap-2 text-xs text-on-surface-variant py-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                </div>
+              ) : shopLoc ? (
+                <>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[11px] font-semibold text-on-surface-variant w-16 shrink-0">Address</span>
+                    <span className="text-xs font-medium text-on-surface">{shopLoc.address || '—'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[11px] font-semibold text-on-surface-variant w-16 shrink-0">City</span>
+                    <span className="text-xs font-medium text-on-surface">{shopLoc.city || '—'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[11px] font-semibold text-on-surface-variant w-16 shrink-0">Area</span>
+                    <span className="text-xs font-medium text-on-surface">{shopLoc.area || '—'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-[11px] font-semibold text-on-surface-variant w-16 shrink-0">Pincode</span>
+                    <span className="text-xs font-medium text-on-surface">{shopLoc.pincode || '—'}</span>
+                  </div>
+                  {locationSet && (
+                    <div className="bg-surface-container-low rounded-lg px-2.5 py-1.5 font-mono text-[10px] text-on-surface-variant">
+                      📍 {shopLoc.latitude?.toFixed(6)}, {shopLoc.longitude?.toFixed(6)}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-on-surface-variant py-1">Unable to load shop location.</p>
+              )}
+
+              {/* Edit Location */}
+              <button
+                onClick={handleEditLocation}
+                disabled={locLoading}
+                className="w-full mt-2 h-11 bg-primary/10 border border-primary/30 text-primary rounded-xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                <Edit3 className="w-4 h-4" /> Edit Location
+              </button>
+              <p className="text-[10px] text-on-surface-variant">
+                Saved lat/lng is canonical — salon map marker + Get Directions isi se update honge.
+              </p>
+            </div>
+          </section>
+
           {/* Appearance Section */}
           <section className="bg-surface-container-lowest rounded-2xl border border-surface-container-highest/80 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] overflow-hidden transition-shadow hover:shadow-[0px_8px_30px_rgba(0,0,0,0.06)] duration-300">
             <div className="px-6 py-4 border-b border-surface-container-highest/60 bg-surface-bright/50 flex items-center gap-2.5">
@@ -549,6 +721,92 @@ export default function Settings({ navigate }: NavigationProps) {
                   className="px-5 py-2 rounded-full text-xs font-bold bg-primary-container text-on-primary-container hover:bg-primary transition-colors"
                 >
                   Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Shop Location — Edit modal (map + device location) */}
+      <AnimatePresence>
+        {editModalOpen && (
+          <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setEditModalOpen(false)}>
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="w-full max-w-md bg-surface rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-outline-variant/40 shrink-0">
+                <h3 className="text-base font-bold flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" /> Edit Shop Location
+                </h3>
+                <button onClick={() => setEditModalOpen(false)} className="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant" aria-label="Close">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <ShopLocationPicker
+                  initialLat={shopLoc?.latitude ?? null}
+                  initialLng={shopLoc?.longitude ?? null}
+                  confirmed={shopLoc ? {
+                    latitude: typeof shopLoc.latitude === 'number' ? shopLoc.latitude : 0,
+                    longitude: typeof shopLoc.longitude === 'number' ? shopLoc.longitude : 0,
+                    address: shopLoc.address || '',
+                    city: shopLoc.city || '',
+                    area: shopLoc.area || '',
+                    zone: '',
+                    landmark: '',
+                    pincode: shopLoc.pincode || '',
+                  } : null}
+                  onConfirm={handleLocationConfirmed}
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirm before saving */}
+      <AnimatePresence>
+        {confirmOpen && pendingLocation && (
+          <div className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setConfirmOpen(false)}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-sm bg-surface rounded-3xl p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-on-surface">Update shop location?</h3>
+              <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                Your new location will be used on your salon profile and map.
+              </p>
+              <div className="mt-3 bg-surface-container-low rounded-xl p-3 font-mono text-[10.5px] text-on-surface-variant">
+                📍 {pendingLocation.latitude.toFixed(6)}, {pendingLocation.longitude.toFixed(6)}
+                {pendingLocation.area && <div className="mt-1">📍 {pendingLocation.area}{pendingLocation.city ? `, ${pendingLocation.city}` : ''}</div>}
+              </div>
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={() => { setConfirmOpen(false); setPendingLocation(null); }}
+                  disabled={savingLoc}
+                  className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface font-bold text-xs active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveLocation}
+                  disabled={savingLoc}
+                  className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-md disabled:opacity-50"
+                >
+                  {savingLoc ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  {savingLoc ? 'Saving...' : 'Confirm Location'}
                 </button>
               </div>
             </motion.div>
