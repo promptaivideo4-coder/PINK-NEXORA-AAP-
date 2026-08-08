@@ -11,12 +11,12 @@
  *  - SUPPORTED_JAIPUR_ZONES — owner ke "Set Shop Location" form me zone picker
  *    ke liye reference (Central/East/North/South/West Jaipur).
  *  - normalizeZone() — free-text zone → canonical zone.
- *  - salonAreaLabel() — salon ki saved area/city se display label.
- *  - isJaipurCity() — salon ke apne city field se.
+ *  - salonAreaLabel() / salonFullLabel() — salon ki saved area/city se labels.
+ *  - getDirectionsUrl() — salon ke saved coords se directions.
  *
- * NOTE: Project me real Jaipur boundary/geofence (GeoJSON polygon) dataset
- * nahi hai. Isliye strict point-in-polygon filtering nahi ki ja rahi —
- * salon apni saved coordinates + area se hi identify hota hai.
+ * NOTE: Old JAIPUR_LOCALITIES list (hardcoded locality coordinates + boundary/
+ * geofence + user-GPS Jaipur detection) REMOVED — project me exist nahi karta.
+ * Salon apni saved coordinates (salons.latitude/longitude) se hi identify hota hai.
  */
 
 /** Supported Jaipur service-area zones — owner picker reference */
@@ -48,12 +48,6 @@ export function normalizeZone(zone: string | null | undefined): JaipurZone | nul
     if (lower.startsWith(plain.toLowerCase()) && lower.includes('jaipur')) return z;
   }
   return null;
-}
-
-/** Salon ka apna city field — 'jaipur' match (case-insensitive) */
-export function isJaipurCity(city: string | null | undefined): boolean {
-  if (!city) return false;
-  return city.toLowerCase().includes('jaipur');
 }
 
 /** Salon-like minimal shape */
@@ -89,3 +83,4 @@ export function salonFullLabel(s: SalonAreaInfo): string {
 export function getDirectionsUrl(latitude: number, longitude: number): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
 }
+

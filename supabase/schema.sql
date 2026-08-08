@@ -63,16 +63,6 @@ from auth.users
 on conflict (id) do nothing;
 
 -- ============================================================
--- SHOP LOCATION CONFIRMATION fields (location save flow)
--- Owner confirm ke baad hi location_confirmed=true hota hai.
--- Supabase Dashboard → SQL Editor me ek baar chalana hai.
--- ============================================================
-alter table public.salons add column if not exists location_accuracy_m numeric;
-alter table public.salons add column if not exists location_source text; -- 'gps' | 'manual'
-alter table public.salons add column if not exists location_confirmed boolean not null default false;
-alter table public.salons add column if not exists location_confirmed_at timestamptz;
-
--- ============================================================
 -- update_shop_location — owner apni salon ka canonical location
 -- update karta hai (RLS direct UPDATE na de to ye RPC use hota hai).
 --
