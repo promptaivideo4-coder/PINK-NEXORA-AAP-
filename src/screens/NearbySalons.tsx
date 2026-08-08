@@ -6,7 +6,7 @@
  * Koi direct GPS / koi old shim import nahi.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
 import { MapPin } from 'lucide-react';
@@ -16,6 +16,8 @@ import { nearbySalonService } from '../location/NearbySalonService';
 import { useLocation } from '../contexts/LocationContext';
 import { useNearbySalons } from '../hooks/useNearbySalons';
 import { supabase } from '../lib/supabase';
+import { reverseGeocodePlace } from '../lib/reverseGeocode';
+import { resolveServiceArea, filterJaipurSalons, ServiceArea } from '../lib/salonServiceArea';
 
 /** Supabase salon row (verified salons) — typed mapping row */
 interface SalonRow {
@@ -26,6 +28,7 @@ interface SalonRow {
   rating_average: number | null;
   verified: boolean | null;
   address: string | null;
+  area: string | null;
   city: string | null;
   updated_at: string | null;
   featured?: boolean | null;
@@ -62,8 +65,40 @@ export default function NearbySalons({ navigate }: NavigationProps) {
   const [salons, setSalons] = useState<Salon[]>(DEMO_SALONS);
   const [fallbackGrouped, setFallbackGrouped] = useState<import('../location/types').GroupedSalons | null>(null);
 
+  // Service-area state — GPS coords → reverse geocode → Jaipur catalog decide
+  const [serviceArea, setServiceArea] = useState<ServiceArea>({
+    city: null,
+    isJaipur: false,
+    zone: null,
+    isSupportedZone: false,
+  });
+
+  // Location-based service area (Jaipur): GPS coords se, cached reverse geocode.
+  // NOTE: strict point-in-polygon Jaipur boundary dataset project me nahi hai —
+  // ye city-level hint hai (kis catalog load karna hai); salon filtering/distance
+  // actual salon coordinates + Haversine se hoti hai (NearbySalonService).
+  useEffect(() => {
+    const loc = currentLocation || lastKnownFix;
+    if (!loc) return;
+    let cancelled = false;
+    reverseGeocodePlace(loc.latitude, loc.longitude).then((place) => {
+      if (!cancelled) setServiceArea(resolveServiceArea(place));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentLocation?.latitude, currentLocation?.longitude, lastKnownFix?.latitude, lastKnownFix?.longitude]);
+
+  // Service-area filter: Jaipur me ho to sirf Jaipur salons (salon.city field se).
+  // GPS boundary nahi — salon ka apna city/area metadata + distance logic.
+  // Memoized taaki useNearbySalons ka salons-effect har render par na chale.
+  const visibleSalons = useMemo(
+    () => (serviceArea.isJaipur ? filterJaipurSalons(salons) : salons),
+    [serviceArea.isJaipur, salons],
+  );
+
   // Composition hook — location (useNexoraLocation) + distance/sort/group (src/location)
-  const { grouped, isLoading, error, isDenied } = useNearbySalons({ salons });
+  const { grouped, isLoading, error, isDenied } = useNearbySalons({ salons: visibleSalons });
 
   // Auto request location silently when screen opens (no drama)
   // requestLocation useCallback([]) se stable hai — mount par hi ek baar fire hoga.
@@ -77,7 +112,7 @@ export default function NearbySalons({ navigate }: NavigationProps) {
       try {
         const { data, error } = await supabase
           .from('salons')
-          .select('id, name, latitude, longitude, rating_average, verified, address, city, updated_at')
+          .select('id, name, latitude, longitude, rating_average, verified, address, area, city, updated_at')
           .eq('verified', true)
           .is('deleted_at', null)
           .limit(80);
@@ -90,6 +125,7 @@ export default function NearbySalons({ navigate }: NavigationProps) {
               latitude: r.latitude as number,
               longitude: r.longitude as number,
               address: r.address || null,
+              area: r.area || null,
               city: r.city || null,
               rating: Number(r.rating_average ?? 0),
               ratingAverage: Number(r.rating_average ?? 0),
@@ -108,11 +144,11 @@ export default function NearbySalons({ navigate }: NavigationProps) {
   // STEP 10: low-accuracy fallback — validated location nahi, par lastKnownFix se
   // bhi grouping dikha do (screen low-GPS areas me usable rehti hai).
   useEffect(() => {
-    if (!grouped && lastKnownFix && salons.length > 0) {
-      const result = nearbySalonService.calculateIfNeeded(lastKnownFix, salons, true);
+    if (!grouped && lastKnownFix && visibleSalons.length > 0) {
+      const result = nearbySalonService.calculateIfNeeded(lastKnownFix, visibleSalons, true);
       if (result) setFallbackGrouped(result.grouped);
     }
-  }, [grouped, lastKnownFix, salons]);
+  }, [grouped, lastKnownFix, visibleSalons]);
 
   const displayLoc = currentLocation || lastKnownFix;
   const isLowAccuracy = !!lastKnownFix && !currentLocation;
@@ -171,7 +207,7 @@ export default function NearbySalons({ navigate }: NavigationProps) {
             <span className="text-[11px] text-[#8a8a8a]">
               {displayLoc
                 ? `${displayGrouped?.allSorted.length ?? 0} found`
-                : `${salons.length} salons`}
+                : `${visibleSalons.length} salons`}
             </span>
           </div>
 
@@ -188,7 +224,7 @@ export default function NearbySalons({ navigate }: NavigationProps) {
             {/* Fallback when no location – show all unsorted */}
             {!displayLoc && (!displayGrouped || displayGrouped.allSorted.length === 0) && (
               <div className="flex flex-col gap-2">
-                {salons.map((s) => (
+                {visibleSalons.map((s) => (
                   <div key={s.id} className="bg-white border border-[#f0f0f0] rounded-xl p-3.5 flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-bold truncate">{s.name}</p>

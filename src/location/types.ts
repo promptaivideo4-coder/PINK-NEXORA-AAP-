@@ -114,6 +114,14 @@ export interface Salon {
   rating: number; // 0-5
   featured: boolean;
   lastActiveAt?: number; // timestamp ms
+  /** City as stored on the salon record (e.g. "Jaipur") — service-area catalog */
+  city?: string | null;
+  /** Area/locality as stored on the salon record (e.g. "Central Jaipur") */
+  area?: string | null;
+  /** Street address (optional) */
+  address?: string | null;
+  /** Average rating 0-5 (alias of rating, optional) */
+  ratingAverage?: number;
   [key: string]: unknown;
 }
 

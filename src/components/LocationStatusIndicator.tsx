@@ -1,22 +1,25 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from '../contexts/LocationContext';
 import { SimpleStatus, ValidatedLocation } from '../location/types';
+import { reverseGeocodeCity } from '../lib/reverseGeocode';
 
 /**
  * LocationStatusIndicator — compact real-time location status for the header.
  *
  * Uses ONLY the centralized location system (LocationContext → src/location/*).
- * Koi naya GPS/geocoding logic nahi — sirf existing normalized state ka view.
+ * City/locality name: reverseGeocodeCity (cached) — koi mock/hardcode nahi.
  *
- * State logic (data-driven, taaki "Detecting..." par atka na rahe):
- *  1. currentLocation ho       → 📍 Location detected (ya city/locality agar ho)
- *  2. lastKnownFix ho          → 📍 Location detected (req #5 — available fix dikhao)
- *  3. simpleStatus requesting  → ⏳ Detecting location...
- *  4. denied/error/unavailable → ⚠️ Location unavailable
- *  5. else (idle)              → 📍 Location (muted)
+ * States:
+ *  1. Location data available (currentLocation || lastKnownFix):
+ *       - name resolve ho raha hai → 📍 Locating...
+ *       - name mil gaya          → 📍 [City]
+ *       - name resolve fail hua  → 📍 Location detected (graceful fallback)
+ *  2. No location yet:
+ *       - requesting → ⏳ Detecting location...
+ *       - denied/error/unavailable → ⚠️ Location unavailable
+ *       - idle → 📍 Location (muted)
  *
- * Style OfflineSyncStatus ("Synced" badge) ke design se match karta hai:
- * same pill shape, spacing, colors, typography, responsive behaviour.
+ * Style OfflineSyncStatus ("Synced" badge) ke design se match karta hai.
  */
 
 export interface LocationIndicatorState {
@@ -26,31 +29,13 @@ export interface LocationIndicatorState {
 }
 
 /**
- * Pure state derivation — testable without React.
- * Data pehle, phir status: location data available ho to 'requesting' bhi success dikhata hai.
+ * Pure state derivation for NO-location cases — testable without React.
  */
 export function deriveLocationIndicatorState(
   simpleStatus: SimpleStatus,
-  currentLocation: ValidatedLocation | null,
-  lastKnownFix: ValidatedLocation | null,
 ): LocationIndicatorState {
-  const hasLocation = !!currentLocation || !!lastKnownFix;
-
-  if (hasLocation) {
-    // Req #2: existing city/locality value ho to dikhao, warna generic message
-    const loc = currentLocation || lastKnownFix;
-    const city = (loc as ValidatedLocation & { city?: string | null }).city;
-    return {
-      icon: '📍',
-      label: city ? city : 'Location detected',
-      badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-    };
-  }
-
   switch (simpleStatus) {
     case 'success':
-      // Status 'updated' hamesha fix ke saath aata hai; data missing ho tab bhi
-      // status sahi batao (store reset jaisi edge case ke liye).
       return {
         icon: '📍',
         label: 'Location detected',
@@ -80,14 +65,52 @@ export function deriveLocationIndicatorState(
 }
 
 export default function LocationStatusIndicator() {
-  // Req #6: context se subscribe — value change par ye component re-render hota hai
+  // Req: context se subscribe — state change par re-render
   const { simpleStatus, currentLocation, lastKnownFix } = useLocation();
 
-  const { icon, label, badgeClass } = deriveLocationIndicatorState(
-    simpleStatus,
-    currentLocation,
-    lastKnownFix,
-  );
+  const loc = currentLocation || lastKnownFix;
+  const [cityName, setCityName] = useState<string | null | 'resolving'>('resolving');
+
+  // Reverse geocode — sirf tab jab coords badlein (cached, no repeated calls)
+  useEffect(() => {
+    if (!loc) {
+      setCityName('resolving');
+      return;
+    }
+    let cancelled = false;
+    setCityName('resolving');
+    reverseGeocodeCity(loc.latitude, loc.longitude).then((name) => {
+      if (!cancelled) setCityName(name ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loc?.latitude, loc?.longitude, loc?.accuracy]);
+
+  let icon: string;
+  let label: string;
+  let badgeClass: string;
+
+  if (loc) {
+    // Location data available — city name display logic
+    if (cityName === 'resolving') {
+      icon = '📍';
+      label = 'Locating...';
+      badgeClass = 'bg-primary/10 text-primary border-primary/30';
+    } else if (cityName) {
+      icon = '📍';
+      label = cityName;
+      badgeClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+    } else {
+      // GPS mila, city name resolve nahi hua — graceful fallback
+      icon = '📍';
+      label = 'Location detected';
+      badgeClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+    }
+  } else {
+    // No location yet — existing loading/error/idle states unchanged
+    ({ icon, label, badgeClass } = deriveLocationIndicatorState(simpleStatus));
+  }
 
   return (
     <span
