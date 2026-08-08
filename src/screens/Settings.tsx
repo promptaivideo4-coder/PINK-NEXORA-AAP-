@@ -90,9 +90,26 @@ export default function Settings({ navigate }: NavigationProps) {
 
   const locationSet = !!shopLoc && typeof shopLoc.latitude === 'number' && typeof shopLoc.longitude === 'number' && Number.isFinite(shopLoc.latitude) && Number.isFinite(shopLoc.longitude);
 
-  const handleEditLocation = () => {
+  const handleEditLocation = async () => {
     setPendingLocation(null);
     setConfirmOpen(false);
+    // Reopen par saved coordinates salon record se fresh load (existing pin dikhe)
+    setLocLoading(true);
+    try {
+      const shop = await fetchMyShop(supabase);
+      setShopLoc({
+        address: shop?.address ?? null,
+        city: shop?.city ?? null,
+        area: shop?.area ?? null,
+        pincode: shop?.pincode ?? null,
+        latitude: typeof shop?.latitude === 'number' ? shop.latitude : null,
+        longitude: typeof shop?.longitude === 'number' ? shop.longitude : null,
+      });
+    } catch {
+      /* keep current */
+    } finally {
+      setLocLoading(false);
+    }
     setEditModalOpen(true);
   };
 
@@ -129,7 +146,7 @@ export default function Settings({ navigate }: NavigationProps) {
         });
         setConfirmOpen(false);
         setPendingLocation(null);
-        showToast('Shop location updated successfully.');
+        showToast('✓ Location saved successfully');
       } else {
         showToast(res.error || 'Failed to update shop location');
       }

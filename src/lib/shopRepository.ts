@@ -245,23 +245,40 @@ export async function updateShopLocation(
     const shop = await fetchMyShop(client);
     if (!shop) return { ok: false, error: 'No owned salon found to update' };
 
-    // Direct UPDATE — existing salons record me canonical location.
-    // (RLS can_manage_salon_settings owner ko apni salon update karne deta hai.)
+    const patch = {
+      latitude: input.latitude,
+      longitude: input.longitude,
+      location_address: input.address ?? null,
+      location_city: input.city ?? null,
+      location_area: input.area ?? null,
+      location_zone: input.zone ?? null,
+      location_landmark: input.landmark ?? null,
+      location_pincode: input.pincode ?? null,
+    };
+
+    // 1) Direct UPDATE — agar RLS owner ko apni salon update karne de
     const { error: upErr } = await client
       .from('salons')
-      .update({
-        latitude: input.latitude,
-        longitude: input.longitude,
-        location_address: input.address ?? null,
-        location_city: input.city ?? null,
-        location_area: input.area ?? null,
-        location_zone: input.zone ?? null,
-        location_landmark: input.landmark ?? null,
-        location_pincode: input.pincode ?? null,
-      })
+      .update(patch)
       .eq('id', shop.id);
-    if (upErr) return { ok: false, error: upErr.message };
-    return { ok: true };
+    if (!upErr) return { ok: true };
+
+    // 2) RLS ne direct update block kiya (e.g. 42501) → RPC fallback try karo
+    //    (agar DB me update_shop_location RPC deploy ho — schema change nahi, sirf try)
+    const { error: rpcErr } = await client.rpc('update_shop_location', {
+      p_latitude: input.latitude,
+      p_longitude: input.longitude,
+      p_address: input.address ?? null,
+      p_city: input.city ?? null,
+      p_area: input.area ?? null,
+      p_zone: input.zone ?? null,
+      p_landmark: input.landmark ?? null,
+      p_pincode: input.pincode ?? null,
+    });
+    if (!rpcErr) return { ok: true };
+
+    // 3) Dono fail — clear error (owner ko bataya jayega)
+    return { ok: false, error: upErr.message || rpcErr.message || 'Failed to update shop location' };
   } catch (e) {
     return { ok: false, error: String((e as Error)?.message ?? e) };
   }

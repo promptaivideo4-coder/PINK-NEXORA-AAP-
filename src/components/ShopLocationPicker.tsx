@@ -51,6 +51,15 @@ const markerIcon = L.divIcon({
 /** Reasonable GPS accuracy to allow quick confirm (meters) */
 const GOOD_ACCURACY_M = 100;
 
+/** Valid coordinate check — accuracy is NOT part of validity (informational only) */
+function isValidLatLng(lat: number | null, lng: number | null): boolean {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (lat < -90 || lat > 90) return false;
+  if (lng < -180 || lng > 180) return false;
+  return true;
+}
+
 export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, confirmed }: Props) {
   const { currentLocation, lastKnownFix, requestLocation } = useLocation();
 
@@ -130,47 +139,52 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
     }
   }
 
-  // Use current device location — existing centralized system
-  function useDeviceLocation() {
-    requestLocation();
-    const loc = currentLocation || lastKnownFix;
-    if (!loc) {
-      setGpsWarn(true);
-      return;
-    }
-    setGpsAccuracy(loc.accuracy);
-    setGpsWarn(loc.accuracy > GOOD_ACCURACY_M);
-    setLat(Number(loc.latitude.toFixed(6)));
-    setLng(Number(loc.longitude.toFixed(6)));
+  // Apply a fix to the form + map (coords, accuracy WARNING only — kabhi block nahi)
+  function applyFix(latitude: number, longitude: number, accuracy: number) {
+    setGpsAccuracy(accuracy);
+    // Accuracy is informational/warning only — valid coords par save hamesha allowed
+    setGpsWarn(accuracy > GOOD_ACCURACY_M);
+    setLat(Number(latitude.toFixed(6)));
+    setLng(Number(longitude.toFixed(6)));
     if (leafletRef.current && markerRef.current) {
-      leafletRef.current.setView([loc.latitude, loc.longitude], 15);
-      markerRef.current.setLatLng([loc.latitude, loc.longitude]);
+      leafletRef.current.setView([latitude, longitude], 15);
+      markerRef.current.setLatLng([latitude, longitude]);
     }
-    reverseGeocodeAt(loc.latitude, loc.longitude);
+    reverseGeocodeAt(latitude, longitude);
   }
 
-  // Watch — device location update par auto-fill (sirf jab koi pin nahi)
+  // Use current device location — existing centralized system
+  function useDeviceLocation() {
+    setGpsWarn(false);
+    setGpsAccuracy(null);
+    requestLocation(); // watcher start (async — fix aane par watch effect lat/lng set karega)
+    const loc = currentLocation || lastKnownFix;
+    if (loc) {
+      // Fix pehle se available ho to turant form+map me set
+      applyFix(loc.latitude, loc.longitude, loc.accuracy);
+    }
+    // Agar loc null hai (stale closure / abhi fix nahi aayi) — watch effect
+    // currentLocation/lastKnownFix update hote hi lat/lng set kar dega (niche).
+  }
+
+  // Watch — device location update par auto-fill (sirf jab koi pin nahi laga)
   useEffect(() => {
     const loc = currentLocation || lastKnownFix;
     if (loc && lat === null && lng === null) {
-      setGpsAccuracy(loc.accuracy);
-      setGpsWarn(loc.accuracy > GOOD_ACCURACY_M);
-      setLat(Number(loc.latitude.toFixed(6)));
-      setLng(Number(loc.longitude.toFixed(6)));
-      if (leafletRef.current && markerRef.current) {
-        leafletRef.current.setView([loc.latitude, loc.longitude], 15);
-        markerRef.current.setLatLng([loc.latitude, loc.longitude]);
-      }
-      reverseGeocodeAt(loc.latitude, loc.longitude);
+      applyFix(loc.latitude, loc.longitude, loc.accuracy);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLocation, lastKnownFix]);
 
   function confirm() {
-    if (lat === null || lng === null) return;
+    // Valid coordinates required (range/finite) — accuracy NEVER blocks save
+    if (!isValidLatLng(lat, lng)) return;
+    // Owner explicitly confirmed — warning clear (save ke baad bhi nahi dikhega)
+    setGpsWarn(false);
+    setGpsAccuracy(null);
     onConfirm({
-      latitude: lat,
-      longitude: lng,
+      latitude: lat as number,
+      longitude: lng as number,
       address: address.trim(),
       city: city.trim(),
       area: area.trim(),
@@ -180,7 +194,7 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
     });
   }
 
-  const hasPin = lat !== null && lng !== null;
+  const hasPin = isValidLatLng(lat, lng);
 
   return (
     <div className="flex flex-col gap-3">
