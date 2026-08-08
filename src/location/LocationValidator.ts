@@ -68,12 +68,14 @@ class LocationValidator {
 
     // 4. Accuracy checks per spec
     if (accuracy > ACCURACY_THRESHOLDS.REJECT_ABOVE) {
-      // >100m reject completely
-      // Clear any pending moderate fix if accuracy got worse
+      // >100m — CLASSIFY as 'low' (STEP 10): not auto-rejected for the app.
+      // It is not accepted as a validated location, but the app can still
+      // decide to use it as a low-accuracy fallback (e.g. Nearby Salons stays
+      // usable in areas where GPS naturally has lower accuracy).
       return {
         accepted: false,
-        reason: `Accuracy ${accuracy.toFixed(1)}m > 100m - Rejected completely`,
-        accuracyLevel: 'rejected',
+        reason: `Accuracy ${accuracy.toFixed(1)}m > 100m - low accuracy, waiting for better fix`,
+        accuracyLevel: 'low',
         shouldShowImproving: true,
       };
     }
@@ -270,12 +272,20 @@ class LocationValidator {
     );
   }
 
-  private getAccuracyLevel(accuracy: number): ValidationResult['accuracyLevel'] {
+  /**
+   * Classify accuracy into the 5 spec ranges:
+   * 0-15 excellent, 16-30 good, 31-50 moderate, 51-100 poor, >100 low.
+   * Public — app decide kar sakta hai ki result usable hai ya nahi.
+   */
+  classifyAccuracy(accuracy: number): ValidationResult['accuracyLevel'] {
     if (accuracy <= ACCURACY_THRESHOLDS.EXCELLENT_MAX) return 'excellent';
     if (accuracy <= ACCURACY_THRESHOLDS.GOOD_MAX) return 'good';
     if (accuracy <= ACCURACY_THRESHOLDS.MODERATE_MAX) return 'moderate';
     if (accuracy <= ACCURACY_THRESHOLDS.POOR_MAX) return 'poor';
-    return 'rejected';
+    return 'low';
+  }
+  private getAccuracyLevel(accuracy: number): ValidationResult['accuracyLevel'] {
+    return this.classifyAccuracy(accuracy);
   }
 
   /**

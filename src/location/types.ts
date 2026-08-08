@@ -44,6 +44,10 @@ export interface ValidatedLocation {
   movementDistance: number | null;
   /** Is this the first fix? */
   isFirstFix: boolean;
+  /** Accuracy classification (0-15 excellent, 16-30 good, 31-50 moderate, 51-100 poor, >100 low) */
+  accuracyLevel?: 'excellent' | 'good' | 'moderate' | 'poor' | 'low';
+  /** True when this fix was low-accuracy (>100m) fallback, not a validated fix */
+  isLowAccuracyFallback?: boolean;
 }
 
 /** GPS Status for UI feedback */
@@ -58,6 +62,15 @@ export type GPSStatus =
   | 'error'
   | 'unsupported'
   | 'offline';
+
+/** Simplified status vocabulary — normalized for UI consumers */
+export type SimpleStatus =
+  | 'idle'
+  | 'requesting'
+  | 'success'
+  | 'error'
+  | 'denied'
+  | 'unavailable';
 
 /** User-friendly status messages - EXACT strings from spec */
 export type StatusMessage =
@@ -87,7 +100,8 @@ export type GPSErrorCode =
 export interface ValidationResult {
   accepted: boolean;
   reason: string;
-  accuracyLevel: 'excellent' | 'good' | 'moderate' | 'poor' | 'rejected';
+  /** Accuracy classification: 0-15 excellent, 16-30 good, 31-50 moderate, 51-100 poor, >100 low */
+  accuracyLevel: 'excellent' | 'good' | 'moderate' | 'poor' | 'low' | 'rejected';
   shouldShowImproving: boolean;
 }
 

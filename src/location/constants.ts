@@ -3,7 +3,7 @@
  * Strictly native browser Geolocation only
  */
 
-import { LocationServiceConfig, StatusMessage } from './types';
+import { LocationServiceConfig, StatusMessage, GPSStatus, SimpleStatus } from './types';
 
 /**
  * GPS Configuration - EXACT values from spec
@@ -67,3 +67,31 @@ export const MAX_REASONABLE_SPEED_MS = 55; // 200 km/h
 /** Logging config */
 export const LOG_PREFIX = '[Nexora GPS]';
 export const DEBUG_ENABLED = process.env.NODE_ENV !== 'production' ? true : false;
+
+/**
+ * Normalize GPSStatus into the simplified UI vocabulary:
+ * idle | requesting | success | error | denied | unavailable
+ * No duplicate state — sirf existing status ka derived view.
+ */
+export function simplifyStatus(status: GPSStatus): SimpleStatus {
+  switch (status) {
+    case 'idle':
+      return 'idle';
+    case 'detecting':
+    case 'improving':
+    case 'weak-signal':
+    case 'waiting-better':
+      return 'requesting';
+    case 'updated':
+      return 'success';
+    case 'permission-denied':
+      return 'denied';
+    case 'unsupported':
+    case 'offline':
+      return 'unavailable';
+    case 'error':
+      return 'error';
+    default:
+      return 'idle';
+  }
+}

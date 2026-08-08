@@ -1,13 +1,23 @@
 /**
  * useNearbySalons.ts
- * Hook for salon distance calculation - only recalculates when user moves >100m
+ * ==================
+ * Composition hook — sirf CENTRALIZED location system se data leta hai.
+ * Yahan KOI GPS acquisition nahi — location `useNexoraLocation()` (primary hook)
+ * → LocationStore → src/location/* se aati hai.
+ *
+ * Responsibilities (STEP 8):
+ * 1. Current location — centralized system se
+ * 2. Distances — DistanceCalculator (Haversine, via locationService/nearbySalonService)
+ * 3. Sort — SalonSorter
+ * 4. Group — SalonSorter (Nearby 0–2km, Close 2–5km, Around You 5–10km, More 10+km)
+ * 5. Return data required by UI
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Salon, GroupedSalons, ValidatedLocation } from '../location/types';
 import { locationService } from '../location/LocationService';
 import { nearbySalonService } from '../location/NearbySalonService';
-import { locationStore } from '../location/LocationStore';
+import { useNexoraLocation } from './useNexoraLocation';
 
 interface UseNearbySalonsOptions {
   salons: Salon[];
@@ -21,6 +31,10 @@ interface UseNearbySalonsReturn {
   lastLocation: ValidatedLocation | null;
   forceRecalculate: () => void;
   isRecalculating: boolean;
+  // UI helpers — additive, non-breaking
+  isLoading: boolean;
+  error: string | null;
+  isDenied: boolean;
 }
 
 export function useNearbySalons(
@@ -28,78 +42,63 @@ export function useNearbySalons(
 ): UseNearbySalonsReturn {
   const { salons, autoRecalc = true } = options;
 
+  // 1. Location — centralized system se (koi apna GPS acquisition nahi)
+  const { location, isLoading, error, isDenied } = useNexoraLocation();
+
   const [grouped, setGrouped] = useState<GroupedSalons | null>(() =>
     locationService.getNearbySalons()
   );
   const [recalcCount, setRecalcCount] = useState(0);
-  const [lastLocation, setLastLocation] = useState<ValidatedLocation | null>(() =>
-    locationStore.getLocation()
-  );
   const [isRecalculating, setIsRecalculating] = useState(false);
 
   const salonsRef = useRef(salons);
+  const autoRecalcRef = useRef(autoRecalc);
+  autoRecalcRef.current = autoRecalc;
+  const initialFillRef = useRef(false);
 
-  // Keep salons ref updated and push to service
+  // Keep salons pushed to centralized service (2,3,4 — service sort/group karta hai)
   useEffect(() => {
     salonsRef.current = salons;
     locationService.setSalons(salons);
-
-    // Force recalc when salon list changes and we have location
-    if (locationStore.getLocation()) {
-      const result = locationService.forceRecalculate();
-      if (result) {
-        setGrouped(result);
-        setRecalcCount((c) => c + 1);
-      }
-    }
   }, [salons]);
 
-  const handleLocationUpdate = useCallback((loc: ValidatedLocation) => {
-    setLastLocation(loc);
-    if (!autoRecalc) return;
-
-    // Only recalc is already handled by service's debounced logic
-    // We listen to custom event as well
-    const result = nearbySalonService.calculateIfNeeded(
-      loc,
-      salonsRef.current,
-      false
-    );
+  // Recalculate when location changes — service internally gates by >100m movement.
+  // `grouped` ko dep me nahi rakhte taaki grouping update par effect re-run na ho
+  // (initial fill ref-based hai, isliye stale closure ka koi issue nahi).
+  useEffect(() => {
+    if (!location) return;
+    if (!autoRecalcRef.current) return;
+    const result = nearbySalonService.calculateIfNeeded(location, salonsRef.current, false);
     if (result) {
-      setGrouped((prev) => {
-        // Prevent unnecessary render if not recalculated
-        if (!result.recalculated && prev) return prev;
-        return result.grouped;
-      });
       if (result.recalculated) {
+        setGrouped(result.grouped);
         setRecalcCount((c) => c + 1);
+      } else if (!initialFillRef.current) {
+        // Location update but no movement trigger — still fill initial grouping (once)
+        initialFillRef.current = true;
+        setGrouped(result.grouped);
       }
     }
-  }, [autoRecalc]);
+  }, [location]);
 
+  // External grouped-update event (service dispatches after recalc)
   useEffect(() => {
-    const unsub = locationStore.subscribeToLocation((event) => {
-      handleLocationUpdate(event.location);
-    });
-
     const handleSalonsUpdated = (e: Event) => {
       const custom = e as CustomEvent<GroupedSalons>;
-      setGrouped(custom.detail);
-      setRecalcCount((c) => c + 1);
-      setIsRecalculating(false);
+      if (custom.detail) {
+        setGrouped(custom.detail);
+        setRecalcCount((c) => c + 1);
+        setIsRecalculating(false);
+      }
     };
-
     window.addEventListener('nexora-salons-updated', handleSalonsUpdated as EventListener);
-
-    return () => {
-      unsub();
+    return () =>
       window.removeEventListener('nexora-salons-updated', handleSalonsUpdated as EventListener);
-    };
-  }, [handleLocationUpdate]);
+  }, []);
 
   const forceRecalculate = useCallback(() => {
     setIsRecalculating(true);
-    const loc = locationStore.getLocation();
+    const loc = locationService.getCurrentLocation() || location;
     if (!loc) {
       setIsRecalculating(false);
       return;
@@ -110,15 +109,19 @@ export function useNearbySalons(
       setRecalcCount((c) => c + 1);
     }
     setIsRecalculating(false);
-  }, []);
+  }, [location]);
 
   return {
     grouped,
     allSorted: grouped?.allSorted ?? [],
     recalcCount,
-    lastLocation,
+    lastLocation: location,
     forceRecalculate,
     isRecalculating,
+    // additive
+    isLoading,
+    error,
+    isDenied,
   };
 }
 

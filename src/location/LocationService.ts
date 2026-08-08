@@ -25,6 +25,7 @@ import {
   GPSStatus,
   StatusMessage,
   PermissionState,
+  StatusChangeEvent,
   Salon,
   GroupedSalons,
 } from './types';
@@ -213,6 +214,26 @@ class LocationService {
     let message: StatusMessage = this.statusMessage;
 
     if (!validation.accepted) {
+      // STEP 10: low-accuracy (>100m) fix ko store karo as lastKnownFix —
+      // app decide karta hai ki usable hai ya nahi. Screen unusable nahi banti.
+      if (validation.accuracyLevel === 'low' && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        locationStore.setLastKnownFix({
+          latitude,
+          longitude,
+          accuracy,
+          timestamp,
+          savedAt: Date.now(),
+          speed: speed ?? null,
+          heading: heading ?? null,
+          provider: 'Browser / HTML5 Geolocation',
+          updateCount: this.updateCount,
+          movementDistance,
+          isFirstFix: this.updateCount === 1,
+          accuracyLevel: 'low',
+          isLowAccuracyFallback: true,
+        });
+      }
+
       if (validation.accuracyLevel === 'rejected' && this.updateCount === 1) {
         status = 'detecting';
         message = STATUS_MESSAGES.DETECTING;
@@ -439,7 +460,7 @@ class LocationService {
     }, status === 'updated' ? 0 : 300) as unknown as number;
   }
 
-  private setStatus(status: GPSStatus, message: StatusMessage, error?: any) {
+  private setStatus(status: GPSStatus, message: StatusMessage, error?: StatusChangeEvent['error']) {
     if (this.status === status && this.statusMessage === message) return;
     this.status = status;
     this.statusMessage = message;

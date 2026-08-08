@@ -29,6 +29,10 @@ class LocationStore {
   private locationListeners: Set<LocationListener> = new Set();
   private statusListeners: Set<StatusListener> = new Set();
   private permissionListeners: Set<PermissionListener> = new Set();
+  private lastKnownFixListeners: Set<LocationListener> = new Set();
+
+  /** Last known fix (raw/any accuracy) — app decide karta hai usable hai ya nahi */
+  private lastKnownFix: ValidatedLocation | null = null;
 
   // For preventing duplicate state updates
   private lastNotifiedLocationTimestamp: number | null = null;
@@ -39,6 +43,25 @@ class LocationStore {
 
   getPreviousLocation(): ValidatedLocation | null {
     return this.previousLocation;
+  }
+
+  /** Last known fix (koi bhi accuracy — validated nahi) */
+  getLastKnownFix(): ValidatedLocation | null {
+    return this.lastKnownFix;
+  }
+
+  /**
+   * Save last known fix — low-accuracy (>100m) ya koi bhi raw fix.
+   * App decide karta hai ki ise use karna hai (e.g. Nearby Salons fallback).
+   */
+  setLastKnownFix(fix: ValidatedLocation): void {
+    this.lastKnownFix = fix;
+    const event: LocationChangeEvent = {
+      location: fix,
+      previousLocation: null,
+      movementDistance: 0,
+    };
+    this.notifyLastKnownFixListeners(event);
   }
 
   getStatus(): { status: GPSStatus; message: StatusMessage } {
@@ -140,6 +163,18 @@ class LocationStore {
     return () => this.permissionListeners.delete(listener);
   }
 
+  subscribeToLastKnownFix(listener: LocationListener): () => void {
+    this.lastKnownFixListeners.add(listener);
+    if (this.lastKnownFix) {
+      listener({
+        location: this.lastKnownFix,
+        previousLocation: null,
+        movementDistance: 0,
+      });
+    }
+    return () => this.lastKnownFixListeners.delete(listener);
+  }
+
   private notifyLocationListeners(event: LocationChangeEvent) {
     this.locationListeners.forEach((l) => {
       try {
@@ -166,6 +201,16 @@ class LocationStore {
         l(state);
       } catch (e) {
         logger.logError('Permission listener error', e);
+      }
+    });
+  }
+
+  private notifyLastKnownFixListeners(event: LocationChangeEvent) {
+    this.lastKnownFixListeners.forEach((l) => {
+      try {
+        l(event);
+      } catch (e) {
+        logger.logError('LastKnownFix listener error', e);
       }
     });
   }
