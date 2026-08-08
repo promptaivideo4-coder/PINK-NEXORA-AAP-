@@ -3,6 +3,7 @@ import { Bell, ArrowLeft, Settings, MoreVertical, Megaphone, Download } from 'lu
 import { ScreenName } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import OfflineSyncStatus from './OfflineSyncStatus';
+import LocationStatusIndicator from './LocationStatusIndicator';
 
 interface TopBarProps {
   title?: string;
@@ -53,6 +54,9 @@ export default function TopBar({
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Offline Sync Status Indicator */}
         <OfflineSyncStatus />
+
+        {/* Real-time Location Status Indicator (centralized location state) */}
+        <LocationStatusIndicator />
 
         {/* Always-visible PWA install shortcut */}
         <button
