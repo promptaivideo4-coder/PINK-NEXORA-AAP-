@@ -61,3 +61,85 @@ select
   coalesce(raw_user_meta_data ->> 'contact_number', '')
 from auth.users
 on conflict (id) do nothing;
+
+-- ============================================================
+-- SHOP LOCATION CONFIRMATION fields (location save flow)
+-- Owner confirm ke baad hi location_confirmed=true hota hai.
+-- Supabase Dashboard → SQL Editor me ek baar chalana hai.
+-- ============================================================
+alter table public.salons add column if not exists location_accuracy_m numeric;
+alter table public.salons add column if not exists location_source text; -- 'gps' | 'manual'
+alter table public.salons add column if not exists location_confirmed boolean not null default false;
+alter table public.salons add column if not exists location_confirmed_at timestamptz;
+
+-- ============================================================
+-- update_shop_location — owner apni salon ka canonical location
+-- update karta hai (RLS direct UPDATE na de to ye RPC use hota hai).
+--
+-- SECURITY:
+--  - SECURITY DEFINER (function owner = postgres/superuser) — lekin
+--    function ANDAR hi auth.uid() se ownership verify karta hai via
+--    organization_members (user_id + role='owner' + status='active').
+--  - Isliye ye RLS bypass NAHI karta — unverified user ke liye
+--    kuch update nahi hota, 0 rows → caller ko false milta hai.
+--  - Sirf authenticated users hi call kar sakte hain (revoke public).
+-- ============================================================
+create or replace function public.update_shop_location(
+  p_latitude double precision,
+  p_longitude double precision,
+  p_address text default null,
+  p_city text default null,
+  p_area text default null,
+  p_zone text default null,
+  p_landmark text default null,
+  p_pincode text default null,
+  p_accuracy_m numeric default null,
+  p_source text default null,
+  p_confirmed boolean default true,
+  p_confirmed_at timestamptz default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_salon_ids uuid[];
+begin
+  -- Ownership verify: authenticated user must be an ACTIVE OWNER of the org
+  select array_agg(s.id) into v_salon_ids
+  from public.salons s
+  join public.organization_members om
+    on om.organization_id = s.organization_id
+  where om.user_id = auth.uid()
+    and om.role = 'owner'
+    and om.status = 'active'
+    and s.deleted_at is null;
+
+  if v_salon_ids is null or array_length(v_salon_ids, 1) is null then
+    return false; -- owner nahi hai / koi salon nahi — kuch update nahi
+  end if;
+
+  update public.salons
+  set latitude            = p_latitude,
+      longitude           = p_longitude,
+      location_accuracy_m = p_accuracy_m,
+      location_source     = case when p_source in ('gps','manual') then p_source else location_source end,
+      location_address    = coalesce(p_address, location_address),
+      location_city       = coalesce(p_city, location_city),
+      location_area       = coalesce(p_area, location_area),
+      location_zone       = coalesce(p_zone, location_zone),
+      location_landmark   = coalesce(p_landmark, location_landmark),
+      location_pincode    = coalesce(p_pincode, location_pincode),
+      location_confirmed  = coalesce(p_confirmed, location_confirmed),
+      location_confirmed_at = coalesce(p_confirmed_at, location_confirmed_at),
+      updated_at          = timezone('utc', now())
+  where id = any(v_salon_ids);
+
+  return true;
+end;
+$$;
+
+-- Sirf authenticated users (RLS policy ke through). Anonymous ko nahi.
+revoke all on function public.update_shop_location(double precision, double precision, text, text, text, text, text, text, numeric, text, boolean, timestamptz) from public;
+grant execute on function public.update_shop_location(double precision, double precision, text, text, text, text, text, text, numeric, text, boolean, timestamptz) to authenticated;

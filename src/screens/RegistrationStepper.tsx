@@ -97,6 +97,10 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
             zone: confirmedLocation.zone || null,
             landmark: confirmedLocation.landmark || null,
             pincode: confirmedLocation.pincode || null,
+            accuracyM: confirmedLocation.accuracyM,
+            source: confirmedLocation.source,
+            confirmed: true,
+            confirmedAt: new Date().toISOString(),
           });
         } catch (err: any) {
           console.warn('Shop location save skipped:', err?.message || err);

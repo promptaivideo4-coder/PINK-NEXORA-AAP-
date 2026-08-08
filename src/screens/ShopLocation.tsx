@@ -192,6 +192,8 @@ export default function ShopLocation({ navigate }: NavigationProps) {
         zone: normalizeZone(zone) ?? (zone.trim() || null),
         landmark: landmark.trim() || null,
         pincode: pincode.trim() || null,
+        confirmed: true,
+        confirmedAt: new Date().toISOString(),
       });
       if (res.ok) {
         setToast({ type: 'ok', msg: 'Shop location saved — yahi salon ki canonical location hai.' });

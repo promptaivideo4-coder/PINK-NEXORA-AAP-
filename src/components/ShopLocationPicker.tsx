@@ -1,18 +1,23 @@
 /**
  * ShopLocationPicker.tsx
  * ======================
- * Reusable "exact shop location" picker — map pin + device GPS + confirm.
+ * Reusable "exact shop location" picker — map pin + device GPS + confirm + save.
  *
  * Uses existing centralized location (useNexoraLocation → LocationContext →
  * src/location/*) for "Use current location". Map = Leaflet (no API key).
  *
- * Owner CONFIRM karne par hi location accepted hoti hai. Pin drag/click se
- * exact location set hoti hai. Reverse geocode (existing, cached) se
- * address/city/area auto-fill (owner edit kar sakta hai).
+ * FLOW (Settings / Edit Shop Location):
+ *   Use Current Location  →  Map pin appears  →  Owner drag/select pin
+ *     →  Confirm Location  →  "Save Your Shop Location?" popup
+ *     →  Save Shop Location  →  ✓ Location saved successfully
+ *
+ * Accuracy is WARNING-only — kabhi save block nahi karta.
+ * Pin drag/click → location_source = 'manual'.
+ * Owner explicit "Save Shop Location" par hi confirmed=true save hota hai.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, LocateFixed, CheckCircle2, Loader2, AlertTriangle, Navigation as NavIcon } from 'lucide-react';
+import { MapPin, LocateFixed, CheckCircle2, Loader2, AlertTriangle, Navigation as NavIcon, Check, X } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLocation } from '../contexts/LocationContext';
@@ -28,13 +33,27 @@ export interface ConfirmedShopLocation {
   zone: string;
   landmark: string;
   pincode: string;
+  /** GPS accuracy (m) at selection time — informational only */
+  accuracyM: number | null;
+  /** How the location was selected: 'gps' | 'manual' */
+  source: 'gps' | 'manual';
+}
+
+export interface ShopLocationSaveInput extends ConfirmedShopLocation {
+  /** Owner explicit confirm — save ke liye zaroori */
+  confirmed: boolean;
+  confirmedAt: string;
 }
 
 interface Props {
   initialLat?: number | null;
   initialLng?: number | null;
-  /** Location confirm hone par callback — lat/lng + details */
+  /** Location CONFIRMED hone par callback — lat/lng + details (registration) */
   onConfirm: (loc: ConfirmedShopLocation) => void;
+  /** Settings: async save callback — ise diya to internal "Save Your Shop Location?" popup use hota hai */
+  onSave?: (loc: ShopLocationSaveInput) => Promise<{ ok: boolean; error?: string | null }>;
+  /** Successful save ke baad (modal close / refresh) */
+  onSaved?: () => void;
   /** Already-confirmed location (prefill) */
   confirmed?: ConfirmedShopLocation | null;
 }
@@ -48,7 +67,7 @@ const markerIcon = L.divIcon({
   iconAnchor: [17, 32],
 });
 
-/** Reasonable GPS accuracy to allow quick confirm (meters) */
+/** Reasonable GPS accuracy to show warning (m) — WARNING ONLY, kabhi block nahi */
 const GOOD_ACCURACY_M = 100;
 
 /** Valid coordinate check — accuracy is NOT part of validity (informational only) */
@@ -60,7 +79,7 @@ function isValidLatLng(lat: number | null, lng: number | null): boolean {
   return true;
 }
 
-export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, confirmed }: Props) {
+export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, onSave, onSaved, confirmed }: Props) {
   const { currentLocation, lastKnownFix, requestLocation } = useLocation();
 
   const mapRef = useRef<HTMLDivElement>(null);
@@ -78,8 +97,15 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
   const [geocoding, setGeocoding] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsWarn, setGpsWarn] = useState(false);
+  /** 'gps' | 'manual' — pin kahan se aayi */
+  const [source, setSource] = useState<'gps' | 'manual'>('manual');
+  // Internal confirm popup + save
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
-  // Init map once
+  // Init map once — draggable pin
   useEffect(() => {
     if (!mapRef.current || leafletRef.current) return;
     const map = L.map(mapRef.current, { zoomControl: true }).setView(DEFAULT_CENTER, 13);
@@ -93,16 +119,20 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
     const marker = L.marker(start, { icon: markerIcon, draggable: true }).addTo(map);
     markerRef.current = marker;
 
+    // Drag release → coords update + source=manual + reverse geocode
     marker.on('dragend', () => {
       const p = marker.getLatLng();
       setLat(Number(p.lat.toFixed(6)));
       setLng(Number(p.lng.toFixed(6)));
+      setSource('manual');
       reverseGeocodeAt(p.lat, p.lng);
     });
+    // Map click → pin moves + coords update + source=manual
     map.on('click', (e: L.LeafletMouseEvent) => {
       marker.setLatLng(e.latlng);
       setLat(Number(e.latlng.lat.toFixed(6)));
       setLng(Number(e.latlng.lng.toFixed(6)));
+      setSource('manual');
       reverseGeocodeAt(e.latlng.lat, e.latlng.lng);
     });
 
@@ -114,7 +144,7 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Initial coords → marker + map move
+  // Initial coords → marker + map move (reopen par saved pin exact wahi)
   useEffect(() => {
     if (lat !== null && lng !== null && leafletRef.current && markerRef.current) {
       leafletRef.current.setView([lat, lng], 15);
@@ -139,11 +169,11 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
     }
   }
 
-  // Apply a fix to the form + map (coords, accuracy WARNING only — kabhi block nahi)
+  // Apply a GPS fix to form + map — source='gps', accuracy WARNING only
   function applyFix(latitude: number, longitude: number, accuracy: number) {
     setGpsAccuracy(accuracy);
-    // Accuracy is informational/warning only — valid coords par save hamesha allowed
     setGpsWarn(accuracy > GOOD_ACCURACY_M);
+    setSource('gps');
     setLat(Number(latitude.toFixed(6)));
     setLng(Number(longitude.toFixed(6)));
     if (leafletRef.current && markerRef.current) {
@@ -157,14 +187,13 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
   function useDeviceLocation() {
     setGpsWarn(false);
     setGpsAccuracy(null);
-    requestLocation(); // watcher start (async — fix aane par watch effect lat/lng set karega)
+    requestLocation(); // watcher start (async — fix aane par watch effect set karega)
     const loc = currentLocation || lastKnownFix;
     if (loc) {
-      // Fix pehle se available ho to turant form+map me set
       applyFix(loc.latitude, loc.longitude, loc.accuracy);
     }
-    // Agar loc null hai (stale closure / abhi fix nahi aayi) — watch effect
-    // currentLocation/lastKnownFix update hote hi lat/lng set kar dega (niche).
+    // Agar fix abhi nahi aayi — watch effect (niche) currentLocation/lastKnownFix
+    // update hote hi lat/lng set kar dega.
   }
 
   // Watch — device location update par auto-fill (sirf jab koi pin nahi laga)
@@ -176,13 +205,8 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLocation, lastKnownFix]);
 
-  function confirm() {
-    // Valid coordinates required (range/finite) — accuracy NEVER blocks save
-    if (!isValidLatLng(lat, lng)) return;
-    // Owner explicitly confirmed — warning clear (save ke baad bhi nahi dikhega)
-    setGpsWarn(false);
-    setGpsAccuracy(null);
-    onConfirm({
+  function buildConfirmedLocation(): ConfirmedShopLocation {
+    return {
       latitude: lat as number,
       longitude: lng as number,
       address: address.trim(),
@@ -191,10 +215,53 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
       zone: normalizeZone(zone) ?? zone.trim(),
       landmark: landmark.trim(),
       pincode: pincode.trim(),
-    });
+      accuracyM: gpsAccuracy,
+      source,
+    };
+  }
+
+  // STEP: Confirm Location — validate → popup (Settings) ya onConfirm (registration)
+  function handleConfirmLocation() {
+    if (!isValidLatLng(lat, lng)) return; // accuracy NEVER blocks
+    if (onSave) {
+      // Settings: internal "Save Your Shop Location?" popup
+      setSaveError(null);
+      setSavedMsg(null);
+      setConfirmOpen(true);
+    } else {
+      // Registration: parent ko confirmed location dete hain (no save yet)
+      setGpsWarn(false);
+      onConfirm(buildConfirmedLocation());
+    }
+  }
+
+  // STEP: Save Shop Location — ONLY yahan se Supabase persist
+  async function handleSaveShopLocation() {
+    if (!onSave) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await onSave({
+        ...buildConfirmedLocation(),
+        confirmed: true,
+        confirmedAt: new Date().toISOString(),
+      });
+      if (res.ok) {
+        setConfirmOpen(false);
+        setSavedMsg('✓ Shop location saved successfully');
+        onSaved?.();
+      } else {
+        setSaveError(res.error || 'Failed to save shop location');
+      }
+    } catch (e) {
+      setSaveError(String((e as Error)?.message ?? e));
+    } finally {
+      setSaving(false);
+    }
   }
 
   const hasPin = isValidLatLng(lat, lng);
+  const coordsLabel = hasPin ? `${lat!.toFixed(6)}, ${lng!.toFixed(6)}` : '';
 
   return (
     <div className="flex flex-col gap-3">
@@ -223,7 +290,7 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
           <div className="flex items-center gap-2 text-[11px] text-on-surface-variant">
             {geocoding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             <span className="font-mono">
-              {hasPin ? `${lat!.toFixed(6)}, ${lng!.toFixed(6)}` : 'Pin nahi laga — map par click karo ya marker drag karo'}
+              {hasPin ? coordsLabel : 'Pin nahi laga — map par click karo ya marker drag karo'}
             </span>
             {hasPin && (
               <span className="ml-auto text-emerald-600 font-bold flex items-center gap-1">
@@ -231,17 +298,31 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
               </span>
             )}
           </div>
+          {hasPin && (
+            <span className="text-[10px] text-on-surface-variant">
+              Source: <b>{source === 'gps' ? 'GPS' : 'Manual'}</b>
+              {gpsAccuracy !== null ? ` • Accuracy: ${Math.round(gpsAccuracy)}m` : ''}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* GPS accuracy warning — poor accuracy par retry/pin guidance */}
+      {/* Low GPS accuracy warning — WARNING ONLY, kabhi block nahi */}
       {gpsWarn && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2.5 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-[11px] text-amber-800">
-            <b>GPS accuracy kam hai ({gpsAccuracy !== null ? Math.round(gpsAccuracy) : '?'}m).</b>{' '}
-            Retry GPS karo ya pin ko map par exact shop location par drag karo.
+            ⚠ GPS accuracy is approximately {gpsAccuracy !== null ? Math.round(gpsAccuracy) : '?'}m.
+            You can drag the pin to the exact shop location.
           </div>
+        </div>
+      )}
+
+      {/* Saved success message (after save) */}
+      {savedMsg && (
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
+          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="text-[12px] font-bold text-emerald-700">{savedMsg}</span>
         </div>
       )}
 
@@ -281,19 +362,57 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
         </div>
       </div>
 
-      {/* Confirm */}
+      {/* Confirm Location — primary button */}
       <button
         type="button"
-        onClick={confirm}
+        onClick={handleConfirmLocation}
         disabled={!hasPin}
         className="w-full bg-primary text-white font-bold text-sm py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-md disabled:opacity-50"
       >
-        <MapPin className="w-4 h-4" /> Confirm Shop Location
+        <MapPin className="w-4 h-4" /> Confirm Location
       </button>
       {!hasPin && (
         <p className="text-[11px] text-amber-700 bg-amber-500/10 rounded-lg px-3 py-2 text-center">
           Shop location is required. Please set your exact shop location on the map to continue.
         </p>
+      )}
+
+      {/* Save Your Shop Location? popup — Settings save flow */}
+      {confirmOpen && onSave && (
+        <div className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-3xl p-6 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+              <MapPin className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-on-surface">Save Your Shop Location?</h3>
+            <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+              This location will be used as your official shop location on your salon profile, map and directions.
+            </p>
+            <div className="mt-3 bg-surface-container-low rounded-xl p-3 font-mono text-[11px] text-on-surface-variant">
+              📍 {coordsLabel}
+            </div>
+            {saveError && (
+              <div className="mt-2 text-[11px] font-semibold text-error bg-error/10 rounded-lg px-3 py-2">{saveError}</div>
+            )}
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setConfirmOpen(false); setSaveError(null); }}
+                disabled={saving}
+                className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface font-bold text-xs active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveShopLocation}
+                disabled={saving}
+                className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-md disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                {saving ? 'Saving...' : 'Save Shop Location'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

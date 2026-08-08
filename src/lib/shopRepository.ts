@@ -42,6 +42,14 @@ export interface MyShop {
   landmark: string | null;
   /** Optional pincode */
   pincode: string | null;
+  /** GPS accuracy (meters) at time of save */
+  locationAccuracyM: number | null;
+  /** Location source: 'gps' (device) | 'manual' (pin) */
+  locationSource: 'gps' | 'manual' | null;
+  /** True only after owner explicitly confirmed the location */
+  locationConfirmed: boolean;
+  /** When the owner confirmed the location */
+  locationConfirmedAt: string | null;
   verified: boolean;
   acceptsOnlineBookings: boolean;
   ratingAverage: number;
@@ -60,6 +68,14 @@ export interface ShopLocationInput {
   zone?: string | null;
   landmark?: string | null;
   pincode?: string | null;
+  /** GPS accuracy (m) at save time — informational only */
+  accuracyM?: number | null;
+  /** 'gps' | 'manual' — how the location was selected */
+  source?: 'gps' | 'manual' | null;
+  /** Must be true — owner explicitly confirmed */
+  confirmed: boolean;
+  /** Confirm timestamp (ISO) */
+  confirmedAt?: string | null;
 }
 
 export interface ShopService {
@@ -180,7 +196,7 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
 
   const { data: salons, error: salonsError } = await client
     .from('salons')
-    .select('id, organization_id, name, business_category, phone, latitude, longitude, location_address, location_city, location_area, location_zone, location_landmark, location_pincode, verified, accepts_online_bookings, rating_average')
+    .select('id, organization_id, name, business_category, phone, latitude, longitude, location_address, location_city, location_area, location_zone, location_landmark, location_pincode, location_accuracy_m, location_source, location_confirmed, location_confirmed_at, verified, accepts_online_bookings, rating_average')
     .in('organization_id', orgIds)
     .is('deleted_at', null);
   if (salonsError) throw salonsError;
@@ -214,6 +230,10 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
     zone: salon.location_zone ?? null,
     landmark: salon.location_landmark ?? null,
     pincode: salon.location_pincode ?? null,
+    locationAccuracyM: typeof salon.location_accuracy_m === 'number' ? salon.location_accuracy_m : null,
+    locationSource: (salon.location_source === 'gps' || salon.location_source === 'manual') ? salon.location_source : null,
+    locationConfirmed: Boolean(salon.location_confirmed),
+    locationConfirmedAt: salon.location_confirmed_at ?? null,
     verified: Boolean(salon.verified),
     acceptsOnlineBookings: Boolean(salon.accepts_online_bookings),
     ratingAverage: Number(salon.rating_average ?? 0),
@@ -233,6 +253,20 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
  * (security definer, ownership verified via organization_members).
  * RPC fail ho to direct update attempt karte hain (agar RLS allow kare).
  */
+/**
+ * Update the owner's canonical shop location (lat/lng = source of truth).
+ *
+ * CRITICAL FIX (silent RLS fail):
+ * PostgREST me RLS-blocked UPDATE koi error nahi deta — bas 0 rows affect
+ * karta hai. Isliye:
+ *  - `.select()` se affected rows verify hoti hain
+ *  - 0 rows / error → RPC fallback try
+ *  - Save ke baad record re-fetch karke coords match verify
+ *  - Sirf ACTUALLY persisted hone par `ok: true` return hota hai
+ *
+ * Salon ID: organization_members (owner role) se resolve — koi hardcode/demo
+ * ID nahi, `[0]` ambiguity bhi nahi (saare owned salons target).
+ */
 export async function updateShopLocation(
   client: SupabaseClient,
   input: ShopLocationInput,
@@ -240,32 +274,57 @@ export async function updateShopLocation(
   if (!Number.isFinite(input.latitude) || !Number.isFinite(input.longitude)) {
     return { ok: false, error: 'Invalid coordinates' };
   }
-  try {
-    // Owner ka apna salon resolve karo (organization_members se ownership)
-    const shop = await fetchMyShop(client);
-    if (!shop) return { ok: false, error: 'No owned salon found to update' };
+  if (input.confirmed !== true) {
+    return { ok: false, error: 'Location is not confirmed by the owner' };
+  }
 
+  try {
+    // ---- Resolve owner's salon IDs (ownership via organization_members) ----
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return { ok: false, error: 'Not authenticated. Please log in.' };
+
+    const { data: members, error: membersError } = await client
+      .from('organization_members')
+      .select('organization_id, role, status')
+      .eq('user_id', user.id);
+    if (membersError) return { ok: false, error: `Membership lookup failed: ${membersError.message}` };
+
+    const orgIds = (members ?? [])
+      .filter((m: any) => m.role === 'owner' && m.status === 'active')
+      .map((m: any) => m.organization_id);
+    if (orgIds.length === 0) {
+      return { ok: false, error: 'No owned salon found to update (owner membership missing/inactive).' };
+    }
+
+    // Sahi salon IDs — owner ke saare salons (koi hardcode nahi)
+    const { data: ownedSalons, error: salonsErr } = await client
+      .from('salons')
+      .select('id')
+      .in('organization_id', orgIds)
+      .is('deleted_at', null);
+    if (salonsErr) return { ok: false, error: `Salon lookup failed: ${salonsErr.message}` };
+    if (!ownedSalons || ownedSalons.length === 0) {
+      return { ok: false, error: 'No owned salon found to update.' };
+    }
+    const salonIds = ownedSalons.map((s: any) => s.id);
+
+    // ---- Full payload (12 fields) ----
     const patch = {
       latitude: input.latitude,
       longitude: input.longitude,
+      location_accuracy_m: typeof input.accuracyM === 'number' ? input.accuracyM : null,
+      location_source: input.source === 'gps' || input.source === 'manual' ? input.source : null,
       location_address: input.address ?? null,
       location_city: input.city ?? null,
       location_area: input.area ?? null,
       location_zone: input.zone ?? null,
       location_landmark: input.landmark ?? null,
       location_pincode: input.pincode ?? null,
+      location_confirmed: true,
+      location_confirmed_at: input.confirmedAt ?? new Date().toISOString(),
     };
 
-    // 1) Direct UPDATE — agar RLS owner ko apni salon update karne de
-    const { error: upErr } = await client
-      .from('salons')
-      .update(patch)
-      .eq('id', shop.id);
-    if (!upErr) return { ok: true };
-
-    // 2) RLS ne direct update block kiya (e.g. 42501) → RPC fallback try karo
-    //    (agar DB me update_shop_location RPC deploy ho — schema change nahi, sirf try)
-    const { error: rpcErr } = await client.rpc('update_shop_location', {
+    const rpcPayload = {
       p_latitude: input.latitude,
       p_longitude: input.longitude,
       p_address: input.address ?? null,
@@ -274,11 +333,81 @@ export async function updateShopLocation(
       p_zone: input.zone ?? null,
       p_landmark: input.landmark ?? null,
       p_pincode: input.pincode ?? null,
-    });
-    if (!rpcErr) return { ok: true };
+      p_accuracy_m: typeof input.accuracyM === 'number' ? input.accuracyM : null,
+      p_source: input.source === 'gps' || input.source === 'manual' ? input.source : null,
+      p_confirmed: true,
+      p_confirmed_at: input.confirmedAt ?? new Date().toISOString(),
+    };
 
-    // 3) Dono fail — clear error (owner ko bataya jayega)
-    return { ok: false, error: upErr.message || rpcErr.message || 'Failed to update shop location' };
+    // ---- Attempt direct UPDATE with affected-row verification ----
+    const attemptUpdate = async (payload: Record<string, unknown>) => {
+      const { data: updated, error: upErr } = await client
+        .from('salons')
+        .update(payload)
+        .in('id', salonIds)
+        .select('id, latitude, longitude');
+      if (upErr) return { ok: false as const, error: upErr };
+      // RLS silent block → 0 rows, koi error nahi → NOT persisted
+      if (!updated || updated.length === 0) {
+        return { ok: false as const, error: null, rows: 0 };
+      }
+      return { ok: true as const, error: null, rows: updated.length };
+    };
+
+    let direct = await attemptUpdate(patch);
+
+    // Agar naye columns DB me nahi hain (column not exist) → base 8-field retry
+    if (!direct.ok && direct.error && /column .* does not exist/i.test(direct.error.message || '')) {
+      const basePatch = {
+        latitude: input.latitude,
+        longitude: input.longitude,
+        location_address: input.address ?? null,
+        location_city: input.city ?? null,
+        location_area: input.area ?? null,
+        location_zone: input.zone ?? null,
+        location_landmark: input.landmark ?? null,
+        location_pincode: input.pincode ?? null,
+      };
+      direct = await attemptUpdate(basePatch);
+    }
+
+    if (!direct.ok && direct.error) {
+      // Direct update failed (RLS/column) → RPC fallback (security definer)
+      const { error: rpcErr } = await client.rpc('update_shop_location', rpcPayload);
+      if (rpcErr) {
+        return {
+          ok: false,
+          error: `Location save failed. UPDATE blocked (${direct.error.message}) and RPC failed (${rpcErr.message}). Check salons UPDATE permission for this owner.`,
+        };
+      }
+    } else if (!direct.ok) {
+      // 0 rows — RLS silently blocked
+      const { error: rpcErr } = await client.rpc('update_shop_location', rpcPayload);
+      if (rpcErr) {
+        return {
+          ok: false,
+          error: `Location save failed: 0 rows updated (RLS/permission). Check that this owner has UPDATE access on their salons record. RPC also failed: ${rpcErr.message}`,
+        };
+      }
+    }
+
+    // ---- VERIFY persistence: DB se dobara record fetch karke coords match ----
+    const verify = await fetchMyShop(client);
+    const persisted =
+      !!verify &&
+      typeof verify.latitude === 'number' &&
+      typeof verify.longitude === 'number' &&
+      Math.abs(verify.latitude - input.latitude) < 1e-6 &&
+      Math.abs(verify.longitude - input.longitude) < 1e-6;
+
+    if (!persisted) {
+      return {
+        ok: false,
+        error: 'Save verification failed: coordinates are NOT reflected in the database. Location was not persisted.',
+      };
+    }
+
+    return { ok: true };
   } catch (e) {
     return { ok: false, error: String((e as Error)?.message ?? e) };
   }
