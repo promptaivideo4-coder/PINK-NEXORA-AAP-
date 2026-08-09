@@ -31,6 +31,7 @@ export interface MyShop {
   name: string;
   businessCategory: string | null;
   phone: string | null;
+  description: string | null;
   address: string | null;
   area: string | null;
   city: string | null;
@@ -157,6 +158,20 @@ export interface WalletOverview {
 }
 
 // ---------------------------------------------------------------------------
+export interface ShopProfileInput {
+  name?: string;
+  businessCategory?: string | null;
+  phone?: string | null;
+  description?: string | null;
+  address?: string | null;
+  city?: string | null;
+  area?: string | null;
+  zone?: string | null;
+  landmark?: string | null;
+  pincode?: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Shop bootstrap + read
 // ---------------------------------------------------------------------------
 
@@ -164,6 +179,18 @@ export async function bootstrapMyShop(
   client: SupabaseClient,
   input: { businessName: string; businessCategory: string; contactNumber: string | null },
 ): Promise<string> {
+  // Idempotency check: ONE SHOP = ONE salons.id
+  // If an existing active salon already exists for this owner, return its ID
+  // to prevent duplicate salon creation on refresh, login, or re-bootstrap.
+  try {
+    const existing = await fetchMyShop(client);
+    if (existing && existing.id) {
+      return existing.id;
+    }
+  } catch {
+    // If lookup fails, proceed with RPC
+  }
+
   const { data, error } = await client.rpc('bootstrap_shop_owner', {
     p_business_name: input.businessName.trim(),
     p_business_category: input.businessCategory.trim() || null,
@@ -196,7 +223,7 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
 
   const { data: salons, error: salonsError } = await client
     .from('salons')
-    .select('id, organization_id, name, business_category, phone, latitude, longitude, location_address, location_city, location_area, location_zone, location_landmark, location_pincode, location_accuracy_m, location_source, location_confirmed, location_confirmed_at, verified, accepts_online_bookings, rating_average')
+    .select('id, organization_id, name, description, business_category, phone, latitude, longitude, address, area, city, location_address, location_city, location_area, location_zone, location_landmark, location_pincode, location_accuracy_m, location_source, location_confirmed, location_confirmed_at, verified, accepts_online_bookings, rating_average')
     .in('organization_id', orgIds)
     .is('deleted_at', null);
   if (salonsError) throw salonsError;
@@ -222,9 +249,10 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
     name: salon.name || 'Salon',
     businessCategory: salon.business_category ?? null,
     phone: salon.phone ?? null,
-    address: salon.location_address ?? null,
-    area: salon.location_area ?? null,
-    city: salon.location_city ?? null,
+    description: salon.description ?? null,
+    address: salon.location_address || salon.address || null,
+    area: salon.location_area || salon.area || null,
+    city: salon.location_city || salon.city || null,
     latitude: typeof salon.latitude === 'number' ? salon.latitude : null,
     longitude: typeof salon.longitude === 'number' ? salon.longitude : null,
     zone: salon.location_zone ?? null,
@@ -241,6 +269,64 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
     proposalId: proposal?.id ?? null,
     proposalStatus: proposal?.status ?? null,
   };
+}
+
+/**
+ * Update the owner's canonical shop profile (persists shop name, category, phone,
+ * description, address, city, area, zone, landmark, pincode to public.salons).
+ */
+export async function updateShopProfile(
+  client: SupabaseClient,
+  salonId: string,
+  input: ShopProfileInput,
+): Promise<{ ok: boolean; error?: string | null }> {
+  try {
+    const patch: Record<string, unknown> = {};
+    if (input.name !== undefined) patch.name = input.name.trim();
+    if (input.businessCategory !== undefined) patch.business_category = input.businessCategory ? input.businessCategory.trim() : null;
+    if (input.phone !== undefined) patch.phone = input.phone ? input.phone.trim() : null;
+    if (input.description !== undefined) patch.description = input.description ? input.description.trim() : null;
+    if (input.address !== undefined) {
+      patch.address = input.address ? input.address.trim() : null;
+      patch.location_address = input.address ? input.address.trim() : null;
+    }
+    if (input.city !== undefined) {
+      patch.city = input.city ? input.city.trim() : null;
+      patch.location_city = input.city ? input.city.trim() : null;
+    }
+    if (input.area !== undefined) {
+      patch.area = input.area ? input.area.trim() : null;
+      patch.location_area = input.area ? input.area.trim() : null;
+    }
+    if (input.zone !== undefined) patch.location_zone = input.zone ? input.zone.trim() : null;
+    if (input.landmark !== undefined) patch.location_landmark = input.landmark ? input.landmark.trim() : null;
+    if (input.pincode !== undefined) patch.location_pincode = input.pincode ? input.pincode.trim() : null;
+
+    const { error } = await client
+      .from('salons')
+      .update(patch)
+      .eq('id', salonId);
+
+    if (error) {
+      // Fallback to secure RPC if direct update hits RLS
+      const rpcUpdates = {
+        name: patch.name,
+        description: patch.description,
+        address: patch.address,
+        area: patch.area,
+        city: patch.city,
+        business_category: patch.business_category,
+      };
+      const { error: rpcErr } = await client.rpc('update_salon_profile_secure', {
+        p_salon_id: salonId,
+        p_updates: rpcUpdates,
+      });
+      if (rpcErr) return { ok: false, error: rpcErr.message };
+    }
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || String(err) };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -664,13 +750,325 @@ export async function fetchMyBookings(client: SupabaseClient, salonId: string): 
 // security-definer review_salon_setup RPC.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Publish request & Direct Owner GO LIVE
+// ---------------------------------------------------------------------------
+
+export interface PublishValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+export interface PublishWebsiteInput {
+  slug?: string;
+  templateKey: string;
+  config: Record<string, unknown>;
+  html?: string;
+}
+
+export interface PublishWebsiteResult {
+  ok: boolean;
+  slug?: string;
+  url?: string;
+  publishedAt?: string;
+  error?: string | null;
+  validationErrors?: string[];
+}
+
+export function validateSalonForPublish(shop: MyShop | null): PublishValidationResult {
+  const errors: string[] = [];
+  if (!shop) {
+    errors.push('No shop workspace found. Please complete registration first.');
+    return { valid: false, errors };
+  }
+
+  // 1. Missing name
+  if (!shop.name || !shop.name.trim() || (shop.name.trim().toLowerCase() === 'my salon' && !shop.address)) {
+    errors.push('Shop Name is required.');
+  }
+
+  // 2. Missing category
+  if (!shop.businessCategory || !shop.businessCategory.trim()) {
+    errors.push('Business Category is required (e.g. Hair Salon, Nail Studio, Spa).');
+  }
+
+  // 3. Pending setup address / city
+  const address = (shop.address || '').trim();
+  const city = (shop.city || '').trim();
+  if (!address || /pending\s*setup|not\s*set/i.test(address)) {
+    errors.push('Valid Shop Address is required before publishing live.');
+  }
+  if (!city || /pending\s*setup|not\s*set/i.test(city)) {
+    errors.push('Valid Shop City is required before publishing live.');
+  }
+
+  // 4. Invalid coordinates
+  if (
+    typeof shop.latitude !== 'number' ||
+    typeof shop.longitude !== 'number' ||
+    !Number.isFinite(shop.latitude) ||
+    !Number.isFinite(shop.longitude) ||
+    (shop.latitude === 0 && shop.longitude === 0)
+  ) {
+    errors.push('Exact Shop Location coordinates are required. Please set your shop location on the map.');
+  }
+
+  // 5. Ownership verification
+  if (!shop.organizationId) {
+    errors.push('Ownership verification failed. Missing organization linkage.');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Fetch existing published website record from salon_public_websites.
+ */
+export async function fetchPublishedWebsite(
+  client: SupabaseClient,
+  salonId: string,
+): Promise<{ slug: string; templateKey: string; config: any; isPublished: boolean; publishedAt: string | null } | null> {
+  const { data, error } = await client
+    .from('salon_public_websites')
+    .select('slug, template_key, config, is_published, published_at')
+    .eq('salon_id', salonId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    slug: data.slug,
+    templateKey: data.template_key,
+    config: data.config,
+    isPublished: Boolean(data.is_published),
+    publishedAt: data.published_at ?? null,
+  };
+}
+
+/**
+ * Secure canonical Shop Owner GO LIVE:
+ *  1. Authorize & fetch owner's own canonical salon
+ *  2. Validate salon data (name, category, real address/city, valid coordinates)
+ *  3. UPSERT into public.salon_public_websites (Supabase source of truth)
+ *  4. Update public.salons (verified = true, is_active = true, accepts_online_bookings = true)
+ *  5. Re-fetch and verify persistence before reporting success
+ */
+export async function publishShopWebsite(
+  client: SupabaseClient,
+  input: PublishWebsiteInput,
+): Promise<PublishWebsiteResult> {
+  try {
+    // 1. Resolve owner shop
+    const shop = await fetchMyShop(client);
+    if (!shop) {
+      return {
+        ok: false,
+        error: 'No active shop found. Please log in and set up your workspace.',
+      };
+    }
+
+    // 2. Run Publish Validation
+    const validation = validateSalonForPublish(shop);
+    if (!validation.valid) {
+      return {
+        ok: false,
+        error: `Publish validation failed: ${validation.errors.join(' ')}`,
+        validationErrors: validation.errors,
+      };
+    }
+
+    // 3. Compute canonical slug
+    const cleanSlug = (input.slug || shop.name || 'mysalon')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'mysalon';
+
+    // 4. UPSERT into public.salon_public_websites (Supabase source of truth)
+    const nowIso = new Date().toISOString();
+    const websitePayload = {
+      salon_id: shop.id,
+      slug: cleanSlug,
+      template_key: input.templateKey,
+      config: input.config,
+      is_published: true,
+      published_at: nowIso,
+      updated_at: nowIso,
+    };
+
+    const { error: spwError } = await client
+      .from('salon_public_websites')
+      .upsert(websitePayload, { onConflict: 'salon_id' });
+
+    if (spwError) {
+      return {
+        ok: false,
+        error: `Failed to save website in Supabase: ${spwError.message}`,
+      };
+    }
+
+    // 5. Update salons: verified = true, is_active = true, accepts_online_bookings = true
+    const { error: salonUpdateErr } = await client
+      .from('salons')
+      .update({
+        verified: true,
+        is_active: true,
+        accepts_online_bookings: true,
+        updated_at: nowIso,
+      })
+      .eq('id', shop.id);
+
+    if (salonUpdateErr) {
+      console.warn('Direct salons update note:', salonUpdateErr.message);
+    }
+
+    // 6. Persistence Verification: Re-query from DB to verify
+    const { data: verifySpw, error: verifyErr } = await client
+      .from('salon_public_websites')
+      .select('salon_id, slug, is_published, published_at')
+      .eq('salon_id', shop.id)
+      .eq('is_published', true)
+      .maybeSingle();
+
+    if (verifyErr || !verifySpw) {
+      return {
+        ok: false,
+        error: 'Database persistence verification failed: published website record not found in salon_public_websites.',
+      };
+    }
+
+    // 7. Optional local filesystem publish fallback
+    if (input.html) {
+      try {
+        await fetch('/api/publish-site', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ html: input.html, slug: cleanSlug }),
+        });
+      } catch {
+        // Local preview fallback failure is non-fatal
+      }
+    }
+
+    const publicPath = `/salons/${verifySpw.slug}`;
+    return {
+      ok: true,
+      slug: verifySpw.slug,
+      url: publicPath,
+      publishedAt: verifySpw.published_at,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: err?.message || String(err),
+    };
+  }
+}
+
+export interface OwnerProposalItem {
+  id: string;
+  salonId: string;
+  growthPartnerId: string;
+  status: 'draft' | 'submitted' | 'approved' | 'changes_requested' | 'rejected' | 'published';
+  version: number;
+  payload: any;
+  submittedAt: string | null;
+  ownerReviewedAt: string | null;
+  ownerNotes: string | null;
+  publishedAt: string | null;
+}
+
+/**
+ * Fetch all setup proposals for the owner's salon.
+ */
+export async function fetchOwnerProposals(client: SupabaseClient): Promise<OwnerProposalItem[]> {
+  const shop = await fetchMyShop(client);
+  if (!shop) return [];
+
+  const { data, error } = await client
+    .from('salon_setup_proposals')
+    .select('id, salon_id, growth_partner_id, status, version, payload, submitted_at, owner_reviewed_at, owner_notes, published_at')
+    .eq('salon_id', shop.id)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.warn('Owner proposals fetch:', error.message);
+    return [];
+  }
+  return (data ?? []) as OwnerProposalItem[];
+}
+
+export interface ReviewProposalInput {
+  proposalId: string;
+  action: 'approve' | 'request_changes' | 'reject' | 'publish';
+  notes?: string | null;
+}
+
+/**
+ * Owner Review & Growth Partner Publication Bridge:
+ * Executes review_salon_setup RPC with strict owner authorization.
+ * Actions:
+ *  - 'approve': Approves setup (status='approved')
+ *  - 'request_changes': Requests edits (status='changes_requested', notifies GP)
+ *  - 'reject': Rejects proposal (status='rejected')
+ *  - 'publish': Approves & publishes to salon_public_websites (status='published', verified=true)
+ */
+export async function reviewOwnerProposal(
+  client: SupabaseClient,
+  input: ReviewProposalInput,
+): Promise<{ ok: boolean; nextStatus?: string; error?: string | null }> {
+  try {
+    const { data, error } = await client.rpc('review_salon_setup', {
+      p_proposal_id: input.proposalId,
+      p_action: input.action,
+      p_notes: input.notes?.trim() || null,
+    });
+    if (error) throw error;
+
+    const nextStatus = typeof data === 'string' ? data : input.action;
+
+    // If published, ensure final approved config is upserted into salon_public_websites
+    if (nextStatus === 'published' || input.action === 'publish') {
+      const { data: proposal } = await client
+        .from('salon_setup_proposals')
+        .select('salon_id, payload')
+        .eq('id', input.proposalId)
+        .maybeSingle();
+
+      if (proposal && proposal.salon_id) {
+        const payload = proposal.payload || {};
+        const slug = (payload.profile?.name || 'salon')
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 40);
+
+        await client
+          .from('salon_public_websites')
+          .upsert({
+            salon_id: proposal.salon_id,
+            slug: slug,
+            template_key: payload.template?.key || 'classic-elegance',
+            config: payload,
+            is_published: true,
+            published_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'salon_id' });
+      }
+    }
+
+    return { ok: true, nextStatus };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || String(err) };
+  }
+}
+
 export async function requestPublish(client: SupabaseClient, proposalId: string): Promise<void> {
-  const { error } = await client.rpc('review_salon_setup', {
-    p_proposal_id: proposalId,
-    p_action: 'publish',
-    p_notes: null,
-  });
-  if (error) throw error;
+  const res = await reviewOwnerProposal(client, { proposalId, action: 'publish' });
+  if (!res.ok) throw new Error(res.error || 'Publish failed');
 }
 
 // ---------------------------------------------------------------------------
