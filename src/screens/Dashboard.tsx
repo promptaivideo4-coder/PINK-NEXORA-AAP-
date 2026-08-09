@@ -2,13 +2,13 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import InstallAppBanner from '../components/InstallAppBanner';
 import { NavigationProps } from '../types';
-import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket } from 'lucide-react';
+import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket, FileCheck, AlertCircle, CheckCircle2, MessageSquare } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 import {
   bootstrapMyShop, fetchMyShop, fetchMyBookings, listServices, listStaff, fetchWalletOverview,
-  MyShop, ShopBooking,
+  fetchOwnerProposals, reviewOwnerProposal, MyShop, ShopBooking, OwnerProposalItem,
 } from '../lib/shopRepository';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -23,6 +23,9 @@ export default function Dashboard({ navigate }: NavigationProps) {
   const [shop, setShop] = useState<MyShop | null>(null);
   const [shopLoading, setShopLoading] = useState(true);
   const [bookings, setBookings] = useState<ShopBooking[]>([]);
+  const [proposals, setProposals] = useState<OwnerProposalItem[]>([]);
+  const [reviewingProposal, setReviewingProposal] = useState(false);
+  const [proposalToast, setProposalToast] = useState<string | null>(null);
   const [serviceCount, setServiceCount] = useState(0);
   const [staffCount, setStaffCount] = useState(0);
   const [walletBalancePaise, setWalletBalancePaise] = useState(0);
@@ -33,14 +36,16 @@ export default function Dashboard({ navigate }: NavigationProps) {
       const myShop = await fetchMyShop(supabase);
       setShop(myShop);
       if (myShop) {
-        const [bookingsData, servicesData, staffData] = await Promise.all([
+        const [bookingsData, servicesData, staffData, proposalsData] = await Promise.all([
           fetchMyBookings(supabase, myShop.id).catch(() => []),
           listServices(supabase, myShop.id).catch(() => []),
           listStaff(supabase, myShop.id).catch(() => []),
+          fetchOwnerProposals(supabase).catch(() => []),
         ]);
         setBookings(bookingsData);
         setServiceCount(servicesData.length);
         setStaffCount(staffData.length);
+        setProposals(proposalsData);
         const wallet = await fetchWalletOverview(supabase).catch(() => null);
         if (wallet) setWalletBalancePaise(wallet.balancePaise + wallet.pendingPaise);
       }
@@ -52,6 +57,24 @@ export default function Dashboard({ navigate }: NavigationProps) {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  const handleProposalAction = async (proposalId: string, action: 'approve' | 'request_changes' | 'reject' | 'publish', notes?: string) => {
+    setReviewingProposal(true);
+    try {
+      const res = await reviewOwnerProposal(supabase, { proposalId, action, notes });
+      if (res.ok) {
+        setProposalToast(`Proposal successfully updated: ${res.nextStatus || action}`);
+        setTimeout(() => setProposalToast(null), 4000);
+        await load();
+      } else {
+        alert(`Action failed: ${res.error}`);
+      }
+    } catch (err: any) {
+      alert(`Action error: ${err?.message || err}`);
+    } finally {
+      setReviewingProposal(false);
+    }
+  };
 
   const handleCreateWorkspace = async () => {
     setCreatingWorkspace(true);
@@ -119,6 +142,88 @@ export default function Dashboard({ navigate }: NavigationProps) {
             </button>
           )}
         </section>
+
+        {/* Proposal Toast */}
+        {proposalToast && (
+          <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{proposalToast}</span>
+          </div>
+        )}
+
+        {/* Growth Partner Setup Proposal Review Section */}
+        {proposals.length > 0 && proposals[0].status !== 'published' && (
+          <section className="bg-gradient-to-r from-primary/5 via-pink-500/5 to-primary/10 border border-primary/20 rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <FileCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-on-surface">Growth Partner Website Setup Proposal</h3>
+                  <p className="text-xs text-on-surface-variant">
+                    Version {proposals[0].version} · Status: <span className="font-bold uppercase text-primary">{proposals[0].status}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Your Growth Partner prepared a digital storefront and website setup for your review. Review the details below and approve or publish live.
+            </p>
+
+            {proposals[0].ownerNotes && (
+              <div className="bg-surface p-3 rounded-xl border border-outline-variant/50 text-xs">
+                <span className="font-bold text-on-surface-variant block mb-0.5">Previous Owner Note:</span>
+                <span className="text-on-surface">{proposals[0].ownerNotes}</span>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                onClick={() => navigate('website-dashboard')}
+                className="px-4 py-2 bg-surface-container-high hover:bg-surface-variant text-on-surface text-xs font-bold rounded-xl transition-all shadow-xs"
+              >
+                Preview Setup
+              </button>
+              
+              {proposals[0].status === 'submitted' && (
+                <button
+                  disabled={reviewingProposal}
+                  onClick={() => handleProposalAction(proposals[0].id, 'approve')}
+                  className="px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold rounded-xl transition-all disabled:opacity-50"
+                >
+                  Approve
+                </button>
+              )}
+
+              {['submitted', 'approved'].includes(proposals[0].status) && (
+                <button
+                  disabled={reviewingProposal}
+                  onClick={() => {
+                    const notes = prompt('Enter change request notes for your Growth Partner:');
+                    if (notes && notes.trim()) {
+                      void handleProposalAction(proposals[0].id, 'request_changes', notes.trim());
+                    }
+                  }}
+                  className="px-4 py-2 bg-amber-500/10 text-amber-800 hover:bg-amber-500/20 text-xs font-bold rounded-xl transition-all disabled:opacity-50"
+                >
+                  Request Changes
+                </button>
+              )}
+
+              {['submitted', 'approved'].includes(proposals[0].status) && (
+                <button
+                  disabled={reviewingProposal}
+                  onClick={() => void handleProposalAction(proposals[0].id, 'publish')}
+                  className="px-5 py-2 bg-primary text-white hover:bg-primary/90 text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 ml-auto"
+                >
+                  {reviewingProposal ? 'Publishing…' : 'Approve & Publish Live'}
+                </button>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Top Metrics Bento Grid — live values, no fake numbers */}
         <section className="grid grid-cols-1 md:grid-cols-12 gap-4">

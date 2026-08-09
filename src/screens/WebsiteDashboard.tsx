@@ -4,6 +4,15 @@ import { NavigationProps, WebsiteConfig } from '../types';
 import WebsiteConfigEditor from '../components/WebsiteConfigEditor';
 import LivePreview from '../components/LivePreview';
 import { renderSiteHTML } from '../lib/siteTemplates';
+import { supabase } from '../lib/supabase';
+import {
+  fetchMyShop,
+  fetchPublishedWebsite,
+  publishShopWebsite,
+  listServices,
+  validateSalonForPublish,
+  MyShop,
+} from '../lib/shopRepository';
 import { 
   Eye, 
   CalendarCheck, 
@@ -18,7 +27,8 @@ import {
   Palette,
   Copy,
   Check,
-  ExternalLink
+  ExternalLink,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../contexts/ThemeContext';
@@ -30,17 +40,18 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
   const [showToast, setShowToast] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'hero' | 'services' | 'reviews' | 'contact' | 'theme' | 'layout'>('hero');
+  const [currentShop, setCurrentShop] = useState<MyShop | null>(null);
   const [websiteConfig, setWebsiteConfig] = useState<WebsiteConfig>({
     businessName: 'Luxe Salon',
     tagline: 'Experience master artistry',
-    heroTitle: 'Hero Section Needs Update',
-    heroSubtitle: 'Promote the new summer styling package.',
+    heroTitle: 'Redefining Hair & Elegance',
+    heroSubtitle: 'Experience master artistry in a sanctuary designed for pure relaxation.',
     heroImageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=1200',
     heroCtaText: 'Book Now',
     heroCtaLink: '/book',
-    services: [{ id: '1', name: 'Haircut', price: '$50', duration: '60m', category: 'Hair' }],
-    reviews: [{ id: '1', customerName: 'Alice', rating: 5, comment: 'Great!' }],
-    contact: { address: '123 St', phone: '555-5555', socialLinks: { instagram: '', facebook: '', tiktok: '' }, openingHours: '9-5', locationMap: '' },
+    services: [{ id: '1', name: 'Signature Haircut', price: '₹600', duration: '60m', category: 'Hair' }],
+    reviews: [{ id: '1', customerName: 'Ananya', rating: 5, comment: 'Great!' }],
+    contact: { address: 'Shop 12, Main Bazar, Jaipur', phone: '9876543210', socialLinks: { instagram: '', facebook: '', tiktok: '' }, openingHours: 'Mon–Sun: 10:00 AM – 8:00 PM', locationMap: '' },
     theme: { 
       primaryColor: activeTheme.primaryColor, 
       accentColor: activeTheme.accentColor,
@@ -59,6 +70,61 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
       showFooter: true,
     }
   });
+
+  // Load live shop data and existing published website from Supabase
+  useEffect(() => {
+    async function loadLiveSiteData() {
+      try {
+        const shop = await fetchMyShop(supabase);
+        if (shop) {
+          setCurrentShop(shop);
+          const published = await fetchPublishedWebsite(supabase, shop.id);
+          const dbServices = await listServices(supabase, shop.id).catch(() => []);
+
+          setWebsiteConfig((prev) => {
+            const next = { ...prev };
+            if (shop.name) next.businessName = shop.name;
+            if (shop.address) next.contact.address = shop.address;
+            if (shop.phone) next.contact.phone = shop.phone;
+
+            if (published && published.config && typeof published.config === 'object') {
+              return {
+                ...next,
+                ...published.config,
+                theme: {
+                  ...next.theme,
+                  ...(published.config.theme || {}),
+                },
+                layoutToggles: {
+                  ...next.layoutToggles,
+                  ...(published.config.layoutToggles || {}),
+                },
+              };
+            }
+
+            if (dbServices.length > 0) {
+              next.services = dbServices.map((s) => ({
+                id: s.id,
+                name: s.name,
+                price: `₹${(s.pricePaise / 100).toFixed(0)}`,
+                duration: `${s.durationMinutes}m`,
+                category: 'Hair',
+              }));
+            }
+
+            return next;
+          });
+
+          if (published && published.isPublished && published.slug) {
+            setPublishedUrl(`/salons/${published.slug}`);
+          }
+        }
+      } catch (err) {
+        console.warn('Live website data load:', err);
+      }
+    }
+    void loadLiveSiteData();
+  }, []);
 
   useEffect(() => {
     if (lastThemeId.current !== activeTheme.id) {
@@ -89,7 +155,7 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
   const [copied, setCopied] = useState(false);
 
   const getSlug = () => {
-    const slug = (websiteConfig.businessName || 'mysalon')
+    const slug = (websiteConfig.businessName || currentShop?.name || 'mysalon')
       .toLowerCase().trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
@@ -106,18 +172,28 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
     setPublishError(null);
     try {
       const html = renderSiteHTML(websiteConfig, activeTheme.id);
-      const res = await fetch('/api/publish-site', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html, slug: getSlug() }),
+      const res = await publishShopWebsite(supabase, {
+        slug: getSlug(),
+        templateKey: activeTheme.id,
+        config: websiteConfig as any,
+        html,
       });
-      const data = await res.json();
-      if (data.ok && data.url) {
-        const url = new URL(data.url, window.location.origin).toString();
-        setPublishedUrl(url);
+
+      if (res.ok && res.slug) {
+        setPublishedUrl(`/salons/${res.slug}`);
         setShowSuccessModal(false);
+        setRecentActivities((prev) => [
+          {
+            id: Date.now(),
+            title: `Website published live (slug: ${res.slug})`,
+            time: 'Just now',
+            author: 'You',
+            dotColor: 'bg-[#10B981]',
+          },
+          ...prev.slice(0, 2),
+        ]);
       } else {
-        setPublishError(data.error || 'Unknown error');
+        setPublishError(res.error || 'Unknown publish error');
       }
     } catch (e) {
       setPublishError(String(e && (e as Error).message ? (e as Error).message : e));
@@ -129,7 +205,8 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
   const copyLink = async () => {
     if (!publishedUrl) return;
     try {
-      await navigator.clipboard.writeText(publishedUrl);
+      const fullUrl = new URL(publishedUrl, window.location.origin).toString();
+      await navigator.clipboard.writeText(fullUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -155,8 +232,33 @@ export default function WebsiteDashboard({ navigate }: NavigationProps) {
                 </div>
               </div>
               {publishError && (
-                <div className="px-4 py-3 bg-error/10 border-b border-error/20 text-error text-sm font-semibold">
-                  ⚠️ Publish failed: {publishError} — check that the server is running, then try again.
+                <div className="px-4 py-3 bg-error/10 border-b border-error/20 text-error text-sm font-semibold flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>⚠️ {publishError}</span>
+                  </div>
+                  {publishError.toLowerCase().includes('location') && (
+                    <button
+                      onClick={() => {
+                        setShowSuccessModal(false);
+                        navigate('shop-location');
+                      }}
+                      className="text-xs font-bold underline text-left mt-1 text-primary"
+                    >
+                      → Go to Set Shop Location
+                    </button>
+                  )}
+                  {publishError.toLowerCase().includes('profile') && (
+                    <button
+                      onClick={() => {
+                        setShowSuccessModal(false);
+                        navigate('profile');
+                      }}
+                      className="text-xs font-bold underline text-left mt-1 text-primary"
+                    >
+                      → Complete Profile in Settings
+                    </button>
+                  )}
                 </div>
               )}
               <div className="flex-1 overflow-auto p-4">

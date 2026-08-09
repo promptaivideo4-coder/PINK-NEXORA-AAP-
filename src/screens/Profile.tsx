@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Layout from '../components/Layout';
 import PasswordField from '../components/PasswordField';
 import OtpVerificationModal from '../components/OtpVerificationModal';
 import SuccessModal from '../components/SuccessModal';
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
+import { fetchMyShop, updateShopProfile, MyShop } from '../lib/shopRepository';
 import { 
   Building2, 
   User, 
@@ -51,10 +52,17 @@ export default function Profile({ navigate }: NavigationProps) {
   const personalAvatarInputRef = useRef<HTMLInputElement>(null);
 
   // Business Profile Form State
+  const [shopId, setShopId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState(() => localStorage.getItem('nexora_business_name') || 'Nexora Beauty Studio');
+  const [businessCategory, setBusinessCategory] = useState(() => localStorage.getItem('nexora_business_category') || 'hair');
+  const [businessPhone, setBusinessPhone] = useState(() => localStorage.getItem('nexora_business_phone') || '');
+  const [description, setDescription] = useState(() => localStorage.getItem('nexora_business_desc') || '');
   const [gstNumber, setGstNumber] = useState(() => localStorage.getItem('nexora_gst_number') || '29GGGGG1314R9Z6');
   const [address, setAddress] = useState(() => localStorage.getItem('nexora_address') || '124 Connaught Place, New Delhi');
   const [city, setCity] = useState(() => localStorage.getItem('nexora_city') || 'Metropolis');
+  const [area, setArea] = useState(() => localStorage.getItem('nexora_area') || '');
+  const [zone, setZone] = useState(() => localStorage.getItem('nexora_zone') || '');
+  const [landmark, setLandmark] = useState(() => localStorage.getItem('nexora_landmark') || '');
   const [postalCode, setPostalCode] = useState(() => localStorage.getItem('nexora_postal_code') || '50001');
 
   // Business Logo & Personal Avatar State
@@ -111,6 +119,40 @@ export default function Profile({ navigate }: NavigationProps) {
   const [email, setEmail] = useState(() => localStorage.getItem('nexora_email') || 'suman.g@nexora.app');
   const [phone, setPhone] = useState(() => localStorage.getItem('nexora_phone') || '+91 98765 43210');
   const [ownerRole, setOwnerRole] = useState(() => localStorage.getItem('nexora_owner_role') || 'Owner & Lead Stylist');
+
+  // Load live data from Supabase on mount
+  useEffect(() => {
+    async function loadLiveProfile() {
+      try {
+        const shop = await fetchMyShop(supabase);
+        if (shop) {
+          setShopId(shop.id);
+          if (shop.name) { setBusinessName(shop.name); localStorage.setItem('nexora_business_name', shop.name); }
+          if (shop.businessCategory) { setBusinessCategory(shop.businessCategory); localStorage.setItem('nexora_business_category', shop.businessCategory); }
+          if (shop.phone) { setBusinessPhone(shop.phone); localStorage.setItem('nexora_business_phone', shop.phone); }
+          if (shop.description) { setDescription(shop.description); localStorage.setItem('nexora_business_desc', shop.description); }
+          if (shop.address) { setAddress(shop.address); localStorage.setItem('nexora_address', shop.address); }
+          if (shop.city) { setCity(shop.city); localStorage.setItem('nexora_city', shop.city); }
+          if (shop.area) { setArea(shop.area); localStorage.setItem('nexora_area', shop.area); }
+          if (shop.zone) { setZone(shop.zone); localStorage.setItem('nexora_zone', shop.zone); }
+          if (shop.landmark) { setLandmark(shop.landmark); localStorage.setItem('nexora_landmark', shop.landmark); }
+          if (shop.pincode) { setPostalCode(shop.pincode); localStorage.setItem('nexora_postal_code', shop.pincode); }
+        }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          if (user.email) setEmail(user.email);
+          const { data: profile } = await supabase.from('profiles').select('full_name, phone').eq('id', user.id).maybeSingle();
+          if (profile) {
+            if (profile.full_name) { setFullName(profile.full_name); localStorage.setItem('nexora_full_name', profile.full_name); }
+            if (profile.phone) { setPhone(profile.phone); localStorage.setItem('nexora_phone', profile.phone); }
+          }
+        }
+      } catch (err) {
+        console.warn('Profile load from Supabase:', err);
+      }
+    }
+    void loadLiveProfile();
+  }, []);
 
   // Modals state
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -198,9 +240,15 @@ export default function Profile({ navigate }: NavigationProps) {
   const handleSaveBusiness = async () => {
     // 1. Save to localStorage for immediate local feedback
     localStorage.setItem('nexora_business_name', businessName);
+    localStorage.setItem('nexora_business_category', businessCategory);
+    localStorage.setItem('nexora_business_phone', businessPhone);
+    localStorage.setItem('nexora_business_desc', description);
     localStorage.setItem('nexora_gst_number', gstNumber);
     localStorage.setItem('nexora_address', address);
     localStorage.setItem('nexora_city', city);
+    localStorage.setItem('nexora_area', area);
+    localStorage.setItem('nexora_zone', zone);
+    localStorage.setItem('nexora_landmark', landmark);
     localStorage.setItem('nexora_postal_code', postalCode);
     localStorage.setItem('nexora_schedules', JSON.stringify(schedules));
     localStorage.setItem('nexora_business_logo', businessLogo);
@@ -209,20 +257,41 @@ export default function Profile({ navigate }: NavigationProps) {
     localStorage.setItem('nexora_sms_notifications', String(smsNotifications));
     localStorage.setItem('nexora_marketing_reminders', String(marketingReminders));
 
-    // 2. Queue for remote sync
+    // 2. Persist to real Supabase database
     try {
-      await queueAction('UPDATE_PROFILE', {
-        id: 'business_profile', // In a real app, this would be a real ID
-        business_name: businessName,
-        gst_number: gstNumber,
-        address: address,
-        city: city,
-        postal_code: postalCode,
-        schedules: schedules
-      });
-      triggerToast('Business profile saved (will sync when online)!');
-    } catch (err) {
-      console.error('Failed to queue business update', err);
+      let currentShopId = shopId;
+      if (!currentShopId) {
+        const fresh = await fetchMyShop(supabase);
+        if (fresh) {
+          currentShopId = fresh.id;
+          setShopId(fresh.id);
+        }
+      }
+
+      if (currentShopId) {
+        const res = await updateShopProfile(supabase, currentShopId, {
+          name: businessName,
+          businessCategory: businessCategory || null,
+          phone: businessPhone || null,
+          description: description || null,
+          address: address || null,
+          city: city || null,
+          area: area || null,
+          zone: zone || null,
+          landmark: landmark || null,
+          pincode: postalCode || null,
+        });
+
+        if (res.ok) {
+          triggerToast('Business profile saved and synced with Supabase!');
+        } else {
+          triggerToast(`Saved locally. (Database note: ${res.error})`);
+        }
+      } else {
+        triggerToast('Business profile saved locally.');
+      }
+    } catch (err: any) {
+      console.error('Failed to sync business update to Supabase', err);
       triggerToast('Business profile saved locally.');
     }
   };
@@ -235,18 +304,23 @@ export default function Profile({ navigate }: NavigationProps) {
     localStorage.setItem('nexora_personal_avatar', personalAvatar);
     localStorage.setItem('nexora_owner_role', ownerRole);
 
-    // 2. Queue for remote sync
+    // 2. Persist to Supabase profiles
     try {
-      await queueAction('UPDATE_PROFILE', {
-        id: 'personal_profile',
-        full_name: fullName,
-        email: email,
-        phone: phone,
-        role: ownerRole
-      });
-      triggerToast('Personal details saved (will sync when online)!');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({
+            full_name: fullName.trim(),
+            phone: phone.trim() || null,
+          })
+          .eq('id', user.id);
+        triggerToast('Personal details saved and synced with Supabase!');
+      } else {
+        triggerToast('Personal details saved locally.');
+      }
     } catch (err) {
-      console.error('Failed to queue personal update', err);
+      console.error('Failed to sync personal update to Supabase', err);
       triggerToast('Personal details saved locally.');
     }
   };
@@ -513,6 +587,44 @@ export default function Profile({ navigate }: NavigationProps) {
                     />
                   </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-on-surface-variant">Business Category</label>
+                      <select 
+                        value={businessCategory}
+                        onChange={(e) => setBusinessCategory(e.target.value)}
+                        className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                      >
+                        <option value="hair">Hair Salon</option>
+                        <option value="nails">Nail Studio</option>
+                        <option value="spa">Spa & Wellness</option>
+                        <option value="barber">Barbershop</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-on-surface-variant">Shop Contact Phone</label>
+                      <input 
+                        type="tel" 
+                        value={businessPhone}
+                        onChange={(e) => setBusinessPhone(e.target.value)}
+                        placeholder="e.g. 9876543210"
+                        className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-on-surface-variant">About / Description</label>
+                    <textarea 
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={2}
+                      placeholder="Describe your salon, services, and specialty..."
+                      className="w-full bg-surface border border-outline-variant/60 rounded-xl p-3 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none resize-none"
+                    />
+                  </div>
+
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-on-surface-variant">GST / Tax Identification Number</label>
                     <div className="relative">
@@ -547,25 +659,60 @@ export default function Profile({ navigate }: NavigationProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2 space-y-1">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
                     <label className="text-xs font-semibold text-on-surface-variant">City</label>
                     <input 
                       type="text" 
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      placeholder="e.g. Metropolis"
+                      placeholder="e.g. Jaipur"
                       className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-on-surface-variant">Postal Code</label>
+                    <label className="text-xs font-semibold text-on-surface-variant">Area / Locality</label>
+                    <input 
+                      type="text" 
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                      placeholder="e.g. Malviya Nagar"
+                      className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-on-surface-variant">Zone</label>
+                    <input 
+                      type="text" 
+                      value={zone}
+                      onChange={(e) => setZone(e.target.value)}
+                      placeholder="e.g. South Jaipur"
+                      className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-on-surface-variant">Landmark</label>
+                    <input 
+                      type="text" 
+                      value={landmark}
+                      onChange={(e) => setLandmark(e.target.value)}
+                      placeholder="e.g. Near GT Central"
+                      className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-on-surface-variant">Pincode</label>
                     <input 
                       type="text" 
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value)}
-                      placeholder="e.g. 50001"
+                      placeholder="e.g. 302017"
                       className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                     />
                   </div>
