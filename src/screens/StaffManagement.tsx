@@ -28,6 +28,12 @@ import {
   ShopStaff,
   updateStaff as updateStaffRow,
 } from '../lib/shopRepository';
+import {
+  fetchStaffList,
+  fetchStaffServices,
+  fetchBookingsForSalon,
+  type StaffRow,
+} from '../lib/staffRepository';
 
 type StaffStatus = 'Available' | 'Busy' | 'On Leave' | 'Inactive';
 type StatusFilter = 'All' | StaffStatus;
@@ -177,6 +183,27 @@ function mapShopStaff(row: ShopStaff): StaffMember {
   };
 }
 
+function mapStaffRow(row: StaffRow, serviceCount: number, bookingCount: number): StaffMember {
+  const status = mapEmploymentStatus(row.employment_status);
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role_title || row.primary_role || 'Stylist',
+    skills: (row.specialty || 'General Styling')
+      .split(/,|&/)
+      .map((skill) => skill.trim())
+      .filter(Boolean),
+    phone: row.phone || '',
+    email: row.email || '',
+    rating: Number(row.rating_average) || 0,
+    status,
+    shift: formatShift(status),
+    bookingsToday: bookingCount,
+    assignedServices: serviceCount,
+    avatar: row.profile_photo_url || row.avatar_path || undefined,
+  };
+}
+
 function Avatar({ staff, size = 'large' }: { staff: StaffMember; size?: 'large' | 'small' }) {
   const sizeClass = size === 'large' ? 'h-14 w-14' : 'h-9 w-9';
   return (
@@ -261,12 +288,43 @@ export default function StaffManagement({ navigate }: NavigationProps) {
       }
 
       setShopId(shop.id);
+
+      // Try enriched data from Phase 1-5 tables first
+      try {
+        const staffRows = await fetchStaffList(supabase, shop.id);
+        if (staffRows.length > 0) {
+          // Enrich each staff with service count and booking count
+          const enriched = await Promise.all(
+            staffRows.map(async (row) => {
+              const [services, bookings] = await Promise.all([
+                fetchStaffServices(supabase, row.id).catch(() => []),
+                fetchBookingsForSalon(supabase, shop.id).catch(() => []),
+              ]);
+              const today = new Date().toISOString().slice(0, 10);
+              const todayBookings = bookings.filter(
+                (b: any) =>
+                  b.staff_id === row.id &&
+                  b.appointment_start?.startsWith(today) &&
+                  !['cancelled', 'completed'].includes(String(b.status || '').toLowerCase()),
+              );
+              return mapStaffRow(row, services.length, todayBookings.length);
+            }),
+          );
+          setDataMode('live');
+          setStaffList(enriched);
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        // Fallback to legacy shopRepository
+      }
+
+      // Legacy fallback
       const rows = await fetchStaffRows(supabase, shop.id);
       if (rows.length > 0) {
         setDataMode('live');
         setStaffList(rows.map(mapShopStaff));
       } else {
-        // A fresh workspace still gets a useful preview until the first staff member is saved.
         setDataMode('demo');
         setStaffList(getStoredDemoStaff());
       }
@@ -437,25 +495,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
   };
 
   const openStaffDetail = (staff: StaffMember) => {
-    // StaffDetail is an older, richer screen. Keep a small compatibility
-    // record so the directory's demo/live rows open there as well.
-    const legacyStatus = staff.status === 'Busy' ? 'In-Session' : staff.status === 'Inactive' ? 'Off-Duty' : 'Available';
-    const legacyRecord = {
-      id: staff.id,
-      name: staff.name,
-      role: staff.role,
-      specialty: staff.skills.join(', '),
-      phone: staff.phone,
-      email: staff.email,
-      rating: staff.rating,
-      reviewsCount: staff.rating ? 1 : 0,
-      avatar: staff.avatar,
-      status: legacyStatus,
-      weeklyRev: '₹0',
-      bookingsThisWeek: staff.bookingsToday,
-      statusInfo: staff.status,
-    };
-    window.localStorage.setItem('nexora_staff_list', JSON.stringify([legacyRecord]));
+    // Pass staff ID via localStorage for StaffDetail to load from Supabase
     window.localStorage.setItem(SELECTED_STAFF_KEY, staff.id);
     navigate('staff-detail');
   };

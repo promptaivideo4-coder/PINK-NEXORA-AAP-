@@ -27,6 +27,17 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { NavigationProps } from '../types';
+import { supabase } from '../lib/supabase';
+import { fetchMyShop } from '../lib/shopRepository';
+import {
+  fetchStaffList,
+  fetchStaffServices,
+  fetchStaffSkills,
+  fetchServices,
+  fetchSkills,
+  getAvailableSlots,
+  type StaffRow,
+} from '../lib/staffRepository';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -199,33 +210,26 @@ function demoStaff(): StaffMember[] {
   ];
 }
 
-function generateTimeSlots(staffId: string, date: string): TimeSlot[] {
+function generateDemoTimeSlots(staffId: string, date: string): TimeSlot[] {
   const slots: TimeSlot[] = [];
   const startHour = 9;
   const endHour = 18;
   const breakStart = 13;
   const breakEnd = 14;
-
-  // Simulate existing bookings (pseudo-random based on date+staff)
   const seed = (date + staffId).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const bookedSlots = new Set<number>();
   for (let i = 0; i < 3; i++) {
     bookedSlots.add(((seed * (i + 1) * 7) % (endHour - startHour)) + startHour);
   }
-
   for (let h = startHour; h < endHour; h++) {
     const hh = String(h).padStart(2, '0');
     const time = `${hh}:00`;
     const isBreak = h >= breakStart && h < breakEnd;
     const isBooked = bookedSlots.has(h);
-    const isLeave = staffId === 's4' && date.endsWith('15'); // Simulate leave
-
     if (isBreak) {
       slots.push({ time, available: false, reason: 'Break' });
     } else if (isBooked) {
       slots.push({ time, available: false, reason: 'Already booked' });
-    } else if (isLeave) {
-      slots.push({ time, available: false, reason: 'On leave' });
     } else {
       slots.push({ time, available: true });
     }
@@ -243,7 +247,62 @@ export default function StaffWebsiteBooking({ navigate }: NavigationProps) {
   const [visibility, setVisibility] = useState<VisibilitySettings>(() =>
     readJson(VISIBILITY_KEY, DEFAULT_VISIBILITY),
   );
-  const [staffList] = useState<StaffMember[]>(demoStaff);
+  const [staffList, setStaffList] = useState<StaffMember[]>(demoStaff);
+
+  // Load real public staff data from Supabase
+  useEffect(() => {
+    let cancelled = false;
+    const loadPublicStaff = async () => {
+      try {
+        const shop = await fetchMyShop(supabase);
+        if (!shop || cancelled) return;
+        const staffRows = await fetchStaffList(supabase, shop.id);
+        const publicStaff = staffRows.filter((s) => s.is_public && s.is_active && !s.deleted_at);
+        if (!publicStaff.length || cancelled) return;
+        const enriched = await Promise.all(
+          publicStaff.map(async (row) => {
+            const [staffServices, staffSkills, allServices, allSkills] = await Promise.all([
+              fetchStaffServices(supabase, row.id).catch(() => []),
+              fetchStaffSkills(supabase, row.id).catch(() => []),
+              fetchServices(supabase, shop.id).catch(() => []),
+              fetchSkills(supabase, shop.id).catch(() => []),
+            ]);
+            const svcMap = new Map((allServices as any[]).map((s: any) => [s.id, s]));
+            const skillMap = new Map((allSkills as any[]).map((s: any) => [s.id, s.name]));
+            const services = staffServices
+              .filter((ss: any) => ss.is_active)
+              .map((ss: any) => {
+                const svc = svcMap.get(ss.service_id);
+                return svc
+                  ? { name: svc.name, price: Math.round((ss.custom_price_paise || svc.price_paise) / 100), duration: `${ss.custom_duration_minutes || svc.duration_minutes} min` }
+                  : null;
+              })
+              .filter(Boolean) as { name: string; price: number; duration: string }[];
+            const skills = staffSkills.map((ss: any) => skillMap.get(ss.skill_id) || 'Skill');
+            return {
+              id: row.id,
+              name: row.full_name || row.name,
+              title: row.role_title || row.primary_role || 'Stylist',
+              experience: `${row.experience_years || 0}+ Years Experience`,
+              rating: Number(row.rating_average) || 0,
+              bio: row.bio || `Professional ${row.role_title || 'stylist'} at our salon.`,
+              skills: skills.length ? skills : ['General Styling'],
+              services: services.length ? services : [],
+              avatar: row.profile_photo_url || row.avatar_path || undefined,
+              phone: visibility.showPhoneNumber ? (row.phone || undefined) : undefined,
+            } as StaffMember;
+          }),
+        );
+        if (!cancelled && enriched.length) {
+          setStaffList(enriched);
+        }
+      } catch {
+        // Keep demo data as fallback
+      }
+    };
+    void loadPublicStaff();
+    return () => { cancelled = true; };
+  }, [visibility.showPhoneNumber]);
   const [toast, setToast] = useState<string | null>(null);
 
   // Customer booking flow
@@ -285,17 +344,55 @@ export default function StaffWebsiteBooking({ navigate }: NavigationProps) {
     return staffList.filter((s) => s.services.some((svc) => svc.name === selectedService));
   }, [staffList, selectedService]);
 
-  const timeSlots = useMemo(() => {
-    if (!selectedStaffId || !selectedDate) return [];
-    return generateTimeSlots(selectedStaffId, selectedDate);
-  }, [selectedStaffId, selectedDate]);
-
-  const availableSlots = useMemo(() => timeSlots.filter((s) => s.available), [timeSlots]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
 
   const selectedServiceData = useMemo(
     () => allServices.find((s) => s.name === selectedService) || null,
     [allServices, selectedService],
   );
+
+  // Load real available slots from Supabase RPC
+  useEffect(() => {
+    if (!selectedStaffId || !selectedDate) {
+      setTimeSlots([]);
+      return;
+    }
+    let cancelled = false;
+    const loadSlots = async () => {
+      try {
+        const shop = await fetchMyShop(supabase);
+        if (!shop || cancelled) return;
+        const service = selectedServiceData || allServices[0];
+        if (!service || cancelled) return;
+        const allSvc = await fetchServices(supabase, shop.id);
+        const serviceRow = (allSvc as any[]).find((s: any) => s.name === service.name);
+        if (!serviceRow || cancelled) return;
+        const slots = await getAvailableSlots(supabase, shop.id, selectedStaffId, serviceRow.id, selectedDate);
+        if (cancelled) return;
+        if (slots.length) {
+          const hourMap = new Map<string, boolean>();
+          for (const slot of slots) {
+            const hour = slot.slot_start.split('T')[1]?.slice(0, 5) || slot.slot_start.slice(11, 16);
+            hourMap.set(hour.slice(0, 2) + ':00', true);
+          }
+          const allHours: TimeSlot[] = [];
+          for (let h = 9; h < 18; h++) {
+            const hh = String(h).padStart(2, '0') + ':00';
+            allHours.push({ time: hh, available: hourMap.has(hh), reason: hourMap.has(hh) ? undefined : 'Unavailable' });
+          }
+          setTimeSlots(allHours);
+        } else {
+          setTimeSlots(generateDemoTimeSlots(selectedStaffId, selectedDate));
+        }
+      } catch {
+        if (!cancelled) setTimeSlots(generateDemoTimeSlots(selectedStaffId, selectedDate));
+      }
+    };
+    void loadSlots();
+    return () => { cancelled = true; };
+  }, [selectedStaffId, selectedDate, selectedServiceData]);
+
+  const availableSlots = useMemo(() => timeSlots.filter((s) => s.available), [timeSlots]);
 
   const toggleVisibility = useCallback((key: keyof VisibilitySettings) => {
     setVisibility((prev) => ({ ...prev, [key]: !prev[key] }));

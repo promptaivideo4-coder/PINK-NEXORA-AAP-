@@ -29,6 +29,12 @@ import { AnimatePresence, motion } from 'motion/react';
 import { NavigationProps } from '../types';
 import { fetchMyBookings, fetchMyShop, listStaff, ShopBooking, ShopStaff } from '../lib/shopRepository';
 import { supabase } from '../lib/supabase';
+import {
+  fetchStaffList,
+  fetchBookingsForSalon,
+  fetchServices,
+  type StaffRow,
+} from '../lib/staffRepository';
 
 /* ───── Types ───── */
 

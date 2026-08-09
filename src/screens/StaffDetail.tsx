@@ -38,6 +38,23 @@ import { AnimatePresence, motion } from 'motion/react';
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
 import { fetchMyShop, listStaff, updateStaff as updateStaffRow } from '../lib/shopRepository';
+import {
+  fetchStaffById,
+  fetchStaffSchedules,
+  fetchStaffServices,
+  fetchStaffSkills,
+  fetchServices,
+  fetchSkills,
+  fetchAttendanceForStaff,
+  fetchLeaveBalances,
+  fetchLeaveRequests,
+  fetchPayrollRecordForStaff,
+  fetchCommissions,
+  fetchDocuments,
+  fetchEmergencyContacts,
+  fetchAuditLogs,
+  type StaffRow,
+} from '../lib/staffRepository';
 
 type StaffStatus = 'Active' | 'Probation' | 'Inactive' | 'Terminated';
 type TabId = 'overview' | 'schedule' | 'attendance' | 'earnings' | 'documents' | 'activity';
@@ -303,10 +320,128 @@ export default function StaffDetail({ navigate }: NavigationProps) {
       try {
         const shop = await fetchMyShop(supabase);
         if (!shop || !selectedId || selectedId.startsWith('demo-')) return;
-        const rows = await listStaff(supabase, shop.id);
-        const row = rows.find((item) => item.id === selectedId);
+
+        // Load from Phase 1-5 tables
+        const row = await fetchStaffById(supabase, selectedId);
         if (!row || cancelled) return;
-        setStaff((current) => ({ ...current, name: row.name, role: row.role || current.role, status: statusFromValue(row.employmentStatus), skills: row.specialty?.split(/,|&/).map((skill) => skill.trim()).filter(Boolean) || current.skills }));
+
+        const [
+          schedules, staffServices, staffSkills, allServices, allSkills,
+          attendance, leaveBalances, leaveRequests, payrollRecords,
+          documents, emergencyContacts, auditLogs,
+        ] = await Promise.all([
+          fetchStaffSchedules(supabase, row.id).catch(() => []),
+          fetchStaffServices(supabase, row.id).catch(() => []),
+          fetchStaffSkills(supabase, row.id).catch(() => []),
+          fetchServices(supabase, shop.id).catch(() => []),
+          fetchSkills(supabase, shop.id).catch(() => []),
+          fetchAttendanceForStaff(supabase, row.id).catch(() => []),
+          fetchLeaveBalances(supabase, row.id, new Date().getFullYear()).catch(() => []),
+          fetchLeaveRequests(supabase, row.id).catch(() => []),
+          fetchPayrollRecordForStaff(supabase, row.id).catch(() => []),
+          fetchDocuments(supabase, row.id).catch(() => []),
+          fetchEmergencyContacts(supabase, row.id).catch(() => []),
+          fetchAuditLogs(supabase, shop.id, row.id).catch(() => []),
+        ]);
+
+        if (cancelled) return;
+
+        // Map services
+        const serviceNameMap = new Map((allServices as any[]).map((s: any) => [s.id, s.name]));
+        const skillNameMap = new Map((allSkills as any[]).map((s: any) => [s.id, s.name]));
+        const assignedServices: string[] = (staffServices as any[])
+          .filter((ss: any) => ss.is_active)
+          .map((ss: any) => serviceNameMap.get(ss.service_id) || 'Service');
+        const assignedSkills: string[] = (staffSkills as any[])
+          .map((ss: any) => skillNameMap.get(ss.skill_id) || 'Skill');
+
+        // Map schedule
+        const scheduleMap: Record<string, ScheduleDay> = {};
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        for (const s of schedules) {
+          const day = dayNames[s.day_of_week] || `Day ${s.day_of_week}`;
+          scheduleMap[day] = {
+            working: s.is_working,
+            active: s.is_working,
+            shifts: s.start_time && s.end_time
+              ? [{ start: s.start_time.slice(0, 5), end: s.end_time.slice(0, 5), breakStart: '13:00', breakEnd: '14:00' }]
+              : [],
+          };
+        }
+
+        // Attendance stats
+        const present = attendance.filter((a: any) => a.status === 'present').length;
+        const late = attendance.filter((a: any) => a.status === 'late').length;
+        const absent = attendance.filter((a: any) => a.status === 'absent').length;
+        const approvedLeave = attendance.filter((a: any) => a.status === 'leave').length;
+        const leaveBalanceTotal = (leaveBalances as any[]).reduce((sum: number, b: any) => sum + Number(b.remaining_days || 0), 0);
+
+        // Payroll
+        const payrollArr = payrollRecords as any[];
+        const latestPayroll = payrollArr[0];
+        const totalCommission = payrollArr.reduce((sum: number, r: any) => sum + Number(r.total_commission || 0), 0);
+        const totalBonus = payrollArr.reduce((sum: number, r: any) => sum + Number(r.total_bonus || 0), 0);
+        const totalDeductions = payrollArr.reduce((sum: number, r: any) => sum + Number(r.total_deductions || 0), 0);
+
+        // Documents
+        const docTypeLabels: Record<string, string> = {
+          government_id: 'Government ID Proof',
+          address_proof: 'Address Proof',
+          employment_contract: 'Employment Contract',
+          skill_certificate: 'Skill Certificates',
+          other: 'Other',
+        };
+        const mappedDocs = documents.map((d: any) => ({
+          id: d.id,
+          category: docTypeLabels[d.document_type] || d.document_type,
+          name: d.file_name,
+          type: d.mime_type || 'file',
+          uploadedAt: d.created_at,
+        }));
+
+        // Emergency contact
+        const ec = emergencyContacts[0];
+        const ecText = ec ? `${ec.name} · ${ec.relationship} · ${ec.phone}` : 'Not provided';
+
+        // Audit log
+        const mappedAudit = auditLogs.map((a: any) => ({
+          id: a.id,
+          action: a.action.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+          timestamp: a.performed_at,
+          changedBy: 'Manager',
+          before: a.old_value ? JSON.stringify(a.old_value) : undefined,
+          after: a.note || (a.new_value ? JSON.stringify(a.new_value) : undefined),
+        }));
+
+        setStaff((current) => ({
+          ...current,
+          id: row.id,
+          name: row.full_name || row.name,
+          role: row.role_title || row.primary_role || current.role,
+          photo: row.profile_photo_url || row.avatar_path || current.photo,
+          status: statusFromValue(row.employment_status),
+          rating: Number(row.rating_average) || current.rating,
+          joiningDate: row.joining_date ? formatDate(row.joining_date) : current.joiningDate,
+          phone: row.phone || current.phone,
+          email: row.email || current.email,
+          gender: row.gender || current.gender,
+          dateOfBirth: row.date_of_birth || current.dateOfBirth,
+          emergencyContact: ecText,
+          services: assignedServices.length ? assignedServices : current.services,
+          skills: assignedSkills.length ? assignedSkills : current.skills,
+          schedule: Object.keys(scheduleMap).length ? scheduleMap : current.schedule,
+          attendance: { present, late, absent, approvedLeave, leaveBalance: leaveBalanceTotal || current.attendance.leaveBalance },
+          payroll: {
+            ...current.payroll,
+            baseSalary: latestPayroll ? String(latestPayroll.base_salary) : current.payroll.baseSalary,
+            commission: `₹${Math.round(totalCommission).toLocaleString('en-IN')}`,
+            bonuses: `₹${Math.round(totalBonus).toLocaleString('en-IN')}`,
+            deductions: `₹${Math.round(totalDeductions).toLocaleString('en-IN')}`,
+            netPayout: latestPayroll ? `₹${Math.round(Number(latestPayroll.net_payable)).toLocaleString('en-IN')}` : current.payroll.netPayout,
+          },
+          documents: mappedDocs.length ? mappedDocs : current.documents,
+          audit: mappedAudit.length ? mappedAudit : current.audit,
+        }));
       } catch {
         // The local profile remains the offline fallback.
       }
