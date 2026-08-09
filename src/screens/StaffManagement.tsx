@@ -460,7 +460,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
     navigate('staff-detail');
   };
 
-  const navigateFromMenu = (screen: 'dashboard' | 'bookings' | 'settings') => {
+  const navigateFromMenu = (screen: 'dashboard' | 'staff-schedule' | 'settings') => {
     setMobileMenuOpen(false);
     navigate(screen);
   };
@@ -490,7 +490,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
             <button className="nav-link active" aria-current="page">
               <Badge className="h-[18px] w-[18px]" /> Staff
             </button>
-            <button onClick={() => navigateFromMenu('bookings')} className="nav-link">
+            <button onClick={() => navigateFromMenu('staff-schedule')} className="nav-link">
               <CalendarDays className="h-[18px] w-[18px]" /> Schedules
             </button>
             <button onClick={() => navigateFromMenu('settings')} className="nav-link">
@@ -527,7 +527,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
               <div className="flex flex-col gap-1 p-3">
                 <button onClick={() => navigateFromMenu('dashboard')} className="mobile-menu-link"><Users className="h-5 w-5" /> Dashboard</button>
                 <button onClick={() => setMobileMenuOpen(false)} className="mobile-menu-link active"><Badge className="h-5 w-5" /> Staff</button>
-                <button onClick={() => navigateFromMenu('bookings')} className="mobile-menu-link"><CalendarDays className="h-5 w-5" /> Schedules</button>
+                <button onClick={() => navigateFromMenu('staff-schedule')} className="mobile-menu-link"><CalendarDays className="h-5 w-5" /> Schedules</button>
                 <button onClick={() => navigateFromMenu('settings')} className="mobile-menu-link"><Settings className="h-5 w-5" /> Settings</button>
               </div>
             </motion.div>
@@ -703,7 +703,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
       <nav className="fixed bottom-0 left-0 z-40 flex h-20 w-full items-center justify-around border-t border-[#e8e8e8] bg-surface px-2 pb-safe md:hidden">
         <button onClick={() => navigate('dashboard')} className="mobile-nav-link"><Users className="h-5 w-5" /><span>Dashboard</span></button>
         <button className="mobile-nav-link active"><Badge className="h-5 w-5" /><span>Staff</span></button>
-        <button onClick={() => navigate('bookings')} className="mobile-nav-link"><CalendarDays className="h-5 w-5" /><span>Schedules</span></button>
+        <button onClick={() => navigate('staff-schedule')} className="mobile-nav-link"><CalendarDays className="h-5 w-5" /><span>Schedules</span></button>
         <button onClick={() => navigate('settings')} className="mobile-nav-link"><Settings className="h-5 w-5" /><span>Settings</span></button>
       </nav>
 
@@ -810,7 +810,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
               <div className="flex flex-col gap-1 overflow-y-auto p-2 pb-8">
                 <button onClick={() => openStaffDetail(activeStaff)} className="sheet-action"><User className="h-5 w-5 text-on-surface-variant" /> View Profile</button>
                 <button onClick={() => openEditForm(activeStaff)} className="sheet-action"><Edit3 className="h-5 w-5 text-on-surface-variant" /> Edit Staff</button>
-                <button onClick={() => { window.localStorage.setItem(SELECTED_STAFF_KEY, activeStaff.id); setActiveStaff(null); navigate('bookings'); }} className="sheet-action"><CalendarDays className="h-5 w-5 text-on-surface-variant" /> View Schedule</button>
+                <button onClick={() => { window.localStorage.setItem(SELECTED_STAFF_KEY, activeStaff.id); setActiveStaff(null); navigate('staff-schedule'); }} className="sheet-action"><CalendarDays className="h-5 w-5 text-on-surface-variant" /> View Schedule</button>
                 <button onClick={() => void deactivateStaff(activeStaff)} className="sheet-action border-t border-[#e8e8e8] text-error"><AlertCircle className="h-5 w-5" /> Deactivate</button>
               </div>
             </motion.div>

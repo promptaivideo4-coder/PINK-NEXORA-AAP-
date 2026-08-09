@@ -28,6 +28,7 @@ import AppUpdate from './screens/AppUpdate';
 import StaffManagement from './screens/StaffManagement';
 import NewStaff from './screens/NewStaff';
 import StaffDetail from './screens/StaffDetail';
+import StaffSchedule from './screens/StaffSchedule';
 import ServerError from './screens/ServerError';
 import CancellationRefundPolicy from './screens/CancellationRefundPolicy';
 import RoleConflict from './screens/RoleConflict';
@@ -57,6 +58,7 @@ export default function App() {
       if (previewScreen === 'dashboard') return 'dashboard';
       if (previewScreen === 'new-staff') return 'new-staff';
       if (previewScreen === 'staff-detail') return 'staff-detail';
+      if (previewScreen === 'staff-schedule') return 'staff-schedule';
       const isStaffPreview = previewScreen === 'staff'
         || window.location.hash === '#staff'
         || window.location.hash === '#/staff';
@@ -227,6 +229,10 @@ export default function App() {
         setCurrentScreen('staff-detail');
         return;
       }
+      if (params.get('screen') === 'staff-schedule') {
+        setCurrentScreen('staff-schedule');
+        return;
+      }
       if (params.get('screen') === 'staff' || hash === '#staff' || hash === '#/staff') {
         setCurrentScreen('staff');
         return;
@@ -250,7 +256,7 @@ export default function App() {
       
       if (!session) {
         // Only force welcome if we are on a protected screen
-        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail'];
+        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule'];
         if (!authScreens.includes(activeScreen)) {
           setCurrentScreen('welcome');
         }
@@ -361,6 +367,8 @@ export default function App() {
         return <NewStaff navigate={navigate} />;
       case 'staff-detail':
         return <StaffDetail navigate={navigate} />;
+      case 'staff-schedule':
+        return <StaffSchedule navigate={navigate} />;
       case 'server-error':
         return <ServerError navigate={navigate} />;
       case 'marketing':
