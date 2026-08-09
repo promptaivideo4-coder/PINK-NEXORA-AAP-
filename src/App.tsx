@@ -36,6 +36,7 @@ import PayrollBreakdown from './screens/PayrollBreakdown';
 import RolesAccessControl from './screens/RolesAccessControl';
 import StaffPerformance from './screens/StaffPerformance';
 import StaffSelfService from './screens/StaffSelfService';
+import StaffWebsiteBooking from './screens/StaffWebsiteBooking';
 import ServerError from './screens/ServerError';
 import CancellationRefundPolicy from './screens/CancellationRefundPolicy';
 import RoleConflict from './screens/RoleConflict';
@@ -74,6 +75,7 @@ export default function App() {
       if (previewScreen === 'staff-roles-access') return 'staff-roles-access';
       if (previewScreen === 'staff-performance') return 'staff-performance';
       if (previewScreen === 'staff-self-service') return 'staff-self-service';
+      if (previewScreen === 'staff-website-booking') return 'staff-website-booking';
       const isStaffPreview = previewScreen === 'staff'
         || window.location.hash === '#staff'
         || window.location.hash === '#/staff';
@@ -280,6 +282,10 @@ export default function App() {
         setCurrentScreen('staff-self-service');
         return;
       }
+      if (params.get('screen') === 'staff-website-booking') {
+        setCurrentScreen('staff-website-booking');
+        return;
+      }
       if (params.get('screen') === 'staff' || hash === '#staff' || hash === '#/staff') {
         setCurrentScreen('staff');
         return;
@@ -303,7 +309,7 @@ export default function App() {
       
       if (!session) {
         // Only force welcome if we are on a protected screen
-        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll', 'staff-payroll-detail', 'staff-payroll-breakdown', 'staff-roles-access', 'staff-performance', 'staff-self-service'];
+        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll', 'staff-payroll-detail', 'staff-payroll-breakdown', 'staff-roles-access', 'staff-performance', 'staff-self-service', 'staff-website-booking'];
         if (!authScreens.includes(activeScreen)) {
           setCurrentScreen('welcome');
         }
@@ -432,6 +438,8 @@ export default function App() {
         return <StaffPerformance navigate={navigate} />;
       case 'staff-self-service':
         return <StaffSelfService navigate={navigate} />;
+      case 'staff-website-booking':
+        return <StaffWebsiteBooking navigate={navigate} />;
       case 'server-error':
         return <ServerError navigate={navigate} />;
       case 'marketing':
