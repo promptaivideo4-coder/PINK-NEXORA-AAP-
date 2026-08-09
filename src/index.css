@@ -262,3 +262,17 @@ html, body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Print support for payroll statements */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: #1c1b1b !important;
+  }
+  header.no-print {
+    display: none !important;
+  }
+}

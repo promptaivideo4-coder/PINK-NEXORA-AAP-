@@ -107,8 +107,8 @@ function bonusLines(record: PayrollRecord): BonusLine[] {
 }
 
 function deductionLines(record: PayrollRecord): DeductionLine[] {
-  const advance = Math.round(record.deductions * 0.48);
-  const tax = Math.round(record.deductions * 0.42);
+  const advance = Math.round(record.deductions * 0.45);
+  const tax = Math.round(record.deductions * 0.45);
   return [{ label: 'Advance', amount: advance }, { label: 'Tax / Deduction', amount: tax }, { label: 'Other deduction', amount: record.deductions - advance - tax }];
 }
 
@@ -151,6 +151,19 @@ export default function PayrollBreakdown({ navigate }: NavigationProps) {
     settlements[record.id] = timestamp;
     window.localStorage.setItem(PAYROLL_KEY, JSON.stringify(nextRecords));
     window.localStorage.setItem(SETTLEMENT_KEY, JSON.stringify(settlements));
+
+    // Persist to the same storage key used by Screen 7 (nexora_payroll_settlements)
+    const sharedSettlements = readJson<Record<string, string>>('nexora_payroll_settlements', {});
+    sharedSettlements[record.id] = timestamp;
+    window.localStorage.setItem('nexora_payroll_settlements', JSON.stringify(sharedSettlements));
+
+    // Add audit log entry
+    const AUDIT_KEY = 'nexora_staff_audit_log';
+    const allAudit = readJson<Record<string, any[]>>(AUDIT_KEY, {});
+    const auditEntry = { id: `pay-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, action: 'Payroll payment settled', timestamp, changedBy: 'You', before: record.paymentStatus, after: 'Paid' };
+    allAudit[record.staffId] = [auditEntry, ...(allAudit[record.staffId] || [])];
+    window.localStorage.setItem(AUDIT_KEY, JSON.stringify(allAudit));
+
     setRecord((current) => current ? { ...current, paymentStatus: 'Paid' } : current);
     setSettledAt(timestamp);
     setSettleConfirm(false);
@@ -193,7 +206,7 @@ function SummaryRow({ label, value, plus, minus, total }: { label: string; value
 }
 
 function CommissionCard({ line, open, onToggle }: { line: CommissionLine; open: boolean; onToggle: () => void }) {
-  return <div className="overflow-hidden rounded-xl border border-[#e8e8e8] bg-[#fdf8f8]"><button type="button" onClick={onToggle} className="flex w-full items-center gap-3 p-3 text-left"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-primary"><FileText className="h-4 w-4" /></span><span className="min-w-0 flex-1"><b className="block truncate text-xs text-on-background">{line.serviceName}</b><small className="text-[11px] text-on-surface-variant">{line.date} · {line.bookingId}</small></span><span className="text-right"><b className="block text-xs text-primary">{money(line.earned)}</b><small className="text-[10px] text-on-surface-variant">{line.rate}%</small></span>{open ? <ChevronDown className="h-4 w-4 text-on-surface-variant" /> : <ChevronRight className="h-4 w-4 text-on-surface-variant" />}</button>{open && <div className="grid grid-cols-2 gap-2 border-t border-[#e8e8e8] bg-white p-3 text-xs"><InfoRow label="Booking" value={line.bookingId} /><InfoRow label="Service" value={line.serviceName} /><InfoRow label="Amount" value={money(line.amount)} /><InfoRow label="Commission rule" value={line.rule} /><InfoRow label="Final commission" value={money(line.earned)} highlight /></div>}</div>;
+  return <div className="overflow-hidden rounded-xl border border-[#e8e8e8] bg-[#fdf8f8]"><button type="button" onClick={onToggle} className="flex w-full items-center gap-3 p-3 text-left"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-primary"><FileText className="h-4 w-4" /></span><span className="min-w-0 flex-1"><b className="block truncate text-xs text-on-background">{line.serviceName}</b><small className="text-[11px] text-on-surface-variant">{line.date} · {line.bookingId}</small></span><span className="text-right"><b className="block text-xs text-primary">{money(line.earned)}</b><small className="text-[10px] text-on-surface-variant">{line.rate}%</small></span>{open ? <ChevronDown className="h-4 w-4 text-on-surface-variant" /> : <ChevronRight className="h-4 w-4 text-on-surface-variant" />}</button>{open && <div className="grid grid-cols-2 gap-2 border-t border-[#e8e8e8] bg-white p-3 text-xs"><InfoRow label="Booking ID" value={line.bookingId} /><InfoRow label="Date" value={line.date} /><InfoRow label="Service Name" value={line.serviceName} /><InfoRow label="Service Amount" value={money(line.amount)} /><InfoRow label="Commission Rule" value={line.rule} /><InfoRow label="Commission Rate" value={`${line.rate}%`} /><InfoRow label="Final Commission" value={money(line.earned)} highlight /><InfoRow label="Booking Status" value="Completed · Eligible" /></div>}</div>;
 }
 
 function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
@@ -205,7 +218,8 @@ function LineItem({ label, value, negative }: { label: string; value: string; ne
 }
 
 function SettleModal({ record, onCancel, onConfirm }: { record: PayrollRecord; onCancel: () => void; onConfirm: () => void }) {
-  return <div className="no-print fixed inset-0 z-[90] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"><motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl"><div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><CheckCircle2 className="h-5 w-5" /></div><h2 className="text-lg font-bold text-on-background">Mark payroll as settled?</h2><p className="mt-2 text-sm leading-6 text-on-surface-variant">Confirm that <b className="text-on-background">{money(netPay(record))}</b> for {record.name} has been settled. This updates the payment status and records the settlement time.</p><div className="mt-5 flex gap-2"><button type="button" onClick={onCancel} className="flex-1 rounded-xl border border-[#e0bec6] px-3 py-3 text-xs font-bold text-on-surface-variant">Cancel</button><button type="button" onClick={onConfirm} className="flex-1 rounded-xl bg-emerald-600 px-3 py-3 text-xs font-bold text-white">Confirm Settlement</button></div></motion.div></div>;
+  const cycle = typeof window !== 'undefined' ? window.localStorage.getItem('nexora_selected_payroll_cycle') || 'August 2026' : 'August 2026';
+  return <div className="no-print fixed inset-0 z-[90] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"><motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl"><div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><CheckCircle2 className="h-5 w-5" /></div><h2 className="text-lg font-bold text-on-background">Mark payroll as settled?</h2><div className="mt-3 space-y-2 rounded-xl border border-[#e8e8e8] bg-[#fdf8f8] p-3 text-xs"><div className="flex items-center justify-between"><span className="font-semibold text-on-surface-variant">Staff Name</span><span className="font-bold text-on-background">{record.name}</span></div><div className="flex items-center justify-between"><span className="font-semibold text-on-surface-variant">Payroll Cycle</span><span className="font-bold text-on-background">{cycle}</span></div><div className="flex items-center justify-between"><span className="font-semibold text-on-surface-variant">Net Payout</span><span className="font-black text-primary">{money(netPay(record))}</span></div><div className="flex items-center justify-between"><span className="font-semibold text-on-surface-variant">Current Status</span><span className="font-bold text-on-background">{record.paymentStatus}</span></div></div><p className="mt-3 text-sm leading-6 text-on-surface-variant">After confirmation the payment status will be updated to <b className="text-emerald-700">Paid/Settled</b>, a settlement timestamp will be recorded and an audit log entry will be added.</p><div className="mt-5 flex gap-2"><button type="button" onClick={onCancel} className="flex-1 rounded-xl border border-[#e0bec6] px-3 py-3 text-xs font-bold text-on-surface-variant">Cancel</button><button type="button" onClick={onConfirm} className="flex-1 rounded-xl bg-emerald-600 px-3 py-3 text-xs font-bold text-white">Confirm Settlement</button></div></motion.div></div>;
 }
 
 function Unauthorized({ navigate }: NavigationProps) {

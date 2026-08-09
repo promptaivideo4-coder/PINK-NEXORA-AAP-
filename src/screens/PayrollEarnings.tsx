@@ -169,7 +169,7 @@ export default function PayrollEarnings({ navigate }: NavigationProps) {
   const openBreakdown = (record: PayrollRecord) => {
     window.localStorage.setItem('nexora_selected_payroll_id', record.id);
     window.localStorage.setItem('nexora_selected_payroll_cycle', cycle);
-    navigate('staff-payroll-detail');
+    navigate('staff-payroll-breakdown');
   };
 
   const processPayment = () => {
