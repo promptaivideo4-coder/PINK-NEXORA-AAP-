@@ -307,22 +307,23 @@ export default function StaffManagement({ navigate }: NavigationProps) {
   const openAddForm = () => {
     setActiveStaff(null);
     setEditingStaff(null);
-    setForm({ ...DEFAULT_FORM });
-    setFormMode('add');
+    window.localStorage.removeItem('nexora_staff_edit_id');
+    navigate('new-staff');
   };
 
   const openEditForm = (staff: StaffMember) => {
+    // Bridge the selected row into the multi-step form so live Supabase rows
+    // and offline demo rows both open with their existing values.
+    const directory = (() => {
+      try { return JSON.parse(window.localStorage.getItem('nexora_staff_directory_demo') || '[]'); } catch { return []; }
+    })();
+    const nextDirectory = directory.filter((item: any) => item.id !== staff.id);
+    window.localStorage.setItem('nexora_staff_directory_demo', JSON.stringify([{ ...staff }, ...nextDirectory]));
+    window.localStorage.setItem('nexora_selected_staff_id', staff.id);
+    window.localStorage.setItem('nexora_staff_edit_id', staff.id);
     setActiveStaff(null);
     setEditingStaff(staff);
-    setForm({
-      name: staff.name,
-      role: staff.role,
-      skills: staff.skills.join(', '),
-      phone: staff.phone,
-      email: staff.email,
-      status: staff.status,
-    });
-    setFormMode('edit');
+    navigate('new-staff');
   };
 
   const closeForm = () => {

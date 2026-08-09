@@ -997,7 +997,18 @@ export async function fetchOwnerProposals(client: SupabaseClient): Promise<Owner
     console.warn('Owner proposals fetch:', error.message);
     return [];
   }
-  return (data ?? []) as OwnerProposalItem[];
+  return (data ?? []).map((row: any): OwnerProposalItem => ({
+    id: row.id,
+    salonId: row.salon_id,
+    growthPartnerId: row.growth_partner_id,
+    status: row.status as OwnerProposalItem['status'],
+    version: Number(row.version ?? 0),
+    payload: row.payload,
+    submittedAt: row.submitted_at ?? null,
+    ownerReviewedAt: row.owner_reviewed_at ?? null,
+    ownerNotes: row.owner_notes ?? null,
+    publishedAt: row.published_at ?? null,
+  }));
 }
 
 export interface ReviewProposalInput {
