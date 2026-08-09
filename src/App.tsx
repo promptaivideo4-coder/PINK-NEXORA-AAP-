@@ -30,6 +30,7 @@ import NewStaff from './screens/NewStaff';
 import StaffDetail from './screens/StaffDetail';
 import StaffSchedule from './screens/StaffSchedule';
 import StaffAttendance from './screens/StaffAttendance';
+import LeaveShiftSwap from './screens/LeaveShiftSwap';
 import ServerError from './screens/ServerError';
 import CancellationRefundPolicy from './screens/CancellationRefundPolicy';
 import RoleConflict from './screens/RoleConflict';
@@ -61,6 +62,7 @@ export default function App() {
       if (previewScreen === 'staff-detail') return 'staff-detail';
       if (previewScreen === 'staff-schedule') return 'staff-schedule';
       if (previewScreen === 'staff-attendance') return 'staff-attendance';
+      if (previewScreen === 'leave-swap') return 'leave-swap';
       const isStaffPreview = previewScreen === 'staff'
         || window.location.hash === '#staff'
         || window.location.hash === '#/staff';
@@ -239,6 +241,10 @@ export default function App() {
         setCurrentScreen('staff-attendance');
         return;
       }
+      if (params.get('screen') === 'leave-swap') {
+        setCurrentScreen('leave-swap');
+        return;
+      }
       if (params.get('screen') === 'staff' || hash === '#staff' || hash === '#/staff') {
         setCurrentScreen('staff');
         return;
@@ -262,7 +268,7 @@ export default function App() {
       
       if (!session) {
         // Only force welcome if we are on a protected screen
-        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance'];
+        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap'];
         if (!authScreens.includes(activeScreen)) {
           setCurrentScreen('welcome');
         }
@@ -377,6 +383,8 @@ export default function App() {
         return <StaffSchedule navigate={navigate} />;
       case 'staff-attendance':
         return <StaffAttendance navigate={navigate} />;
+      case 'leave-swap':
+        return <LeaveShiftSwap navigate={navigate} />;
       case 'server-error':
         return <ServerError navigate={navigate} />;
       case 'marketing':
