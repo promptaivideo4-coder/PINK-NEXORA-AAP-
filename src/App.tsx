@@ -49,7 +49,19 @@ import { useLocation } from './contexts/LocationContext';
 export default function App() {
   const { requestLocation } = useLocation();
   const locationAutoAskedRef = React.useRef(false);
-  const [currentScreen, setCurrentScreen] = useState<ScreenName>('splash');
+  const [currentScreen, setCurrentScreen] = useState<ScreenName>(() => {
+    // Handy direct preview routes for the owner workspace while screens are being integrated.
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const previewScreen = params.get('screen');
+      if (previewScreen === 'dashboard') return 'dashboard';
+      const isStaffPreview = previewScreen === 'staff'
+        || window.location.hash === '#staff'
+        || window.location.hash === '#/staff';
+      if (isStaffPreview) return 'staff';
+    }
+    return 'splash';
+  });
   const currentScreenRef = React.useRef(currentScreen);
   const [session, setSession] = useState<Session | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -199,6 +211,17 @@ export default function App() {
         return;
       }
 
+      // Direct screen preview links used during screen integration.
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('screen') === 'dashboard') {
+        setCurrentScreen('dashboard');
+        return;
+      }
+      if (params.get('screen') === 'staff' || hash === '#staff' || hash === '#/staff') {
+        setCurrentScreen('staff');
+        return;
+      }
+
       // Handle custom owner paths
       if (hash.includes('/app/owner/login')) {
         setCurrentScreen('login');
@@ -217,7 +240,7 @@ export default function App() {
       
       if (!session) {
         // Only force welcome if we are on a protected screen
-        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection'];
+        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff'];
         if (!authScreens.includes(activeScreen)) {
           setCurrentScreen('welcome');
         }

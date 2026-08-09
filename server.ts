@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -6,12 +7,66 @@ import helmet from "helmet";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 
+// Vercel injects environment variables automatically, but a local :3000
+// preview does not. Load both common local env filenames before creating any
+// clients or auth proxy configuration.
+dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local', override: true });
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   // Enable JSON body parsing for API endpoints
   app.use(express.json());
+
+  // ---------------------------------------------------------------------------
+  // Auth proxy for local previews
+  // ---------------------------------------------------------------------------
+  // Vercel exposes api/auth/*.ts as serverless functions, but the local
+  // Express/Vite preview does not automatically mount that folder. Without
+  // these two same-origin routes, Login/Registration receive the SPA HTML
+  // fallback instead of a Supabase auth response and show a generic
+  // "Authentication request failed" error.
+  const authSupabaseUrl = process.env.VITE_SUPABASE_URL || 'https://qwaehqsmodekbgvnaavz.supabase.co';
+  const authSupabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3YWVocXNtb2Rla2Jndm5hYXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjQ5MjksImV4cCI6MjEwMDc0MDkyOX0.K92b2vkEb77dy8fYYZpMTIbTyP98Vo80TaMo_Hmq_E';
+  // The local preview can use the deployed auth proxy, whose Vercel runtime
+  // has the current public Supabase key. Production Vercel deployments use
+  // the direct Supabase branch below and do not call back into the live app.
+  const hasLocalSupabaseKey = Boolean(process.env.VITE_SUPABASE_ANON_KEY?.trim());
+  const previewAuthProxyOrigin = process.env.NEXORA_AUTH_PROXY_ORIGIN
+    || (process.env.NODE_ENV !== 'production' && !hasLocalSupabaseKey ? 'https://shop-onwer-pink-nexora-aap.vercel.app' : '');
+
+  const proxyAuthRequest = async (req: express.Request, res: express.Response, route: 'login' | 'signup', authPath: string) => {
+    try {
+      const targetUrl = previewAuthProxyOrigin
+        ? `${previewAuthProxyOrigin.replace(/\/$/, '')}/api/auth/${route}`
+        : `${authSupabaseUrl}/auth/v1/${authPath}`;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (!previewAuthProxyOrigin) headers.apikey = authSupabaseAnonKey;
+
+      const upstream = await fetch(targetUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(req.body || {}),
+      });
+
+      const raw = await upstream.text();
+      let payload: unknown;
+      try {
+        payload = raw ? JSON.parse(raw) : {};
+      } catch {
+        payload = { error: { message: 'Authentication service returned an invalid response.' } };
+      }
+      return res.status(upstream.status).json(payload);
+    } catch (error: any) {
+      console.error(`Auth proxy failed for ${authPath}:`, error?.message || error);
+      return res.status(502).json({ error: { message: 'Unable to reach the authentication service. Please try again.' } });
+    }
+  };
+
+  app.post('/api/auth/login', (req, res) => proxyAuthRequest(req, res, 'login', 'token?grant_type=password'));
+  app.post('/api/auth/signup', (req, res) => proxyAuthRequest(req, res, 'signup', 'signup'));
 
   // Security headers with custom CSP to allow Google AI Studio workers and Monaco editor
   app.use(

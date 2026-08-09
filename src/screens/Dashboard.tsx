@@ -353,6 +353,13 @@ export default function Dashboard({ navigate }: NavigationProps) {
               <Rocket className="w-6 h-6 text-on-surface-variant" />
               <span className="text-[13px] font-semibold">{t('website')}</span>
             </button>
+            <button
+              onClick={() => navigate('staff')}
+              className="bg-[#FDE7F3] text-primary rounded-[16px] p-3 flex flex-col items-center justify-center gap-2 hover:bg-primary-fixed/80 active:scale-95 transition-all"
+            >
+              <Users className="w-6 h-6" />
+              <span className="text-[13px] font-semibold">Staff Directory</span>
+            </button>
           </div>
         </section>
 

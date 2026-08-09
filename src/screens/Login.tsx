@@ -5,6 +5,22 @@ import { NavigationProps } from '../types';
 import { supabase, isSupabaseConfigured, authenticateThroughApp } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 
+function getAuthErrorMessage(error: unknown, fallback: string) {
+  const message = String((error as { message?: string } | null)?.message || fallback);
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('invalid login credentials') || normalized.includes('invalid_credentials')) {
+    return 'Supabase auth call successful hai, lekin is email/password ka account match nahi hua. Pehle Register karein ya email/password check karein.';
+  }
+  if (normalized.includes('invalid api key') || normalized.includes('api key')) {
+    return 'Supabase public anon/publishable key invalid hai. Vercel me VITE_SUPABASE_ANON_KEY update karke redeploy karein.';
+  }
+  if (normalized.includes('failed to fetch') || normalized.includes('unable to reach')) {
+    return 'Supabase auth endpoint tak request nahi pahunch rahi. Network ya deployment API route check karein.';
+  }
+  return message;
+}
+
 export default function Login({ navigate }: NavigationProps) {
   const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
@@ -35,10 +51,17 @@ export default function Login({ navigate }: NavigationProps) {
         navigate('dashboard');
       }
     } catch (err: any) {
-      setError(err.message || t('failed_login'));
+      setError(getAuthErrorMessage(err, t('failed_login')));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoMode = () => {
+    // Demo mode intentionally skips Supabase auth so the PWA can be reviewed
+    // even when a deployment has not received its current public anon key yet.
+    localStorage.setItem('nexora-demo-mode', 'true');
+    navigate('dashboard');
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -172,6 +195,14 @@ export default function Login({ navigate }: NavigationProps) {
               className="mt-6 w-full bg-primary-container hover:bg-primary text-white text-xl font-semibold py-4 rounded-[18px] shadow-[0_8px_24px_rgba(230,0,126,0.25)] hover:shadow-[0_12px_32px_rgba(230,0,126,0.35)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('logging_in') : t('login')}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDemoMode}
+              className="w-full rounded-[18px] border border-primary/20 bg-[#fde7f3] py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 active:scale-[0.99]"
+            >
+              Explore Demo Mode
             </button>
           </form>
 
