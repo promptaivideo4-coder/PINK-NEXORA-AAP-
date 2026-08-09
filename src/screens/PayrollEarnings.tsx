@@ -166,6 +166,12 @@ export default function PayrollEarnings({ navigate }: NavigationProps) {
     window.setTimeout(() => setToast(null), 3500);
   };
 
+  const openBreakdown = (record: PayrollRecord) => {
+    window.localStorage.setItem('nexora_selected_payroll_id', record.id);
+    window.localStorage.setItem('nexora_selected_payroll_cycle', cycle);
+    navigate('staff-payroll-detail');
+  };
+
   const processPayment = () => {
     if (!paymentRecord) return;
     setRecords((current) => current.map((record) => record.id === paymentRecord.id ? { ...record, paymentStatus: 'Processing', paymentReference: `PAY-${Date.now()}` } : record));
@@ -175,7 +181,11 @@ export default function PayrollEarnings({ navigate }: NavigationProps) {
   };
 
   const settlePayment = (record: PayrollRecord) => {
+    const timestamp = new Date().toISOString();
     setRecords((current) => current.map((item) => item.id === record.id ? { ...item, paymentStatus: 'Paid' } : item));
+    const settlements = readJson<Record<string, string>>('nexora_payroll_settlements', {});
+    settlements[record.id] = timestamp;
+    window.localStorage.setItem('nexora_payroll_settlements', JSON.stringify(settlements));
     appendAudit(record.staffId, 'Payroll payment settled', 'Processing', 'Paid');
     showToast(`${record.name}'s payment marked Paid`);
   };
@@ -231,7 +241,7 @@ export default function PayrollEarnings({ navigate }: NavigationProps) {
         {exported && <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-700"><CheckCircle2 className="h-4 w-4" /> Payroll statement exported successfully.</div>}
         <section className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-base font-bold text-on-background">Staff Payroll</h2><p className="text-xs text-on-surface-variant">Only completed and eligible bookings generate commission.</p></div><button type="button" onClick={() => filteredRecords.forEach(downloadStatement)} className="inline-flex items-center gap-2 rounded-xl border border-[#e0bec6] bg-white px-3 py-2.5 text-xs font-bold text-primary hover:bg-[#fde7f3]"><Download className="h-4 w-4" /> Download All</button></section>
 
-        {loading ? <div className="grid grid-cols-1 gap-3 md:grid-cols-2"><LoadingCard /><LoadingCard /></div> : filteredRecords.length === 0 ? <section className={`${CARD_CLASS} py-16 text-center`}><Wallet className="mx-auto mb-3 h-10 w-10 text-on-surface-variant/50" /><h2 className="text-base font-bold text-on-background">No payroll records for this cycle.</h2><p className="mt-1 text-xs text-on-surface-variant">Choose another payroll cycle or clear your filters.</p></section> : <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">{filteredRecords.map((record) => <PayrollCard key={record.id} record={record} onBreakdown={() => setBreakdown(record)} onProcess={() => setPaymentRecord(record)} onSettle={() => settlePayment(record)} onDownload={() => downloadStatement(record)} />)}</section>}
+        {loading ? <div className="grid grid-cols-1 gap-3 md:grid-cols-2"><LoadingCard /><LoadingCard /></div> : filteredRecords.length === 0 ? <section className={`${CARD_CLASS} py-16 text-center`}><Wallet className="mx-auto mb-3 h-10 w-10 text-on-surface-variant/50" /><h2 className="text-base font-bold text-on-background">No payroll records for this cycle.</h2><p className="mt-1 text-xs text-on-surface-variant">Choose another payroll cycle or clear your filters.</p></section> : <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">{filteredRecords.map((record) => <PayrollCard key={record.id} record={record} onBreakdown={() => openBreakdown(record)} onProcess={() => setPaymentRecord(record)} onSettle={() => settlePayment(record)} onDownload={() => downloadStatement(record)} />)}</section>}
       </main>
 
       <AnimatePresence>{breakdown && <BreakdownSheet record={breakdown} cycle={cycle} onClose={() => setBreakdown(null)} />}</AnimatePresence>

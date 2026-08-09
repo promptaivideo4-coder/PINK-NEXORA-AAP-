@@ -32,6 +32,7 @@ import StaffSchedule from './screens/StaffSchedule';
 import StaffAttendance from './screens/StaffAttendance';
 import LeaveShiftSwap from './screens/LeaveShiftSwap';
 import PayrollEarnings from './screens/PayrollEarnings';
+import PayrollBreakdown from './screens/PayrollBreakdown';
 import ServerError from './screens/ServerError';
 import CancellationRefundPolicy from './screens/CancellationRefundPolicy';
 import RoleConflict from './screens/RoleConflict';
@@ -65,6 +66,7 @@ export default function App() {
       if (previewScreen === 'staff-attendance') return 'staff-attendance';
       if (previewScreen === 'leave-swap') return 'leave-swap';
       if (previewScreen === 'staff-payroll') return 'staff-payroll';
+      if (previewScreen === 'staff-payroll-detail') return 'staff-payroll-detail';
       const isStaffPreview = previewScreen === 'staff'
         || window.location.hash === '#staff'
         || window.location.hash === '#/staff';
@@ -251,6 +253,10 @@ export default function App() {
         setCurrentScreen('staff-payroll');
         return;
       }
+      if (params.get('screen') === 'staff-payroll-detail') {
+        setCurrentScreen('staff-payroll-detail');
+        return;
+      }
       if (params.get('screen') === 'staff' || hash === '#staff' || hash === '#/staff') {
         setCurrentScreen('staff');
         return;
@@ -274,7 +280,7 @@ export default function App() {
       
       if (!session) {
         // Only force welcome if we are on a protected screen
-        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll'];
+        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll', 'staff-payroll-detail'];
         if (!authScreens.includes(activeScreen)) {
           setCurrentScreen('welcome');
         }
@@ -393,6 +399,8 @@ export default function App() {
         return <LeaveShiftSwap navigate={navigate} />;
       case 'staff-payroll':
         return <PayrollEarnings navigate={navigate} />;
+      case 'staff-payroll-detail':
+        return <PayrollBreakdown navigate={navigate} />;
       case 'server-error':
         return <ServerError navigate={navigate} />;
       case 'marketing':
