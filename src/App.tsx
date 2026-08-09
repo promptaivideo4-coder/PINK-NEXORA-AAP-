@@ -56,6 +56,7 @@ export default function App() {
       const previewScreen = params.get('screen');
       if (previewScreen === 'dashboard') return 'dashboard';
       if (previewScreen === 'new-staff') return 'new-staff';
+      if (previewScreen === 'staff-detail') return 'staff-detail';
       const isStaffPreview = previewScreen === 'staff'
         || window.location.hash === '#staff'
         || window.location.hash === '#/staff';
@@ -222,6 +223,10 @@ export default function App() {
         setCurrentScreen('new-staff');
         return;
       }
+      if (params.get('screen') === 'staff-detail') {
+        setCurrentScreen('staff-detail');
+        return;
+      }
       if (params.get('screen') === 'staff' || hash === '#staff' || hash === '#/staff') {
         setCurrentScreen('staff');
         return;
@@ -245,7 +250,7 @@ export default function App() {
       
       if (!session) {
         // Only force welcome if we are on a protected screen
-        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff'];
+        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail'];
         if (!authScreens.includes(activeScreen)) {
           setCurrentScreen('welcome');
         }
