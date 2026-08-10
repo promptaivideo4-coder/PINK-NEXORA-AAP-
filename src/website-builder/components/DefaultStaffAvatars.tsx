@@ -30,7 +30,10 @@ const VARIANT_LIST: StaffAvatarKey[] = [
 ];
 
 export function getAvatarByIndex(index: number): StaffAvatarKey {
-  return VARIANT_LIST[index % VARIANT_LIST.length];
+  const n = Number(index);
+  // Guard against NaN, negative, Infinity — always return a valid key
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_VARIANT;
+  return VARIANT_LIST[Math.floor(n) % VARIANT_LIST.length];
 }
 
 const SVG_COMMON = `xmlns="http://www.w3.org/2000/svg"`;
@@ -177,17 +180,30 @@ const PALETTE = {
 
 /* ---------- Main ---------- */
 
+/** Normalize any input to a valid StaffAvatarKey. Never returns undefined. */
+const DEFAULT_VARIANT: StaffAvatarKey = 'female-1';
+
+export function normalizeAvatarVariant(input: unknown): StaffAvatarKey {
+  if (typeof input !== 'string') return DEFAULT_VARIANT;
+  // Only accept the 6 known keys — reject URLs, empty strings, garbage
+  if (VARIANT_LIST.includes(input as StaffAvatarKey)) return input as StaffAvatarKey;
+  return DEFAULT_VARIANT;
+}
+
 export default function DefaultStaffAvatar({ variant, size = 80, className = '' }: Props) {
-  const p = PALETTE[variant];
+  // CRITICAL: always normalize — prevents "Cannot read properties of undefined (reading 'bg')" crash
+  const safeVariant = normalizeAvatarVariant(variant);
+  const p = PALETTE[safeVariant] ?? PALETTE[DEFAULT_VARIANT];
 
   const renderFigure = () => {
-    switch (variant) {
+    switch (safeVariant) {
       case 'female-1': return <FemaleLongHair skinTone={p.skin} outfit={p.outfit} />;
       case 'female-2': return <FemaleMediumHair skinTone={p.skin} outfit={p.outfit} />;
       case 'female-3': return <FemaleBun skinTone={p.skin} outfit={p.outfit} />;
       case 'male-1':   return <MaleShort skinTone={p.skin} outfit={p.outfit} />;
       case 'male-2':   return <MaleFade skinTone={p.skin} outfit={p.outfit} />;
       case 'male-3':   return <MaleStyled skinTone={p.skin} outfit={p.outfit} />;
+      default:         return <FemaleLongHair skinTone={p.skin} outfit={p.outfit} />;
     }
   };
 
@@ -201,12 +217,12 @@ export default function DefaultStaffAvatar({ variant, size = 80, className = '' 
       style={{ borderRadius: '50%', display: 'block' }}
     >
       <defs>
-        <linearGradient id={`bg-${variant}`} x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`bg-${safeVariant}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor={p.bg} />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="0.4" />
         </linearGradient>
       </defs>
-      <circle cx="100" cy="100" r="100" fill={`url(#bg-${variant})`} />
+      <circle cx="100" cy="100" r="100" fill={`url(#bg-${safeVariant})`} />
       {renderFigure()}
     </svg>
   );

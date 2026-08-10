@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Component, type ReactNode, type ErrorInfo } from 'react';
 import Landing from './screens/Landing';
 import HeroSplit from './screens/HeroSplit';
 import StepTemplate from './screens/StepTemplate';
@@ -24,8 +24,41 @@ import StaffManagementModule from './components/StaffManagementModule';
 import TopBar from './components/TopBar';
 import { initialData, SalonData } from './types';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, ArrowRight, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft, Wifi, WifiOff, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+
+/* -------------------------------------------------------------------------- */
+/*  ERROR BOUNDARY — catches any render crash and shows a recovery UI          */
+/* -------------------------------------------------------------------------- */
+
+interface EBProps { children: ReactNode; onReset?: () => void; }
+interface EBState { hasError: boolean; error: Error | null; }
+
+class BuilderErrorBoundary extends Component<EBProps, EBState> {
+  state: EBState = { hasError: false, error: null };
+  static getDerivedStateFromError(error: Error): EBState { return { hasError: true, error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('BuilderErrorBoundary caught:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-[#0a0a0a] text-white p-6 text-center gap-4">
+          <AlertTriangle className="w-12 h-12 text-red-500" />
+          <h1 className="text-2xl font-bold">Something went wrong</h1>
+          <p className="text-sm text-gray-400 max-w-md">{this.state.error?.message || 'An unexpected error occurred.'}</p>
+          <div className="flex gap-3 mt-2">
+            <button onClick={() => window.location.reload()} className="px-5 py-2.5 bg-[#ac0053] rounded-xl text-sm font-bold flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Reload App
+            </button>
+            <button onClick={() => { try { localStorage.removeItem('nexora_onboarding_state'); } catch {} window.location.reload(); }} className="px-5 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm font-bold">
+              Reset Cache & Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /** Props accepted from the parent PINK-NEXORA-AAP screen wrapper */
 export interface BuilderAppProps {
@@ -44,7 +77,7 @@ const MAX_STEP_INDEX = 15; // 0-based: 0..15 => 1..16
 type DashboardTab = 'overview' | 'website' | 'bookings' | 'payments' | 'share' | 'settings' | 'referral' | 'branding';
 const DASHBOARD_TABS: DashboardTab[] = ['overview', 'website', 'bookings', 'payments', 'share', 'settings', 'referral', 'branding'];
 
-export default function App({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
+function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
   const [step, setStep] = useState<number>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -604,5 +637,14 @@ export default function App({ prefilledData, onNavigateBack }: BuilderAppProps =
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+/** Wrapped export — catches any render crash and shows a recovery UI */
+export default function App(props: BuilderAppProps) {
+  return (
+    <BuilderErrorBoundary onReset={() => { try { localStorage.removeItem(STORAGE_KEY); } catch {} }}>
+      <BuilderApp {...props} />
+    </BuilderErrorBoundary>
   );
 }
