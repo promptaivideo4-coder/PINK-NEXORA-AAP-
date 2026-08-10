@@ -456,53 +456,30 @@ export default function StepDetails({ data, setData, onNext, onPrev, onSave }: P
                   </div>
                   <div className="relative">
                     <label className="block text-sm font-semibold text-gray-900 mb-2">Owner Role <span className="text-gray-400 font-normal">(Optional)</span></label>
-                    <input
-                      ref={roleInputRef}
-                      type="text"
+                    <select
                       value={data.ownerRole}
-                      onChange={e => setData({ ...data, ownerRole: e.target.value })}
-                      onFocus={() => setRoleDropdownOpen(true)}
-                      onBlur={() => setTimeout(() => setRoleDropdownOpen(false), 150)}
-                      className="w-full h-[72px] px-4 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-[#d9006b] focus:ring-2 focus:ring-pink-100 outline-none transition-all pr-10"
-                      placeholder="e.g. Founder & Stylist"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setRoleDropdownOpen(v => !v)}
-                      className="absolute right-2 top-[34px] p-2 text-gray-400 hover:text-[#ac0053] transition-colors"
-                      tabIndex={-1}
+                      onChange={e => {
+                        setData({ ...data, ownerRole: e.target.value });
+                        onSave?.();
+                      }}
+                      className="w-full h-[72px] px-4 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-[#d9006b] focus:ring-2 focus:ring-pink-100 outline-none transition-all appearance-none cursor-pointer"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.5rem' }}
                     >
-                      <ChevronDown className={`w-4 h-4 transition-transform ${roleDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    <AnimatePresence>
-                      {roleDropdownOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute z-30 top-full left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl py-1"
-                        >
-                          {OWNER_ROLES.map(r => (
-                            <button
-                              key={r}
-                              type="button"
-                              onMouseDown={() => selectOwnerRole(r)}
-                              className={`w-full text-left px-4 py-2 text-sm hover:bg-[#ffd9e1]/40 transition-colors flex items-center justify-between ${
-                                data.ownerRole === r ? 'bg-[#ffd9e1]/30 text-[#ac0053] font-semibold' : 'text-gray-700'
-                              }`}
-                            >
-                              <span>{r}</span>
-                              {data.ownerRole === r && <Check className="w-4 h-4 text-[#ac0053]" />}
-                            </button>
-                          ))}
-                          <div className="border-t border-gray-100 px-4 py-2">
-                            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Or type a custom role above</p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                      <option value="">Select a role...</option>
+                      {OWNER_ROLES.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                      <option value="custom">Custom Role (type below)</option>
+                    </select>
+                    {data.ownerRole === 'custom' && (
+                      <input
+                        type="text"
+                        value={data.ownerRole === 'custom' ? '' : data.ownerRole}
+                        onChange={e => setData({ ...data, ownerRole: e.target.value })}
+                        placeholder="Enter custom role..."
+                        className="w-full mt-2 px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-[#d9006b] focus:ring-2 focus:ring-pink-100 outline-none transition-all text-sm"
+                      />
+                    )}
                   </div>
                 </div>
               </div>
