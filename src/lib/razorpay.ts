@@ -84,6 +84,12 @@ export async function openRazorpayCheckout(
       email: customerDetails.email,
       contact: customerDetails.phone,
     },
+    methods: {
+      netbanking: true,
+      card: true,
+      upi: true,
+      wallet: true,
+    },
     theme: {
       color: '#ac0053',
     },
