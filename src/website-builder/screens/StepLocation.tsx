@@ -250,7 +250,7 @@ export default function StepLocation({ data, setData, onNext, onPrev, onSave }: 
   const updateLatLang = (lat: number, lng: number) => {
     setData(prev => ({
       ...prev,
-      address: { ...(prev.address || {}), latitude: lat, longitude: lng },
+      address: { ...(prev.address || { fullAddress: '', area: '', city: '', state: '', pinCode: '' }), latitude: lat, longitude: lng } as SalonAddress,
     }));
     setLocationStatus('success');
     onSave?.('Location pin set');

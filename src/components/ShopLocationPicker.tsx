@@ -14,9 +14,11 @@
  * Accuracy is WARNING-only — kabhi save block nahi karta.
  * Pin drag/click → location_source = 'manual'.
  * Owner explicit "Save Shop Location" par hi confirmed=true save hota hai.
+ * User GPS kabhi saved shop location ko overwrite nahi karta.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { MapPin, LocateFixed, CheckCircle2, Loader2, AlertTriangle, Navigation as NavIcon, Check, X } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -58,17 +60,18 @@ interface Props {
   confirmed?: ConfirmedShopLocation | null;
 }
 
-const DEFAULT_CENTER: [number, number] = [26.9124, 75.7873];
-
-const markerIcon = L.divIcon({
-  className: '',
-  html: '<div style="width:34px;height:34px;background:#e6007e;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.35);"><div style="width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:7px;left:7px;"></div></div>',
-  iconSize: [34, 34],
-  iconAnchor: [17, 32],
-});
-
-/** Reasonable GPS accuracy to show warning (m) — WARNING ONLY, kabhi block nahi */
+const DEFAULT_CENTER: [number, number] = [26.9124, 75.7873]; // Jaipur fallback
 const GOOD_ACCURACY_M = 100;
+
+/** Pure CSS marker — leaflet default icon assets se bachne ke liye */
+const markerIcon = L.divIcon({
+  className: 'custom-shop-pin',
+  html: `<div style="width:36px;height:36px;background:#ac0053;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 4px 12px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;">
+           <div style="width:12px;height:12px;background:#fff;border-radius:50%;transform:rotate(45deg);"></div>
+         </div>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+});
 
 /** Valid coordinate check — accuracy is NOT part of validity (informational only) */
 function isValidLatLng(lat: number | null, lng: number | null): boolean {
@@ -79,13 +82,22 @@ function isValidLatLng(lat: number | null, lng: number | null): boolean {
   return true;
 }
 
-export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, onSave, onSaved, confirmed }: Props) {
+export default function ShopLocationPicker({
+  initialLat,
+  initialLng,
+  onConfirm,
+  onSave,
+  onSaved,
+  confirmed,
+}: Props) {
   const { currentLocation, lastKnownFix, requestLocation } = useLocation();
 
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const mapReadyRef = useRef(false);
 
+  // ---- State ----
   const [lat, setLat] = useState<number | null>(initialLat ?? null);
   const [lng, setLng] = useState<number | null>(initialLng ?? null);
   const [address, setAddress] = useState(confirmed?.address ?? '');
@@ -97,64 +109,23 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
   const [geocoding, setGeocoding] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsWarn, setGpsWarn] = useState(false);
-  /** 'gps' | 'manual' — pin kahan se aayi */
   const [source, setSource] = useState<'gps' | 'manual'>('manual');
-  // Internal confirm popup + save
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
 
-  // Init map once — draggable pin
-  useEffect(() => {
-    if (!mapRef.current || leafletRef.current) return;
-    const map = L.map(mapRef.current, { zoomControl: true }).setView(DEFAULT_CENTER, 13);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map);
+  // ---- Helper: reverse geocode (cached, no repeated calls for same coords) ----
+  const lastGeocodeRef = useRef<{ lat: number; lng: number } | null>(null);
+  const reverseGeocodeAt = useCallback(async (latitude: number, longitude: number) => {
+    const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+    const lastKey = lastGeocodeRef.current
+      ? `${lastGeocodeRef.current.lat.toFixed(4)},${lastGeocodeRef.current.lng.toFixed(4)}`
+      : '';
+    if (key === lastKey) return; // skip duplicate
+    lastGeocodeRef.current = { lat: latitude, lng: longitude };
 
-    const start: [number, number] =
-      lat !== null && lng !== null ? [lat, lng] : DEFAULT_CENTER;
-    const marker = L.marker(start, { icon: markerIcon, draggable: true }).addTo(map);
-    markerRef.current = marker;
-
-    // Drag release → coords update + source=manual + reverse geocode
-    marker.on('dragend', () => {
-      const p = marker.getLatLng();
-      setLat(Number(p.lat.toFixed(6)));
-      setLng(Number(p.lng.toFixed(6)));
-      setSource('manual');
-      reverseGeocodeAt(p.lat, p.lng);
-    });
-    // Map click → pin moves + coords update + source=manual
-    map.on('click', (e: L.LeafletMouseEvent) => {
-      marker.setLatLng(e.latlng);
-      setLat(Number(e.latlng.lat.toFixed(6)));
-      setLng(Number(e.latlng.lng.toFixed(6)));
-      setSource('manual');
-      reverseGeocodeAt(e.latlng.lat, e.latlng.lng);
-    });
-
-    leafletRef.current = map;
-    return () => {
-      map.remove();
-      leafletRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Initial coords → marker + map move (reopen par saved pin exact wahi)
-  useEffect(() => {
-    if (lat !== null && lng !== null && leafletRef.current && markerRef.current) {
-      leafletRef.current.setView([lat, lng], 15);
-      markerRef.current.setLatLng([lat, lng]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lat, lng]);
-
-  // Reverse geocode — auto-fill details (cached, no repeated calls)
-  async function reverseGeocodeAt(latitude: number, longitude: number) {
     setGeocoding(true);
     try {
       const place = await reverseGeocodePlace(latitude, longitude);
@@ -167,36 +138,152 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
     } finally {
       setGeocoding(false);
     }
-  }
+  }, []);
 
-  // Apply a GPS fix to form + map — source='gps', accuracy WARNING only
-  function applyFix(latitude: number, longitude: number, accuracy: number) {
-    setGpsAccuracy(accuracy);
-    setGpsWarn(accuracy > GOOD_ACCURACY_M);
-    setSource('gps');
-    setLat(Number(latitude.toFixed(6)));
-    setLng(Number(longitude.toFixed(6)));
-    if (leafletRef.current && markerRef.current) {
-      leafletRef.current.setView([latitude, longitude], 15);
-      markerRef.current.setLatLng([latitude, longitude]);
+  // ---- Helper: update coords + move map/marker + source ----
+  const setPinPosition = useCallback(
+    (latitude: number, longitude: number, newSource: 'gps' | 'manual') => {
+      const lat6 = Number(latitude.toFixed(6));
+      const lng6 = Number(longitude.toFixed(6));
+      setLat(lat6);
+      setLng(lng6);
+      setSource(newSource);
+      if (leafletRef.current && markerRef.current) {
+        leafletRef.current.setView([latitude, longitude], 15);
+        markerRef.current.setLatLng([latitude, longitude]);
+      }
+      reverseGeocodeAt(latitude, longitude);
+    },
+    [reverseGeocodeAt]
+  );
+
+  // ---- Init map once (after modal animation) ----
+  useEffect(() => {
+    if (!mapRef.current || leafletRef.current) return;
+
+    // Leaflet needs a visible container. Use a small delay so the modal animation
+    // finishes and the container has actual dimensions.
+    const initTimer = setTimeout(() => {
+      if (!mapRef.current || leafletRef.current) return;
+
+      const start: [number, number] =
+        lat !== null && lng !== null ? [lat, lng] : DEFAULT_CENTER;
+
+      const map = L.map(mapRef.current, {
+        zoomControl: true,
+        attributionControl: true,
+      }).setView(start, 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Force re-render after tile layer is added (ensures map fills container)
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
+
+      const marker = L.marker(start, { icon: markerIcon, draggable: true }).addTo(map);
+      markerRef.current = marker;
+
+      // Drag release → coords update + source=manual + reverse geocode
+      marker.on('dragend', () => {
+        const p = marker.getLatLng();
+        setPinPosition(p.lat, p.lng, 'manual');
+      });
+
+      // Map click → pin moves + coords update + source=manual
+      map.on('click', (e: L.LeafletMouseEvent) => {
+        marker.setLatLng(e.latlng);
+        setPinPosition(e.latlng.lat, e.latlng.lng, 'manual');
+      });
+
+      leafletRef.current = map;
+      mapReadyRef.current = true;
+
+      // If initial coords exist, immediately zoom + center (after map is ready)
+      if (lat !== null && lng !== null) {
+        setTimeout(() => {
+          map.invalidateSize();
+          map.setView([lat, lng], 15);
+          if (markerRef.current) markerRef.current.setLatLng([lat, lng]);
+        }, 150);
+      }
+    }, 300); // 300ms — matches modal animation duration
+
+    return () => {
+      clearTimeout(initTimer);
+      if (leafletRef.current) {
+        leafletRef.current.remove();
+        leafletRef.current = null;
+        markerRef.current = null;
+        mapReadyRef.current = false;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- Sync marker position when lat/lng change (from GPS or reopening) ----
+  useEffect(() => {
+    if (
+      lat !== null &&
+      lng !== null &&
+      leafletRef.current &&
+      markerRef.current &&
+      mapReadyRef.current
+    ) {
+      leafletRef.current.setView([lat, lng], 15);
+      markerRef.current.setLatLng([lat, lng]);
     }
-    reverseGeocodeAt(latitude, longitude);
-  }
+  }, [lat, lng]);
 
-  // Use current device location — existing centralized system
-  function useDeviceLocation() {
+  // ---- Apply a GPS fix to form + map — source='gps', accuracy WARNING only ----
+  const applyFix = useCallback(
+    (latitude: number, longitude: number, accuracy: number) => {
+      setGpsAccuracy(accuracy);
+      setGpsWarn(accuracy > GOOD_ACCURACY_M);
+      setPinPosition(latitude, longitude, 'gps');
+    },
+    [setPinPosition]
+  );
+
+  // ---- Use current device location ----
+  const useDeviceLocation = useCallback(() => {
+    setLocating(true);
     setGpsWarn(false);
     setGpsAccuracy(null);
-    requestLocation(); // watcher start (async — fix aane par watch effect set karega)
+
+    // Ask browser for GPS
+    requestLocation();
     const loc = currentLocation || lastKnownFix;
+
     if (loc) {
       applyFix(loc.latitude, loc.longitude, loc.accuracy);
+      setLocating(false);
+    } else {
+      // Try native geolocation directly as fallback
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude, accuracy } = pos.coords;
+            applyFix(latitude, longitude, accuracy);
+            setLocating(false);
+          },
+          () => {
+            setLocating(false);
+            setSaveError('GPS permission denied. Tap the map to pick your location.');
+            setTimeout(() => setSaveError(null), 4000);
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      } else {
+        setLocating(false);
+      }
     }
-    // Agar fix abhi nahi aayi — watch effect (niche) currentLocation/lastKnownFix
-    // update hote hi lat/lng set kar dega.
-  }
+  }, [requestLocation, currentLocation, lastKnownFix, applyFix]);
 
-  // Watch — device location update par auto-fill (sirf jab koi pin nahi laga)
+  // ---- Watch — device location update par auto-fill (sirf jab koi pin nahi laga) ----
   useEffect(() => {
     const loc = currentLocation || lastKnownFix;
     if (loc && lat === null && lng === null) {
@@ -205,6 +292,7 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLocation, lastKnownFix]);
 
+  // ---- Build confirmed location object ----
   function buildConfirmedLocation(): ConfirmedShopLocation {
     return {
       latitude: lat as number,
@@ -220,24 +308,30 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
     };
   }
 
-  // STEP: Confirm Location — validate → popup (Settings) ya onConfirm (registration)
+  // ---- STEP: Confirm Location ----
+  // Validates lat/lng, then:
+  //   - Settings (onSave provided): opens "Save Your Shop Location?" popup
+  //   - Registration (no onSave): calls onConfirm directly
   function handleConfirmLocation() {
     if (!isValidLatLng(lat, lng)) return; // accuracy NEVER blocks
     if (onSave) {
-      // Settings: internal "Save Your Shop Location?" popup
       setSaveError(null);
       setSavedMsg(null);
       setConfirmOpen(true);
     } else {
-      // Registration: parent ko confirmed location dete hain (no save yet)
       setGpsWarn(false);
       onConfirm(buildConfirmedLocation());
     }
   }
 
-  // STEP: Save Shop Location — ONLY yahan se Supabase persist
+  // ---- STEP: Save Shop Location — ONLY yahan se Supabase persist ----
   async function handleSaveShopLocation() {
     if (!onSave) return;
+    // Validate coordinates once more
+    if (!isValidLatLng(lat, lng)) {
+      setSaveError('Invalid coordinates. Please set your location on the map.');
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -265,21 +359,26 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Map with draggable pin */}
+      {/* =========== Map with draggable pin =========== */}
       <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl overflow-hidden">
-        <div ref={mapRef} className="w-full h-60 bg-surface-variant" />
+        <div ref={mapRef} className="w-full h-60 bg-surface-variant" style={{ minHeight: '240px' }} />
         <div className="p-3 flex flex-col gap-2">
           <div className="flex gap-2">
             <button
               onClick={useDeviceLocation}
+              disabled={locating}
               type="button"
-              className="flex-1 bg-primary text-white text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              className="flex-1 bg-primary text-white text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-50"
             >
-              <LocateFixed className="w-3.5 h-3.5" /> Use Current Location
+              <LocateFixed className={`w-3.5 h-3.5 ${locating ? 'animate-spin' : ''}`} />
+              {locating ? 'Locating...' : 'Use Current Location'}
             </button>
             <button
               onClick={() => {
-                if (leafletRef.current) leafletRef.current.setView([26.9124, 75.7873], 13);
+                if (leafletRef.current) {
+                  leafletRef.current.invalidateSize();
+                  leafletRef.current.setView([26.9124, 75.7873], 13);
+                }
               }}
               type="button"
               className="flex-1 bg-surface-container-high text-on-surface text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all"
@@ -287,10 +386,14 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
               <NavIcon className="w-3.5 h-3.5" /> Select on Map
             </button>
           </div>
+
+          {/* Coordinates display */}
           <div className="flex items-center gap-2 text-[11px] text-on-surface-variant">
             {geocoding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             <span className="font-mono">
-              {hasPin ? coordsLabel : 'Pin nahi laga — map par click karo ya marker drag karo'}
+              {hasPin
+                ? coordsLabel
+                : 'Pin nahi laga — map par click karo ya marker drag karo'}
             </span>
             {hasPin && (
               <span className="ml-auto text-emerald-600 font-bold flex items-center gap-1">
@@ -298,27 +401,37 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
               </span>
             )}
           </div>
+
+          {/* Source + accuracy info */}
           {hasPin && (
-            <span className="text-[10px] text-on-surface-variant">
-              Source: <b>{source === 'gps' ? 'GPS' : 'Manual'}</b>
-              {gpsAccuracy !== null ? ` • Accuracy: ${Math.round(gpsAccuracy)}m` : ''}
-            </span>
+            <div className="flex items-center justify-between text-[10px] text-on-surface-variant">
+              <span>
+                Source: <b>{source === 'gps' ? 'GPS' : 'Manual'}</b>
+                {gpsAccuracy !== null && ` • Accuracy: ${Math.round(gpsAccuracy)}m`}
+              </span>
+              {gpsWarn && (
+                <span className="text-amber-700 font-semibold flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> Low accuracy
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Low GPS accuracy warning — WARNING ONLY, kabhi block nahi */}
+      {/* =========== Low GPS accuracy warning — WARNING ONLY, kabhi block nahi =========== */}
       {gpsWarn && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2.5 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-[11px] text-amber-800">
-            ⚠ GPS accuracy is approximately {gpsAccuracy !== null ? Math.round(gpsAccuracy) : '?'}m.
-            You can drag the pin to the exact shop location.
+          <div className="text-[11px] text-amber-800 leading-relaxed">
+            ⚠ GPS accuracy is approximately{' '}
+            <b>{gpsAccuracy !== null ? Math.round(gpsAccuracy) : '?'}</b>m. You can drag the pin
+            to the exact shop location.
           </div>
         </div>
       )}
 
-      {/* Saved success message (after save) */}
+      {/* =========== Saved success message =========== */}
       {savedMsg && (
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
           <Check className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -326,43 +439,89 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
         </div>
       )}
 
-      {/* Location details — auto-filled, owner edit kar sakta hai */}
+      {/* =========== Location details =========== */}
       <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-4 space-y-3">
-        <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Location Details</h3>
+        <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+          Location Details
+        </h3>
         <div className="space-y-1">
           <label className="text-[11px] font-semibold text-on-surface-variant">Address</label>
-          <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Shop 12, Main Bazar" className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" />
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Shop 12, Main Bazar"
+            className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-on-surface-variant">Area / Locality</label>
-            <input type="text" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Raja Park" className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" />
+            <label className="text-[11px] font-semibold text-on-surface-variant">
+              Area / Locality
+            </label>
+            <input
+              type="text"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+              placeholder="Raja Park"
+              className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+            />
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-on-surface-variant">City</label>
-            <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Jaipur" className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" />
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Jaipur"
+              className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+            />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-on-surface-variant">Zone (optional)</label>
-            <select value={zone} onChange={(e) => setZone(e.target.value)} className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+            <label className="text-[11px] font-semibold text-on-surface-variant">
+              Zone (optional)
+            </label>
+            <select
+              value={zone}
+              onChange={(e) => setZone(e.target.value)}
+              className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+            >
               <option value="">Select zone</option>
-              {SUPPORTED_JAIPUR_ZONES.map((z) => <option key={z} value={z}>{z}</option>)}
+              {SUPPORTED_JAIPUR_ZONES.map((z) => (
+                <option key={z} value={z}>
+                  {z}
+                </option>
+              ))}
             </select>
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-on-surface-variant">Pincode</label>
-            <input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="302004" className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" />
+            <input
+              type="text"
+              value={pincode}
+              onChange={(e) => setPincode(e.target.value)}
+              placeholder="302004"
+              className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+            />
           </div>
         </div>
         <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-on-surface-variant">Landmark (optional)</label>
-          <input type="text" value={landmark} onChange={(e) => setLandmark(e.target.value)} placeholder="Near City Park" className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" />
+          <label className="text-[11px] font-semibold text-on-surface-variant">
+            Landmark (optional)
+          </label>
+          <input
+            type="text"
+            value={landmark}
+            onChange={(e) => setLandmark(e.target.value)}
+            placeholder="Near City Park"
+            className="w-full h-10 bg-surface border border-outline-variant/60 rounded-xl px-3 text-xs focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+          />
         </div>
       </div>
 
-      {/* Confirm Location — primary button */}
+      {/* =========== Confirm Location — primary button =========== */}
       <button
         type="button"
         onClick={handleConfirmLocation}
@@ -377,43 +536,64 @@ export default function ShopLocationPicker({ initialLat, initialLng, onConfirm, 
         </p>
       )}
 
-      {/* Save Your Shop Location? popup — Settings save flow */}
-      {confirmOpen && onSave && (
-        <div className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-surface rounded-3xl p-6 shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
-              <MapPin className="w-6 h-6" />
+      {/* =========== Save Your Shop Location? popup (rendered via Portal) =========== */}
+      {confirmOpen &&
+        onSave &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            style={{ touchAction: 'auto' }}
+          >
+            <div className="w-full max-w-sm bg-surface rounded-3xl p-6 shadow-2xl">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-on-surface">Save Your Shop Location?</h3>
+              <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                This location will be used as your official shop location on your salon profile,
+                map and directions.
+              </p>
+              <div className="mt-3 bg-surface-container-low rounded-xl p-3 font-mono text-[11px] text-on-surface-variant">
+                📍 {coordsLabel}
+                {gpsAccuracy !== null && (
+                  <div className="mt-1 text-[10px] opacity-70">
+                    Accuracy: ~{Math.round(gpsAccuracy)}m • Source: {source === 'gps' ? 'GPS' : 'Manual'}
+                  </div>
+                )}
+              </div>
+              {saveError && (
+                <div className="mt-2 text-[11px] font-semibold text-error bg-error/10 rounded-lg px-3 py-2">
+                  {saveError}
+                </div>
+              )}
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={() => {
+                    setConfirmOpen(false);
+                    setSaveError(null);
+                  }}
+                  disabled={saving}
+                  className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface font-bold text-xs active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveShopLocation}
+                  disabled={saving}
+                  className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-md disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                  {saving ? 'Saving...' : 'Save Shop Location'}
+                </button>
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-on-surface">Save Your Shop Location?</h3>
-            <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-              This location will be used as your official shop location on your salon profile, map and directions.
-            </p>
-            <div className="mt-3 bg-surface-container-low rounded-xl p-3 font-mono text-[11px] text-on-surface-variant">
-              📍 {coordsLabel}
-            </div>
-            {saveError && (
-              <div className="mt-2 text-[11px] font-semibold text-error bg-error/10 rounded-lg px-3 py-2">{saveError}</div>
-            )}
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={() => { setConfirmOpen(false); setSaveError(null); }}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface font-bold text-xs active:scale-[0.98] transition-all disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveShopLocation}
-                disabled={saving}
-                className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all shadow-md disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                {saving ? 'Saving...' : 'Save Shop Location'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
