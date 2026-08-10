@@ -167,7 +167,7 @@ export default function App({ prefilledData, onNavigateBack }: BuilderAppProps =
         console.error('Failed to save onboarding state', e);
       }
       setSaveStatus('saved');
-    }, 400);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [step, data, activeModule, dashboardTab]);

@@ -206,7 +206,7 @@ export default function TemplateRenderer({ data, mode }: Props) {
             <div className="max-w-xl mx-auto flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
               <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md shrink-0">
                 <img 
-                  src={data.team?.[0]?.imageUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop"} 
+                  src={data.ownerPhotoUrl || data.team?.[0]?.imageUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop"} 
                   alt="Founder" 
                   className="w-full h-full object-cover" 
                   referrerPolicy="no-referrer"

@@ -21,7 +21,7 @@ interface Props {
   label?: string;
 }
 
-const HD_MAX_DIM = 1024; // Resize to 1024x1024 max (HD)
+const HD_MAX_DIM = 512; // Resize to 512x512 max (square HD)
 const JPEG_QUALITY = 0.92;
 
 /**

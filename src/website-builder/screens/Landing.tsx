@@ -1096,7 +1096,7 @@ export default function Landing({ data, setData, onNext, goToStep, onOpenStaffMa
 
             <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
               <img 
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop" 
+                src={data.ownerPhotoUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop"} 
                 alt="Profile" 
                 className="w-full h-full object-cover" 
               />
