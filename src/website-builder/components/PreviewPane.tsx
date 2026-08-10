@@ -530,23 +530,48 @@ export default function PreviewPane({ data, step, activeStaffId }: { data: Salon
                     {data.address?.fullAddress || 'Shop 14, Linking Road, Bandra West, Mumbai, Maharashtra 400050'}
                   </p>
                   
-                  {/* Map visual card */}
-                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 group">
-                    <img
-                      src="https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?q=80&w=600&auto=format&fit=crop"
-                      alt="Map location"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                      <div className="w-8 h-8 bg-[#ac0053] rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white">
-                        <MapPin className="w-4 h-4" />
+                  {/* Interactive Map visual card — OpenStreetMap embed (FREE, no API) */}
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200">
+                    {data.address?.latitude && data.address?.longitude ? (
+                      <iframe
+                        title="Location Preview"
+                        className="w-full h-full"
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${data.address.longitude - 0.008}%2C${data.address.latitude - 0.006}%2C${data.address.longitude + 0.008}%2C${data.address.latitude + 0.006}&layer=mapnik&marker=${data.address.latitude}%2C${data.address.longitude}`}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <img
+                        src="https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?q=80&w=600&auto=format&fit=crop"
+                        alt="Map location"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    {!data.address?.latitude && (
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <div className="text-white text-[10px] font-bold bg-black/50 px-2 py-1 rounded">
+                          Set pin in Step 08
+                        </div>
                       </div>
+                    )}
+                    <div className="absolute top-2 left-2 w-6 h-6 bg-[#ac0053] rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white">
+                      <MapPin className="w-3 h-3" />
                     </div>
                   </div>
 
-                  <button className="w-full py-2.5 bg-gray-900 hover:bg-black text-white font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs">
-                    <Navigation className="w-3.5 h-3.5" /> Get Directions
-                  </button>
+                  {data.address?.latitude && data.address?.longitude ? (
+                    <a
+                      href={`https://www.google.com/maps?q=${data.address.latitude},${data.address.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full py-2.5 bg-gray-900 hover:bg-black text-white font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
+                    >
+                      <Navigation className="w-3.5 h-3.5" /> Get Directions
+                    </a>
+                  ) : (
+                    <button className="w-full py-2.5 bg-gray-300 text-gray-500 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 cursor-not-allowed">
+                      <Navigation className="w-3.5 h-3.5" /> Set Location First
+                    </button>
+                  )}
                 </div>
 
                 {/* Hours Block */}

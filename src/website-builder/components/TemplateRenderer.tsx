@@ -357,16 +357,51 @@ export default function TemplateRenderer({ data, mode }: Props) {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
+              {/* Interactive Map — OpenStreetMap embed (FREE, no API key) */}
+              <div className="relative h-64 rounded-2xl overflow-hidden border border-gray-200 shadow-xs">
+                {data.address?.latitude && data.address?.longitude ? (
+                  <iframe
+                    title="Salon Location"
+                    className="w-full h-full"
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${data.address.longitude - 0.01}%2C${data.address.latitude - 0.008}%2C${data.address.longitude + 0.01}%2C${data.address.latitude + 0.008}&layer=mapnik&marker=${data.address.latitude}%2C${data.address.longitude}`}
+                    loading="lazy"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                    <p className="text-xs text-gray-400">Set pin location in Step 08 to show map</p>
+                  </div>
+                )}
+                {/* Pink overlay pin badge */}
+                {data.address?.latitude && data.address?.longitude && (
+                  <div className="absolute top-3 left-3 bg-[#ac0053] text-white px-2.5 py-1 rounded-lg shadow-xs text-[10px] font-bold flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> Our Salon
+                  </div>
+                )}
+              </div>
+
               <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs space-y-4">
                 <h4 className="font-bold text-sm flex items-center gap-2">
                   <MapPin className={`w-4 h-4 ${config.accentText}`} /> Studio Address
                 </h4>
                 <p className="text-xs text-gray-600 leading-relaxed">
                   {data.address?.fullAddress || 'Shop 14, Linking Road, Bandra West, Mumbai, Maharashtra 400050'}
+                  {data.address?.landmark && <><br /><span className="italic">Landmark: {data.address.landmark}</span></>}
                 </p>
-                <button className="w-full py-2.5 bg-gray-900 hover:bg-black text-white font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-2">
-                  <Navigation className="w-3.5 h-3.5" /> Get Directions
-                </button>
+                {data.address?.latitude && data.address?.longitude ? (
+                  <a
+                    href={`https://www.google.com/maps?q=${data.address.latitude},${data.address.longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-2.5 bg-gray-900 hover:bg-black text-white font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Navigation className="w-3.5 h-3.5" /> Get Directions
+                  </a>
+                ) : (
+                  <button className="w-full py-2.5 bg-gray-300 text-gray-500 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 cursor-not-allowed">
+                    <Navigation className="w-3.5 h-3.5" /> Set Location First
+                  </button>
+                )}
               </div>
 
               <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs space-y-3">

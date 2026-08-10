@@ -95,6 +95,8 @@ export interface SalonAddress {
   state: string;
   pinCode: string;
   landmark?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface DaySchedule {
