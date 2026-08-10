@@ -37,21 +37,41 @@ interface EBState { hasError: boolean; error: Error | null; }
 class BuilderErrorBoundary extends Component<EBProps, EBState> {
   state: EBState = { hasError: false, error: null };
   static getDerivedStateFromError(error: Error): EBState { return { hasError: true, error }; }
-  componentDidCatch(error: Error, info: ErrorInfo) { console.error('BuilderErrorBoundary caught:', error, info); }
+  componentDidCatch(error: Error, info: ErrorInfo) { 
+    console.error('BuilderErrorBoundary caught:', error, info);
+    // Auto-recovery: Try to fix corrupted localStorage
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Remove potentially corrupted team data
+        if (parsed.data) {
+          parsed.data.team = [];
+          parsed.data.services = [];
+          parsed.data.packages = [];
+          parsed.data.gallery = [];
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          console.log('✅ Auto-recovery: Cleared corrupted data, reloading...');
+          // Auto-reload after fixing data
+          setTimeout(() => window.location.reload(), 500);
+        }
+      }
+    } catch (e) {
+      console.error('Auto-recovery failed:', e);
+    }
+  }
   render() {
     if (this.state.hasError) {
       return (
         <div className="h-screen flex flex-col items-center justify-center bg-[#0a0a0a] text-white p-6 text-center gap-4">
           <AlertTriangle className="w-12 h-12 text-red-500" />
-          <h1 className="text-2xl font-bold">Something went wrong</h1>
-          <p className="text-sm text-gray-400 max-w-md">{this.state.error?.message || 'An unexpected error occurred.'}</p>
-          <div className="flex gap-3 mt-2">
-            <button onClick={() => window.location.reload()} className="px-5 py-2.5 bg-[#ac0053] rounded-xl text-sm font-bold flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" /> Reload App
-            </button>
-            <button onClick={() => { try { localStorage.removeItem('nexora_onboarding_state'); } catch {} window.location.reload(); }} className="px-5 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm font-bold">
-              Reset Cache & Reload
-            </button>
+          <h1 className="text-2xl font-bold">Recovering from error...</h1>
+          <p className="text-sm text-gray-400 max-w-md">
+            Fixing data automatically. App will reload in a moment.
+          </p>
+          <div className="flex items-center gap-2 text-sm text-gray-500 mt-4">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Please wait...</span>
           </div>
         </div>
       );
@@ -639,6 +659,83 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
     </div>
   );
 }
+
+/**
+ * Migration: Fix old/corrupted localStorage data automatically
+ * Ye function app start hone pe chalta hai aur purane data ko fix karta hai
+ * bina user ko kuch kiye
+ */
+function migrateLocalStorageData(): void {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+
+    const parsed = JSON.parse(saved);
+    if (!parsed.data) return;
+
+    let changed = false;
+
+    // Fix services array
+    if (Array.isArray(parsed.data.services)) {
+      parsed.data.services = parsed.data.services.filter(s => s && typeof s.name === 'string');
+    } else {
+      parsed.data.services = [];
+      changed = true;
+    }
+
+    // Fix team array — ensure all members have valid data
+    if (Array.isArray(parsed.data.team)) {
+      parsed.data.team = parsed.data.team.map((member: any) => {
+        if (!member) return null;
+        
+        // Fix avatarVariant — agar invalid hai toh remove karo
+        const validVariants = ['female-1', 'female-2', 'female-3', 'male-1', 'male-2', 'male-3'];
+        if (member.avatarVariant && !validVariants.includes(member.avatarVariant)) {
+          delete member.avatarVariant;
+          changed = true;
+        }
+
+        // Fix imageUrl — agar URL hai toh theek hai, warna empty string
+        if (member.imageUrl && typeof member.imageUrl !== 'string') {
+          member.imageUrl = '';
+          changed = true;
+        }
+
+        return member;
+      }).filter(m => m !== null);
+    } else {
+      parsed.data.team = [];
+      changed = true;
+    }
+
+    // Fix packages array
+    if (Array.isArray(parsed.data.packages)) {
+      parsed.data.packages = parsed.data.packages.filter(p => p && typeof p.name === 'string');
+    } else {
+      parsed.data.packages = [];
+      changed = true;
+    }
+
+    // Fix gallery array
+    if (Array.isArray(parsed.data.gallery)) {
+      parsed.data.gallery = parsed.data.gallery.filter(g => g && typeof g.url === 'string');
+    } else {
+      parsed.data.gallery = [];
+      changed = true;
+    }
+
+    // Agar kuch change hua, toh save karo
+    if (changed) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      console.log('✅ Auto-migrated localStorage data');
+    }
+  } catch (err) {
+    console.warn('Migration failed:', err);
+  }
+}
+
+// Run migration immediately when module loads
+migrateLocalStorageData();
 
 /** Wrapped export — catches any render crash and shows a recovery UI */
 export default function App(props: BuilderAppProps) {
