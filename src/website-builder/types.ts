@@ -40,6 +40,10 @@ export type WeeklySchedule = Record<
   WeeklyScheduleDay
 >;
 
+export type StaffAvatarKey =
+  | 'female-1' | 'female-2' | 'female-3'
+  | 'male-1'   | 'male-2'   | 'male-3';
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -48,6 +52,7 @@ export interface TeamMember {
   appAccessRole?: AppAccessRole;
   specialties: string[];
   imageUrl: string;
+  avatarVariant?: StaffAvatarKey; // SVG avatar variant when no imageUrl
   bio?: string;
   phone?: string;
   commission?: number; // percentage, e.g. 15
@@ -189,6 +194,7 @@ export function getPublicStaffData(member: TeamMember) {
     role: member.role,
     specialties: member.specialties,
     imageUrl: member.imageUrl,
+    avatarVariant: member.avatarVariant,
     bio: member.bio,
     phone: member.hidePhoneFromPublic ? undefined : member.phone,
     rating: member.rating

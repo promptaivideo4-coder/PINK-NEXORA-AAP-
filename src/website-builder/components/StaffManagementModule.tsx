@@ -38,6 +38,7 @@ import {
   DEFAULT_WEEKLY_SCHEDULE 
 } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import DefaultStaffAvatar, { getAvatarByIndex, StaffAvatarKey } from './DefaultStaffAvatars';
 
 interface Props {
   data: SalonData;
@@ -45,6 +46,9 @@ interface Props {
   onSave?: () => void;
   onBackToWizard?: () => void;
 }
+
+/** Helper: returns true if value is a URL (starts with http) */
+const isUrl = (v: string) => typeof v === 'string' && v.startsWith('http');
 
 const PRIMARY_ROLE_OPTIONS = [
   'Senior Stylist',
@@ -69,12 +73,8 @@ const APP_ACCESS_ROLES: AppAccessRole[] = [
 ];
 
 const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1595959183082-7b570b7e08e2?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1618077360395-f3068be8e001?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop'
+  'female-1', 'female-2', 'female-3',
+  'male-1',   'male-2',   'male-3'
 ];
 
 const SUGGESTED_SKILLS = [
@@ -110,7 +110,7 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
 
   // Form State
-  const [formPhoto, setFormPhoto] = useState(PRESET_AVATARS[0]);
+  const [formPhoto, setFormPhoto] = useState<string>('female-1');
   const [formName, setFormName] = useState('');
   const [formPrimaryRole, setFormPrimaryRole] = useState(PRIMARY_ROLE_OPTIONS[0]);
   const [customPrimaryRole, setCustomPrimaryRole] = useState('');
@@ -178,7 +178,7 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
   // Open Form for Editing
   const handleOpenEditForm = (member: TeamMember) => {
     setEditingMemberId(member.id);
-    setFormPhoto(member.imageUrl || PRESET_AVATARS[0]);
+    setFormPhoto(member.imageUrl || member.avatarVariant || PRESET_AVATARS[0]);
     setFormName(member.name);
     
     if (PRIMARY_ROLE_OPTIONS.includes(member.role)) {
@@ -303,7 +303,8 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
       hidePhoneFromPublic: formHidePhone,
       schedule: formSchedule,
       specialties: formSkills.length ? formSkills : ['Hair Care'],
-      imageUrl: formPhoto || PRESET_AVATARS[0],
+      imageUrl: isUrl(formPhoto) ? formPhoto : '',
+      avatarVariant: isUrl(formPhoto) ? undefined : (formPhoto as StaffAvatarKey) || PRESET_AVATARS[0] as StaffAvatarKey,
       bio: formBio.trim(),
       rating: editingMemberId 
         ? (data.team.find(m => m.id === editingMemberId)?.rating || 4.9) 
@@ -544,7 +545,7 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-sm">
-                      {filteredStaff.map(member => {
+                      {filteredStaff.map((member, idx) => {
                         const status = member.status || 'Available';
                         return (
                           <tr key={member.id} className="hover:bg-gray-50/80 transition-colors group">
@@ -552,11 +553,13 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
                             {/* Member Info */}
                             <td className="py-4 px-6">
                               <div className="flex items-center gap-3.5">
-                                <img
-                                  src={member.imageUrl}
-                                  alt={member.name}
-                                  className="w-11 h-11 rounded-full object-cover border border-gray-200 shrink-0"
-                                />
+                                <div className="w-11 h-11 rounded-full overflow-hidden border border-gray-200 shrink-0">
+                                  {member.imageUrl ? (
+                                    <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <DefaultStaffAvatar variant={member.avatarVariant || getAvatarByIndex(idx)} size={44} />
+                                  )}
+                                </div>
                                 <div>
                                   <div className="font-bold text-gray-900 group-hover:text-[#ac0053] transition-colors">
                                     {member.name}
@@ -665,7 +668,7 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
 
             {/* GRID VIEW (AND ALWAYS ON MOBILE) */}
             <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${viewMode === 'table' ? 'md:hidden' : 'grid'}`}>
-              {filteredStaff.map(member => {
+              {filteredStaff.map((member, idx) => {
                 const status = member.status || 'Available';
                 return (
                   <div key={member.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs hover:border-[#ac0053]/40 transition-all flex flex-col justify-between space-y-4">
@@ -673,7 +676,13 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <img src={member.imageUrl} alt={member.name} className="w-12 h-12 rounded-full object-cover border border-gray-200" />
+                          <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-200 shrink-0">
+                            {member.imageUrl ? (
+                              <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <DefaultStaffAvatar variant={member.avatarVariant || getAvatarByIndex(idx)} size={48} />
+                            )}
+                          </div>
                           <div>
                             <h3 className="font-bold text-gray-900 text-base">{member.name}</h3>
                             <div className="text-xs font-semibold text-gray-500">{member.role}</div>
@@ -812,7 +821,13 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
                         <tr key={member.id} className="hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-5">
                             <div className="flex items-center gap-3">
-                              <img src={member.imageUrl} alt={member.name} className="w-9 h-9 rounded-full object-cover" />
+                              <div className="w-9 h-9 rounded-full overflow-hidden shrink-0">
+                                {member.imageUrl ? (
+                                  <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <DefaultStaffAvatar variant={member.avatarVariant || getAvatarByIndex(idx)} size={36} />
+                                )}
+                              </div>
                               <span className="font-bold text-gray-900">{member.name}</span>
                             </div>
                           </td>
@@ -891,20 +906,26 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
                     Staff Photo
                   </label>
                   <div className="flex items-center gap-4 mb-3">
-                    <img src={formPhoto} alt="Selected" className="w-16 h-16 rounded-full object-cover border-2 border-[#ac0053]" />
+                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#ac0053] shrink-0">
+                      {isUrl(formPhoto) ? (
+                        <img src={formPhoto} alt="Selected" className="w-full h-full object-cover" />
+                      ) : (
+                        <DefaultStaffAvatar variant={formPhoto as StaffAvatarKey} size={64} />
+                      )}
+                    </div>
                     <div>
                       <div className="text-xs font-semibold text-gray-600 mb-1">Select Preset Avatar</div>
                       <div className="flex flex-wrap gap-2">
-                        {PRESET_AVATARS.map((url, i) => (
+                        {PRESET_AVATARS.map((variant) => (
                           <button
-                            key={i}
+                            key={variant}
                             type="button"
-                            onClick={() => setFormPhoto(url)}
-                            className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-transform hover:scale-110 ${
-                              formPhoto === url ? 'border-[#ac0053] ring-2 ring-[#ffd9e1]' : 'border-transparent opacity-60'
+                            onClick={() => setFormPhoto(variant)}
+                            className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-transform hover:scale-110 shrink-0 ${
+                              formPhoto === variant ? 'border-[#ac0053] ring-2 ring-[#ffd9e1]' : 'border-transparent opacity-60'
                             }`}
                           >
-                            <img src={url} alt="Preset" className="w-full h-full object-cover" />
+                            <DefaultStaffAvatar variant={variant as StaffAvatarKey} size={36} />
                           </button>
                         ))}
                       </div>
@@ -1336,7 +1357,13 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
             >
               <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                 <div className="flex items-center gap-3">
-                  <img src={viewingScheduleMember.imageUrl} alt={viewingScheduleMember.name} className="w-10 h-10 rounded-full object-cover" />
+                  <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
+                    {viewingScheduleMember.imageUrl ? (
+                      <img src={viewingScheduleMember.imageUrl} alt={viewingScheduleMember.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <DefaultStaffAvatar variant={viewingScheduleMember.avatarVariant || 'female-1'} size={40} />
+                    )}
+                  </div>
                   <div>
                     <h3 className="font-bold text-gray-900 text-base">{viewingScheduleMember.name}</h3>
                     <p className="text-xs text-gray-500">{viewingScheduleMember.role} • Schedule</p>

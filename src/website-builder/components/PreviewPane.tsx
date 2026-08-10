@@ -1,5 +1,7 @@
 import { Monitor, Smartphone, Phone, Sparkles, Video, Heart, ExternalLink, MapPin, Clock, Navigation, MessageCircle, CalendarCheck, CreditCard } from 'lucide-react';
 import { Instagram, Youtube, Facebook } from './SocialIcons';
+import DefaultOwnerPhoto from './DefaultOwnerPhoto';
+import DefaultStaffAvatar, { getAvatarByIndex } from './DefaultStaffAvatars';
 import { useState, useEffect, useRef } from 'react';
 import { SalonData, getPublicStaffData } from '../types';
 import CustomerBookingPreview from './CustomerBookingPreview';
@@ -234,8 +236,12 @@ export default function PreviewPane({ data, step, activeStaffId }: { data: Salon
             {/* Content based on step */}
             {(step >= 2 || data.ownerName) && (
                <div className="px-6 py-12 flex flex-col items-center text-center max-w-xl mx-auto">
-                 <div className="w-32 h-32 bg-gray-100 rounded-full mb-6 overflow-hidden border-4 border-white shadow-xl">
-                    <img src={data.ownerPhotoUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop"} className="w-full h-full object-cover" alt="Founder" />
+                 <div className="w-32 h-32 bg-gray-100 rounded-full mb-6 overflow-hidden border-4 border-white shadow-xl flex items-center justify-center">
+                    {data.ownerPhotoUrl ? (
+                      <img src={data.ownerPhotoUrl} className="w-full h-full object-cover" alt="Founder" />
+                    ) : (
+                      <DefaultOwnerPhoto size={128} />
+                    )}
                  </div>
                  <h2 className="text-xs font-bold uppercase tracking-widest text-[#ac0053] mb-2">Meet the Founder</h2>
                  <h3 className="text-2xl font-serif font-bold text-gray-900 mb-1">{data.ownerName || 'Owner Name'}</h3>
@@ -277,7 +283,7 @@ export default function PreviewPane({ data, step, activeStaffId }: { data: Salon
                   </div>
 
                   <div className={`grid gap-6 ${mode === 'desktop' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                    {data.team.map(member => {
+                    {data.team.map((member, idx) => {
                       const pub = getPublicStaffData(member);
                       const isActive = activeStaffId === pub.id;
                       return (
@@ -291,11 +297,15 @@ export default function PreviewPane({ data, step, activeStaffId }: { data: Salon
                           } flex flex-col gap-4`}
                         >
                           <div className="flex items-start gap-4">
-                            <img 
-                              src={pub.imageUrl} 
-                              alt={pub.name} 
-                              className="w-16 h-16 rounded-full object-cover border-2 border-[#ffd9e1] shrink-0 shadow-xs" 
-                            />
+                            {pub.imageUrl ? (
+                              <img 
+                                src={pub.imageUrl} 
+                                alt={pub.name} 
+                                className="w-16 h-16 rounded-full object-cover border-2 border-[#ffd9e1] shrink-0 shadow-xs" 
+                              />
+                            ) : (
+                              <DefaultStaffAvatar variant={pub.avatarVariant || getAvatarByIndex(idx)} size={64} className="shrink-0 border-2 border-[#ffd9e1] shadow-xs" />
+                            )}
                             <div className="flex-1 min-w-0">
                               <h4 className="font-bold text-gray-900 text-base leading-tight">{pub.name}</h4>
                               <p className="text-xs font-bold text-[#ac0053] uppercase tracking-wider mt-0.5">{pub.role}</p>

@@ -2,8 +2,9 @@ import {
   ArrowLeft, ArrowRight, Plus, Edit2, Trash2, X, Image as ImageIcon, Monitor, 
   Sparkles, Loader2, RefreshCw, Upload, Check, ChevronUp, ChevronDown, Clock, ShieldCheck, UserCheck
 } from 'lucide-react';
-import { SalonData, TeamMember, AppAccessRole, StaffStatus, WeeklySchedule, DEFAULT_WEEKLY_SCHEDULE } from '../types';
+import { SalonData, TeamMember, AppAccessRole, StaffStatus, WeeklySchedule, DEFAULT_WEEKLY_SCHEDULE, StaffAvatarKey } from '../types';
 import PreviewPane from '../components/PreviewPane';
+import DefaultStaffAvatar from '../components/DefaultStaffAvatars';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, FormEvent, useRef, DragEvent } from 'react';
 
@@ -16,14 +17,13 @@ interface Props {
   onOpenStaffManagement?: () => void;
 }
 
-const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1595959183082-7b570b7e08e2?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1618077360395-f3068be8e001?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop'
+const PRESET_AVATARS: StaffAvatarKey[] = [
+  'female-1', 'female-2', 'female-3',
+  'male-1',   'male-2',   'male-3'
 ];
+
+/** Helper: returns true if value is a URL */
+const isUrl = (v: string) => typeof v === 'string' && v.startsWith('http');
 
 const PRIMARY_ROLE_CATEGORIES = [
   {
@@ -100,7 +100,7 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
   const [appAccessRole, setAppAccessRole] = useState<AppAccessRole>('Service Provider');
   const [selectedSkills, setSelectedSkills] = useState<string[]>(['Balayage', 'Hair Coloring']);
   const [customSkillInput, setCustomSkillInput] = useState('');
-  const [imageUrl, setImageUrl] = useState(PRESET_AVATARS[0]);
+  const [imageUrl, setImageUrl] = useState<string>(PRESET_AVATARS[0]);
   const [bioInput, setBioInput] = useState('');
   const [phone, setPhone] = useState('');
   const [hidePhoneFromPublic, setHidePhoneFromPublic] = useState(true);
@@ -150,7 +150,10 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
 
   const handleUpdateImage = (newUrl: string) => {
     setImageUrl(newUrl);
-    syncLiveEdit({ imageUrl: newUrl });
+    syncLiveEdit({
+      imageUrl: isUrl(newUrl) ? newUrl : '',
+      avatarVariant: isUrl(newUrl) ? undefined : (newUrl as StaffAvatarKey),
+    });
   };
 
   const handleFileUpload = (file: File) => {
@@ -218,7 +221,7 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
 
     setAppAccessRole(member.appAccessRole || 'Service Provider');
     setSelectedSkills(member.specialties || []);
-    setImageUrl(member.imageUrl || PRESET_AVATARS[0]);
+    setImageUrl(member.imageUrl || member.avatarVariant || PRESET_AVATARS[0]);
     setBioInput(member.bio || '');
     setPhone(member.phone || '');
     setHidePhoneFromPublic(typeof member.hidePhoneFromPublic === 'boolean' ? member.hidePhoneFromPublic : true);
@@ -324,8 +327,9 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
               name, 
               role: effectiveRole,
               appAccessRole,
-              specialties: selectedSkills.length ? selectedSkills : ['Styling'], 
-              imageUrl,
+              specialties: selectedSkills.length ? selectedSkills : ['Styling'],
+              imageUrl: isUrl(imageUrl) ? imageUrl : '',
+              avatarVariant: isUrl(imageUrl) ? undefined : (imageUrl as StaffAvatarKey) || PRESET_AVATARS[0],
               bio: bioInput,
               phone,
               hidePhoneFromPublic,
@@ -344,7 +348,8 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
         role: effectiveRole,
         appAccessRole,
         specialties: selectedSkills.length ? selectedSkills : ['Styling'],
-        imageUrl: imageUrl || PRESET_AVATARS[0],
+        imageUrl: isUrl(imageUrl) ? imageUrl : '',
+        avatarVariant: isUrl(imageUrl) ? undefined : (imageUrl as StaffAvatarKey) || PRESET_AVATARS[0],
         bio: bioInput,
         phone,
         hidePhoneFromPublic,
@@ -538,11 +543,15 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
 
                       {imageUrl ? (
                         <div className="relative shrink-0">
-                          <img 
-                            src={imageUrl} 
-                            alt="Staff Preview" 
-                            className="w-16 h-16 rounded-full object-cover border-2 border-[#ac0053] shadow-xs" 
-                          />
+                          {isUrl(imageUrl) ? (
+                            <img 
+                              src={imageUrl} 
+                              alt="Staff Preview" 
+                              className="w-16 h-16 rounded-full object-cover border-2 border-[#ac0053] shadow-xs" 
+                            />
+                          ) : (
+                            <DefaultStaffAvatar variant={imageUrl as StaffAvatarKey} size={64} className="border-2 border-[#ac0053] shadow-xs" />
+                          )}
                           <div className="absolute -bottom-1 -right-1 bg-[#ac0053] text-white p-1 rounded-full shadow-xs">
                             <Check className="w-3 h-3" />
                           </div>
@@ -570,16 +579,16 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
                         Or select preset photo:
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {PRESET_AVATARS.map((url, idx) => (
+                        {PRESET_AVATARS.map((variant) => (
                           <button
-                            key={idx}
+                            key={variant}
                             type="button"
-                            onClick={() => handleUpdateImage(url)}
-                            className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-transform hover:scale-105 ${
-                              imageUrl === url ? 'border-[#ac0053] ring-2 ring-[#ffd9e1]' : 'border-transparent opacity-70 hover:opacity-100'
+                            onClick={() => handleUpdateImage(variant)}
+                            className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-transform hover:scale-105 shrink-0 ${
+                              imageUrl === variant ? 'border-[#ac0053] ring-2 ring-[#ffd9e1]' : 'border-transparent opacity-70 hover:opacity-100'
                             }`}
                           >
-                            <img src={url} alt="Preset" className="w-full h-full object-cover" />
+                            <DefaultStaffAvatar variant={variant} size={36} />
                           </button>
                         ))}
                       </div>

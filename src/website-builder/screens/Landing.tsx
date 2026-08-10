@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import TemplateRenderer from '../components/TemplateRenderer';
 import ShareReferralPremium from '../components/ShareReferralPremium';
 import BrandingWhiteLabel from '../components/BrandingWhiteLabel';
+import DefaultOwnerPhoto from '../components/DefaultOwnerPhoto';
+import DefaultStaffAvatar, { getAvatarByIndex } from '../components/DefaultStaffAvatars';
 import { 
   Sparkles, 
   ArrowRight, 
@@ -1095,11 +1097,11 @@ export default function Landing({ data, setData, onNext, goToStep, onOpenStaffMa
             </button>
 
             <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
-              <img 
-                src={data.ownerPhotoUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop"} 
-                alt="Profile" 
-                className="w-full h-full object-cover" 
-              />
+              {data.ownerPhotoUrl ? (
+                <img src={data.ownerPhotoUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <DefaultOwnerPhoto size={32} />
+              )}
             </div>
           </div>
         </header>
@@ -1448,7 +1450,7 @@ export default function Landing({ data, setData, onNext, goToStep, onOpenStaffMa
                     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs">
                       <h3 className="font-bold text-gray-900 text-sm mb-4">Live Staff Status</h3>
                       <div className="space-y-2">
-                        {data.team.map(member => {
+                        {data.team.map((member, idx) => {
                           const isAvailable = member.status === 'Available';
                           const isBusy = member.status === 'Busy';
                           return (
@@ -1458,8 +1460,12 @@ export default function Landing({ data, setData, onNext, goToStep, onOpenStaffMa
                               className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 hover:border-gray-200 bg-gray-50/50 cursor-pointer transition-all"
                             >
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full overflow-hidden border border-gray-200">
-                                  <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                                <div className="w-7 h-7 rounded-full overflow-hidden border border-gray-200 shrink-0">
+                                  {member.imageUrl ? (
+                                    <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <DefaultStaffAvatar variant={member.avatarVariant || getAvatarByIndex(idx)} size={28} />
+                                  )}
                                 </div>
                                 <div>
                                   <div className="text-xs font-bold text-gray-800">{member.name}</div>
@@ -2619,12 +2625,16 @@ export default function Landing({ data, setData, onNext, goToStep, onOpenStaffMa
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {data.team.map(member => (
+                  {data.team.map((member, idx) => (
                     <div key={member.id} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-2xs flex flex-col justify-between">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex gap-3">
-                          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#ffd9e1]">
-                            <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#ffd9e1] shrink-0">
+                            {member.imageUrl ? (
+                              <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <DefaultStaffAvatar variant={member.avatarVariant || getAvatarByIndex(idx)} size={56} />
+                            )}
                           </div>
                           <div>
                             <h4 className="text-sm font-bold text-gray-900">{member.name}</h4>
