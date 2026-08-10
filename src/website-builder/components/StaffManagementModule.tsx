@@ -1,4 +1,4 @@
-import { useState, useMemo, FormEvent } from 'react';
+import { useState, useEffect, useMemo, FormEvent } from 'react';
 import { 
   Users, 
   UserCheck, 
@@ -73,8 +73,12 @@ const APP_ACCESS_ROLES: AppAccessRole[] = [
 ];
 
 const PRESET_AVATARS = [
-  'female-1', 'female-2', 'female-3',
-  'male-1',   'male-2',   'male-3'
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face'
 ];
 
 const SUGGESTED_SKILLS = [
@@ -125,6 +129,55 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
   const [customSkillInput, setCustomSkillInput] = useState('');
   const [formBio, setFormBio] = useState('');
   const [isGeneratingBio, setIsGeneratingBio] = useState(false);
+  
+  // Auto-generate bio helper (offline, no API needed)
+  const generateAutoBio = (
+    memberName: string,
+    role: string,
+    skills: string[],
+    assignedServices: string[],
+    salonName: string
+  ): string => {
+    if (!memberName.trim() || !role) return '';
+
+    const effectiveRole = role === 'Other' ? 'experienced professional' : role;
+    const skillList = skills.length > 0 ? skills : ['styling'];
+    
+    const templates = [
+      `${memberName} is a talented ${effectiveRole.toLowerCase()} with expertise in ${skillList.slice(0, 3).join(', ')}. With a passion for delivering exceptional results, ${memberName.split(' ')[0]} brings creativity and precision to every appointment at ${salonName}.`,
+      `As a skilled ${effectiveRole.toLowerCase()}, ${memberName} specializes in ${skillList.slice(0, 3).join(', ')}. Known for attention to detail and client satisfaction, ${memberName.split(' ')[0]} is committed to making every visit a transformative experience at ${salonName}.`,
+      `${memberName} brings years of experience as a ${effectiveRole.toLowerCase()}, with a focus on ${skillList.slice(0, 3).join(', ')}. Dedicated to excellence and continuous learning, ${memberName.split(' ')[0]} ensures every client leaves feeling confident and renewed.`
+    ];
+
+    return templates[Math.floor(Math.random() * templates.length)];
+  };
+
+  // Auto-generate bio when form data changes
+  const handleAutoGenerateBio = () => {
+    if (!formName.trim() || !formPrimaryRole || formBio) return;
+    
+    const effectiveRole = formPrimaryRole === 'Other' ? customPrimaryRole : formPrimaryRole;
+    const assignedServiceNames = formAssignedServices
+      .map(id => data.services.find(s => s.id === id)?.name)
+      .filter((name): name is string => !!name);
+    
+    const autoBio = generateAutoBio(formName, effectiveRole, formSkills, assignedServiceNames, data.salonName);
+    
+    if (autoBio) {
+      setFormBio(autoBio);
+    }
+  };
+
+  // Watch for changes and auto-generate bio
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!formBio && formName.trim() && formPrimaryRole) {
+        handleAutoGenerateBio();
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [formName, formPrimaryRole, customPrimaryRole, formSkills, formAssignedServices]);
 
   // Form Errors
   const [formErrors, setFormErrors] = useState<{ name?: string; role?: string }>({});
@@ -250,7 +303,7 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
     }
   };
 
-  // Add / Remove Skill
+  // Auto-generate bio helper (offline, no API needed)
   const handleToggleSkill = (skill: string) => {
     setFormSkills(prev => 
       prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
@@ -304,7 +357,7 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
       schedule: formSchedule,
       specialties: formSkills.length ? formSkills : ['Hair Care'],
       imageUrl: isUrl(formPhoto) ? formPhoto : '',
-      avatarVariant: isUrl(formPhoto) ? undefined : (formPhoto as StaffAvatarKey) || PRESET_AVATARS[0] as StaffAvatarKey,
+      avatarVariant: undefined,
       bio: formBio.trim(),
       rating: editingMemberId 
         ? (data.team.find(m => m.id === editingMemberId)?.rating || 4.9) 
@@ -914,18 +967,18 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
                       )}
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-gray-600 mb-1">Select Preset Avatar</div>
+                      <div className="text-xs font-semibold text-gray-600 mb-1">Select Preset Photo</div>
                       <div className="flex flex-wrap gap-2">
-                        {PRESET_AVATARS.map((variant) => (
+                        {PRESET_AVATARS.map((photoUrl) => (
                           <button
-                            key={variant}
+                            key={photoUrl}
                             type="button"
-                            onClick={() => setFormPhoto(variant)}
+                            onClick={() => setFormPhoto(photoUrl)}
                             className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-transform hover:scale-110 shrink-0 ${
-                              formPhoto === variant ? 'border-[#ac0053] ring-2 ring-[#ffd9e1]' : 'border-transparent opacity-60'
+                              formPhoto === photoUrl ? 'border-[#ac0053] ring-2 ring-[#ffd9e1]' : 'border-transparent opacity-60'
                             }`}
                           >
-                            <DefaultStaffAvatar variant={variant as StaffAvatarKey} size={36} />
+                            <img src={photoUrl} alt="Preset" className="w-full h-full object-cover" />
                           </button>
                         ))}
                       </div>

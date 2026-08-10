@@ -6,7 +6,7 @@ import { SalonData, TeamMember, AppAccessRole, StaffStatus, WeeklySchedule, DEFA
 import PreviewPane from '../components/PreviewPane';
 import DefaultStaffAvatar from '../components/DefaultStaffAvatars';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState, FormEvent, useRef, DragEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent, useRef, DragEvent } from 'react';
 
 interface Props {
   data: SalonData;
@@ -17,13 +17,22 @@ interface Props {
   onOpenStaffManagement?: () => void;
 }
 
-const PRESET_AVATARS: StaffAvatarKey[] = [
-  'female-1', 'female-2', 'female-3',
-  'male-1',   'male-2',   'male-3'
+const PRESET_AVATARS: string[] = [
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face'
 ];
 
-/** Helper: returns true if value is a URL */
-const isUrl = (v: string) => typeof v === 'string' && v.startsWith('http');
+/** Check if value is a real photo URL (not SVG, not base64, not empty) */
+const isUrl = (v: string): boolean => {
+  return typeof v === 'string' && 
+         v.startsWith('http') && 
+         !v.includes('data:image') && 
+         v.length > 20;
+};
 
 const PRIMARY_ROLE_CATEGORIES = [
   {
@@ -93,6 +102,10 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // AI loading states
+  const [generatingIds, setGeneratingIds] = useState<Record<string, boolean>>({});
+  const [isGeneratingFormBio, setIsGeneratingFormBio] = useState(false);
+
   // Form State
   const [name, setName] = useState('');
   const [primaryRole, setPrimaryRole] = useState('Senior Stylist');
@@ -113,9 +126,61 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // AI loading state
-  const [generatingIds, setGeneratingIds] = useState<Record<string, boolean>>({});
-  const [isGeneratingFormBio, setIsGeneratingFormBio] = useState(false);
+  // Helper: Generate professional bio automatically
+  const generateAutoBio = (
+    memberName: string,
+    role: string,
+    skills: string[],
+    assignedServices: string[],
+    salonName: string
+  ): string => {
+    if (!memberName.trim() || !role) return '';
+
+    const effectiveRole = role === 'Other' ? 'experienced professional' : role;
+    const skillList = skills.length > 0 ? skills : ['styling'];
+    const serviceCount = assignedServices.length;
+    
+    // Template variations
+    const templates = [
+      `${memberName} is a talented ${effectiveRole.toLowerCase()} with expertise in ${skillList.slice(0, 3).join(', ')}. With a passion for delivering exceptional results, ${memberName.split(' ')[0]} brings creativity and precision to every appointment at ${salonName}.`,
+      
+      `As a skilled ${effectiveRole.toLowerCase()}, ${memberName} specializes in ${skillList.slice(0, 3).join(', ')}. Known for attention to detail and client satisfaction, ${memberName.split(' ')[0]} is committed to making every visit a transformative experience at ${salonName}.`,
+      
+      `${memberName} brings years of experience as a ${effectiveRole.toLowerCase()}, with a focus on ${skillList.slice(0, 3).join(', ')}. Dedicated to excellence and continuous learning, ${memberName.split(' ')[0]} ensures every client leaves feeling confident and renewed.`,
+      
+      `With expertise in ${skillList.slice(0, 3).join(', ')}, ${memberName} is a dedicated ${effectiveRole.toLowerCase()} who combines technical skill with artistic vision. At ${salonName}, ${memberName.split(' ')[0]} is known for creating personalized looks that enhance each client's unique beauty.`
+    ];
+
+    return templates[Math.floor(Math.random() * templates.length)];
+  };
+
+  // Auto-generate bio when form data changes
+  const handleAutoGenerateBio = useCallback(() => {
+    if (!name.trim() || !primaryRole || bioInput) return; // Don't overwrite existing bio
+    
+    const effectiveRole = getEffectiveRole(primaryRole, customRole);
+    const assignedServiceNames = assignedServiceIds
+      .map(id => data.services.find(s => s.id === id)?.name)
+      .filter((name): name is string => !!name);
+    
+    const autoBio = generateAutoBio(name, effectiveRole, selectedSkills, assignedServiceNames, data.salonName);
+    
+    if (autoBio) {
+      setBioInput(autoBio);
+      syncLiveEdit({ bio: autoBio });
+    }
+  }, [name, primaryRole, customRole, selectedSkills, assignedServiceIds, data.services, data.salonName, bioInput]);
+
+  // Watch for changes and auto-generate bio
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!bioInput && name.trim() && primaryRole) {
+        handleAutoGenerateBio();
+      }
+    }, 500); // 500ms delay to avoid regenerating while typing
+
+    return () => clearTimeout(timer);
+  }, [name, primaryRole, customRole, selectedSkills, assignedServiceIds]);
 
   // Helper to get effective role string
   const getEffectiveRole = (pRole: string, cRole: string) => {
@@ -151,19 +216,34 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
   const handleUpdateImage = (newUrl: string) => {
     setImageUrl(newUrl);
     syncLiveEdit({
-      imageUrl: isUrl(newUrl) ? newUrl : '',
-      avatarVariant: isUrl(newUrl) ? undefined : (newUrl as StaffAvatarKey),
+      imageUrl: isUrl(newUrl) ? newUrl : (PRESET_AVATARS[0] || ''),
+      avatarVariant: undefined,
     });
   };
 
   const handleFileUpload = (file: File) => {
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file || !file.type.startsWith('image/')) {
+      console.warn('Invalid file type:', file?.type);
+      return;
+    }
+    
+    // File size check (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+    
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
       if (dataUrl) {
         handleUpdateImage(dataUrl);
+        console.log('✅ Photo uploaded successfully');
       }
+    };
+    reader.onerror = () => {
+      console.error('❌ File read failed');
+      alert('Failed to read file. Please try again.');
     };
     reader.readAsDataURL(file);
   };
@@ -328,8 +408,8 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
               role: effectiveRole,
               appAccessRole,
               specialties: selectedSkills.length ? selectedSkills : ['Styling'],
-              imageUrl: isUrl(imageUrl) ? imageUrl : '',
-              avatarVariant: isUrl(imageUrl) ? undefined : (imageUrl as StaffAvatarKey) || PRESET_AVATARS[0],
+              imageUrl: isUrl(imageUrl) ? imageUrl : (PRESET_AVATARS[0] || ''),
+              avatarVariant: undefined,
               bio: bioInput,
               phone,
               hidePhoneFromPublic,
@@ -348,8 +428,8 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
         role: effectiveRole,
         appAccessRole,
         specialties: selectedSkills.length ? selectedSkills : ['Styling'],
-        imageUrl: isUrl(imageUrl) ? imageUrl : '',
-        avatarVariant: isUrl(imageUrl) ? undefined : (imageUrl as StaffAvatarKey) || PRESET_AVATARS[0],
+        imageUrl: isUrl(imageUrl) ? imageUrl : (PRESET_AVATARS[0] || ''),
+        avatarVariant: undefined,
         bio: bioInput,
         phone,
         hidePhoneFromPublic,
@@ -574,21 +654,21 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
                     </div>
 
                     {/* Preset Avatars & Custom URL */}
-                    <div className="mt-2.5 space-y-1.5">
+                      <div className="mt-2.5 space-y-1.5">
                       <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                         Or select preset photo:
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {PRESET_AVATARS.map((variant) => (
+                        {PRESET_AVATARS.map((photoUrl) => (
                           <button
-                            key={variant}
+                            key={photoUrl}
                             type="button"
-                            onClick={() => handleUpdateImage(variant)}
+                            onClick={() => handleUpdateImage(photoUrl)}
                             className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-transform hover:scale-105 shrink-0 ${
-                              imageUrl === variant ? 'border-[#ac0053] ring-2 ring-[#ffd9e1]' : 'border-transparent opacity-70 hover:opacity-100'
+                              imageUrl === photoUrl ? 'border-[#ac0053] ring-2 ring-[#ffd9e1]' : 'border-transparent opacity-70 hover:opacity-100'
                             }`}
                           >
-                            <DefaultStaffAvatar variant={variant} size={36} />
+                            <img src={photoUrl} alt="Preset" className="w-full h-full object-cover" />
                           </button>
                         ))}
                       </div>
