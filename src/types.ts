@@ -15,11 +15,9 @@ export type ScreenName =
   | 'settings'
   | 'customers'
   | 'customer-profile'
-  | 'theme-selection'
   | 'cancellation-refund-policy'
   | 'role-conflict'
-  | 'website-dashboard'
-  | 'website-gallery'
+  | 'website-builder'
   | 'wallet'
   | 'transaction-detail'
   | 'revenue-analytics'
@@ -49,8 +47,8 @@ export const VALID_SCREENS: ScreenName[] = [
   'splash', 'welcome', 'login', 'reset-password', 'register-stepper', 'dashboard',
   'bookings', 'new-appointment', 'services', 'service-detail', 'new-service',
   'help-center', 'profile', 'settings', 'customers', 'customer-profile',
-  'theme-selection', 'cancellation-refund-policy', 'role-conflict',
-  'website-dashboard', 'website-gallery', 'wallet', 'transaction-detail',
+  'cancellation-refund-policy', 'role-conflict',
+  'website-builder', 'wallet', 'transaction-detail',
   'revenue-analytics', 'analytics', 'reviews', 'install-app',
   'app-update', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll', 'staff-payroll-detail', 'staff-payroll-breakdown', 'staff-roles-access', 'staff-performance', 'staff-self-service', 'staff-website-booking', 'server-error',
   'marketing', 'nearby-salons', 'shop-location'
@@ -146,53 +144,4 @@ export interface FestivalTemplate {
   targetServices: string[];
 }
 
-export interface Service {
-  id: string;
-  name: string;
-  price: string;
-  duration: string;
-  category: string;
-}
 
-export interface Review {
-  id: string;
-  customerName: string;
-  rating: number;
-  comment: string;
-}
-
-export interface WebsiteConfig {
-  businessName: string;
-  tagline: string;
-  heroTitle: string;
-  heroSubtitle: string;
-  heroImageUrl: string;
-  heroCtaText: string;
-  heroCtaLink: string;
-  services: Service[];
-  reviews: Review[];
-  contact: {
-    address: string;
-    phone: string;
-    socialLinks: { instagram: string; facebook: string; tiktok: string; };
-    openingHours: string;
-    locationMap: string;
-  };
-  theme: {
-    primaryColor: string;
-    accentColor: string;
-    textColor: string;
-    backgroundColor: string;
-    fontStyle: string;
-    fontSizeBase: number;
-    fontSizeHeading: number;
-  };
-  layoutToggles: {
-    showHero: boolean;
-    showServices: boolean;
-    showReviews: boolean;
-    showContact: boolean;
-    showGallery: boolean;
-    showFooter: boolean;
-  };
-}

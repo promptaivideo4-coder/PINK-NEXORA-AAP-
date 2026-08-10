@@ -105,7 +105,7 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
         } catch (err: any) {
           console.warn('Shop location save skipped:', err?.message || err);
         }
-        navigate('theme-selection');
+        navigate('website-builder');
       } else if (data.user) {
         setError('Account created. Please check your email and verify your account before logging in.');
       }

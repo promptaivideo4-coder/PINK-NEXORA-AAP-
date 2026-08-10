@@ -367,7 +367,7 @@ export default function Settings({ navigate }: NavigationProps) {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-surface-container-highest/60 flex items-center justify-between group cursor-pointer" onClick={() => navigate('theme-selection')}>
+              <div className="pt-4 border-t border-surface-container-highest/60 flex items-center justify-between group cursor-pointer" onClick={() => navigate('website-builder')}>
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${activeTheme.primaryColor}15`, color: activeTheme.primaryColor }}>
                     <Sparkles className="w-5 h-5" />

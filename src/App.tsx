@@ -13,9 +13,7 @@ import NewAppointment from './screens/NewAppointment';
 import Profile from './screens/Profile';
 import Customers from './screens/Customers';
 import CustomerProfile from './screens/CustomerProfile';
-import ThemeSelection from './screens/ThemeSelection';
-import WebsiteDashboard from './screens/WebsiteDashboard';
-import WebsiteGallery from './screens/WebsiteGallery';
+import WebsiteBuilder from './screens/WebsiteBuilder';
 import Wallet from './screens/Wallet';
 import TransactionDetail from './screens/TransactionDetail';
 import RevenueAnalytics from './screens/RevenueAnalytics';
@@ -309,7 +307,7 @@ export default function App() {
       
       if (!session) {
         // Only force welcome if we are on a protected screen
-        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'theme-selection', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll', 'staff-payroll-detail', 'staff-payroll-breakdown', 'staff-roles-access', 'staff-performance', 'staff-self-service', 'staff-website-booking'];
+        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'website-builder', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll', 'staff-payroll-detail', 'staff-payroll-breakdown', 'staff-roles-access', 'staff-performance', 'staff-self-service', 'staff-website-booking'];
         if (!authScreens.includes(activeScreen)) {
           setCurrentScreen('welcome');
         }
@@ -384,16 +382,12 @@ export default function App() {
         return <Customers navigate={navigate} />;
       case 'customer-profile':
         return <CustomerProfile navigate={navigate} />;
-      case 'theme-selection':
-        return <ThemeSelection navigate={navigate} />;
       case 'role-conflict':
         return <RoleConflict navigate={navigate} />;
       case 'cancellation-refund-policy':
         return <CancellationRefundPolicy navigate={navigate} />;
-      case 'website-dashboard':
-        return <WebsiteDashboard navigate={navigate} />;
-      case 'website-gallery':
-        return <WebsiteGallery navigate={navigate} />;
+      case 'website-builder':
+        return <WebsiteBuilder navigate={navigate} />;
       case 'wallet':
         return <Wallet navigate={navigate} />;
       case 'transaction-detail':

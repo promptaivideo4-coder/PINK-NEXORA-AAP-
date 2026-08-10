@@ -181,7 +181,7 @@ export default function Dashboard({ navigate }: NavigationProps) {
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
-                onClick={() => navigate('website-dashboard')}
+                onClick={() => navigate('website-builder')}
                 className="px-4 py-2 bg-surface-container-high hover:bg-surface-variant text-on-surface text-xs font-bold rounded-xl transition-all shadow-xs"
               >
                 Preview Setup
@@ -347,7 +347,7 @@ export default function Dashboard({ navigate }: NavigationProps) {
               <span className="text-[13px] font-semibold">{t('new_service')}</span>
             </button>
             <button
-              onClick={() => navigate('website-dashboard')}
+              onClick={() => navigate('website-builder')}
               className="bg-surface border border-outline-variant text-on-surface rounded-[16px] p-3 flex flex-col items-center justify-center gap-2 hover:bg-surface-container active:scale-95 transition-all shadow-sm"
             >
               <Rocket className="w-6 h-6 text-on-surface-variant" />
