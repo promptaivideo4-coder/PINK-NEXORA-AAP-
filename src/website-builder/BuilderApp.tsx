@@ -127,6 +127,8 @@ export default function App({ prefilledData, onNavigateBack }: BuilderAppProps =
   });
 
   const isInitialMount = useRef(true);
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
   // Persist dashboard tab
   useEffect(() => {
@@ -188,21 +190,22 @@ export default function App({ prefilledData, onNavigateBack }: BuilderAppProps =
 
   const handleSave = () => {
     setSaveStatus('saving');
+    const currentData = dataRef.current;
     try {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
           step,
-          data,
+          data: currentData,
           activeModule,
           dashboardTab,
           lastSaved: new Date().toISOString(),
           onboarding_progress: `Step ${step + 1} of ${TOTAL_STEPS}`,
-          lastCompletedStep: data.lastCompletedStep,
-          selectedTemplate: data.templateId,
-          websiteAppearance: data.websiteAppearance,
-          reviewedContent: data.reviewedContent,
-          publishState: data.publishState,
+          lastCompletedStep: currentData.lastCompletedStep,
+          selectedTemplate: currentData.templateId,
+          websiteAppearance: currentData.websiteAppearance,
+          reviewedContent: currentData.reviewedContent,
+          publishState: currentData.publishState,
           currentStep: step + 1
         })
       );

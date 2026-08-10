@@ -196,14 +196,6 @@ export default function Login({ navigate }: NavigationProps) {
             >
               {loading ? t('logging_in') : t('login')}
             </button>
-
-            <button
-              type="button"
-              onClick={handleDemoMode}
-              className="w-full rounded-[18px] border border-primary/20 bg-[#fde7f3] py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 active:scale-[0.99]"
-            >
-              Explore Demo Mode
-            </button>
           </form>
 
           {/* Sign Up Prompt */}
