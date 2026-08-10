@@ -29,6 +29,7 @@
     "motion": "^12.42.2",
     "multer": "^2.2.0",
     "qrcode.react": "^4.2.0",
+    "razorpay": "^2.9.8",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "recharts": "^3.10.0",
