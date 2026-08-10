@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Landing from './screens/Landing';
 import HeroSplit from './screens/HeroSplit';
 import StepTemplate from './screens/StepTemplate';
@@ -24,7 +24,8 @@ import StaffManagementModule from './components/StaffManagementModule';
 import TopBar from './components/TopBar';
 import { initialData, SalonData } from './types';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft, Wifi, WifiOff } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 /** Props accepted from the parent PINK-NEXORA-AAP screen wrapper */
 export interface BuilderAppProps {
@@ -112,7 +113,9 @@ export default function App({ prefilledData, onNavigateBack }: BuilderAppProps =
   });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showResumeBanner, setShowResumeBanner] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -130,6 +133,19 @@ export default function App({ prefilledData, onNavigateBack }: BuilderAppProps =
   const dataRef = useRef(data);
   dataRef.current = data;
 
+  // Online/offline detection for PWA
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
   // Persist dashboard tab
   useEffect(() => {
     try {
@@ -137,42 +153,85 @@ export default function App({ prefilledData, onNavigateBack }: BuilderAppProps =
     } catch {}
   }, [dashboardTab]);
 
-  // Auto save state to localStorage whenever step or data changes
+  // UNIVERSAL AUTO-SAVE: localStorage (instant) + Supabase (background)
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
+      // On first mount, sync from localStorage to avoid losing data
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          setLastSavedAt(Date.now());
+          setSaveStatus('saved');
+        }
+      } catch {}
       return;
     }
 
     setSaveStatus('saving');
-    const timer = setTimeout(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
+    saveTimerRef.current = setTimeout(() => {
+      const currentData = dataRef.current;
+      const lastCompletedStep = Math.max(currentData.lastCompletedStep || 0, step > 0 ? step - 1 : 0);
+
+      // 1. INSTANT: Save to localStorage (works offline, PWA)
       try {
-        const lastCompletedStep = Math.max(data.lastCompletedStep || 0, step > 0 ? step - 1 : 0);
         localStorage.setItem(
           STORAGE_KEY,
           JSON.stringify({
             step,
-            data: { ...data, lastCompletedStep },
+            data: { ...currentData, lastCompletedStep },
             activeModule,
             dashboardTab,
             lastSaved: new Date().toISOString(),
             onboarding_progress: `Step ${step + 1} of ${TOTAL_STEPS}`,
             lastCompletedStep,
-            selectedTemplate: data.templateId,
-            websiteAppearance: data.websiteAppearance,
-            reviewedContent: data.reviewedContent,
-            publishState: data.publishState,
+            selectedTemplate: currentData.templateId,
+            websiteAppearance: currentData.websiteAppearance,
+            reviewedContent: currentData.reviewedContent,
+            publishState: currentData.publishState,
             currentStep: step + 1
           })
         );
+        setLastSavedAt(Date.now());
+        setSaveStatus('saved');
       } catch (e) {
-        console.error('Failed to save onboarding state', e);
+        console.error('LocalStorage save failed:', e);
+        setSaveStatus('error');
       }
-      setSaveStatus('saved');
+
+      // 2. BACKGROUND: Save to Supabase (when online + authenticated)
+      if (isOnline) {
+        void (async () => {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { error } = await supabase
+              .from('onboarding_progress')
+              .upsert({
+                id: user.id,
+                business_id: user.id,
+                current_step: step + 1,
+                last_completed_step: lastCompletedStep,
+                status: currentData.publishState === 'published' ? 'completed' : 'in_progress',
+                draft: currentData,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'id' });
+            if (error) {
+              console.warn('Supabase save skipped:', error.message);
+            }
+          } catch (err) {
+            console.warn('Supabase save failed (non-fatal):', err);
+          }
+        })();
+      }
     }, 200);
 
-    return () => clearTimeout(timer);
-  }, [step, data, activeModule, dashboardTab]);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [step, data, activeModule, dashboardTab, isOnline]);
 
   const nextStep = () => setStep(s => {
     const next = Math.min(MAX_STEP_INDEX, s + 1);
