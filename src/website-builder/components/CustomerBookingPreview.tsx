@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SalonData, Service, TeamMember, getPublicStaffData } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { openRazorpayCheckout, createPaymentOrder, type RazorpayPaymentResult } from '../../lib/razorpay';
 import { 
   Sparkles, 
   Clock, 
@@ -136,19 +137,63 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
     return d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const handlePayNow = () => {
+  const handlePayNow = async () => {
     if (paymentState !== 'idle') return;
     setPaymentState('verifying');
-    
-    setTimeout(() => {
-      setPaymentState('success');
-      setTimeout(() => {
-        setActiveView('confirmed');
-        if (onShowToast) {
-          onShowToast(`Booking confirmed for ${selectedService.name}!`);
+
+    try {
+      // Create Razorpay order
+      const order = await createPaymentOrder(
+        depositAmount * 100, // Convert to paise
+        {
+          bookingId: `BK_${Date.now()}`,
+          customerName,
+          service: selectedService.name,
+          date: selectedDate.toLocaleDateString('en-IN'),
+          time: selectedTime,
+          staff: selectedStylist?.name || 'Any Available',
         }
-      }, 800);
-    }, 2500);
+      );
+
+      if (!order) {
+        throw new Error('Failed to create payment order');
+      }
+
+      // Open Razorpay checkout
+      await openRazorpayCheckout(
+        order,
+        {
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+        },
+        (result: RazorpayPaymentResult) => {
+          // Payment successful
+          console.log('Payment successful:', result);
+          setPaymentState('success');
+          setTimeout(() => {
+            setActiveView('confirmed');
+            if (onShowToast) {
+              onShowToast(`Booking confirmed for ${selectedService.name}! Payment ID: ${result.razorpay_payment_id}`);
+            }
+          }, 800);
+        },
+        (error: any) => {
+          // Payment failed
+          console.error('Payment failed:', error);
+          setPaymentState('idle');
+          if (onShowToast) {
+            onShowToast('Payment failed. Please try again.');
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Payment error:', error);
+      setPaymentState('idle');
+      if (onShowToast) {
+        onShowToast('Payment initialization failed. Please try again.');
+      }
+    }
   };
 
   const resetAll = () => {
