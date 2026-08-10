@@ -330,12 +330,32 @@ export default function StepSocials({ data, setData, onNext, onPrev, onSave }: P
                       className="flex items-center gap-3.5 p-3 border border-gray-200 rounded-xl bg-[#f9f9f9] hover:bg-white hover:shadow-xs transition-all group"
                     >
                       <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-900 shrink-0 border border-gray-200">
-                        <img
-                          src={video.thumbnailUrl}
-                          alt={video.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute bottom-1 right-1 bg-white/90 backdrop-blur-xs rounded-full p-1 text-[#ac0053] shadow-xs">
+                        {(() => {
+                          // Extract YouTube video ID from URL
+                          const getYouTubeId = (url: string) => {
+                            const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                            return match ? match[1] : null;
+                          };
+                          
+                          const youtubeId = video.platform === 'youtube' ? getYouTubeId(video.url) : null;
+                          
+                          return youtubeId ? (
+                            // YouTube video with autoplay
+                            <iframe
+                              src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&rel=0`}
+                              className="absolute inset-0 w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          ) : (
+                            <img
+                              src={video.thumbnailUrl}
+                              alt={video.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          );
+                        })()}
+                        <div className="absolute bottom-1 right-1 bg-white/90 backdrop-blur-xs rounded-full p-1 text-[#ac0053] shadow-xs z-10">
                           {video.platform === 'youtube' ? (
                             <PlayCircle className="w-3.5 h-3.5 text-red-600" />
                           ) : video.platform === 'tiktok' ? (

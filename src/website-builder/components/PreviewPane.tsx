@@ -428,25 +428,44 @@ export default function PreviewPane({ data, step, activeStaffId }: { data: Salon
                 {/* Social Videos Grid */}
                 {data.socialVideos && data.socialVideos.length > 0 ? (
                   <div className={`grid gap-4 ${mode === 'desktop' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                    {data.socialVideos.map((video) => (
-                      <div key={video.id} className="relative aspect-[9/16] rounded-xl overflow-hidden group border border-gray-200 shadow-xs bg-gray-900 cursor-pointer">
-                        <img
-                          src={video.thumbnailUrl}
-                          alt={video.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90"></div>
-                        
-                        {/* Platform Icon Badge */}
-                        <div className="absolute top-2.5 right-2.5 bg-black/50 backdrop-blur-xs rounded-full p-1.5 text-white">
-                          {video.platform === 'youtube' ? (
-                            <Youtube className="w-3.5 h-3.5 text-red-500" />
-                          ) : video.platform === 'facebook' ? (
-                            <Facebook className="w-3.5 h-3.5 text-blue-500" />
+                    {data.socialVideos.map((video) => {
+                      // Extract YouTube video ID from URL
+                      const getYouTubeId = (url: string) => {
+                        const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                        return match ? match[1] : null;
+                      };
+                      
+                      const youtubeId = video.platform === 'youtube' ? getYouTubeId(video.url) : null;
+                      
+                      return (
+                        <div key={video.id} className="relative aspect-[9/16] rounded-xl overflow-hidden group border border-gray-200 shadow-xs bg-gray-900 cursor-pointer">
+                          {youtubeId ? (
+                            // YouTube video with autoplay
+                            <iframe
+                              src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&rel=0`}
+                              className="absolute inset-0 w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
                           ) : (
-                            <Instagram className="w-3.5 h-3.5 text-pink-500" />
+                            <img
+                              src={video.thumbnailUrl}
+                              alt={video.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
+                            />
                           )}
-                        </div>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90 pointer-events-none"></div>
+                          
+                          {/* Platform Icon Badge */}
+                          <div className="absolute top-2.5 right-2.5 bg-black/50 backdrop-blur-xs rounded-full p-1.5 text-white">
+                            {video.platform === 'youtube' ? (
+                              <Youtube className="w-3.5 h-3.5 text-red-500" />
+                            ) : video.platform === 'facebook' ? (
+                              <Facebook className="w-3.5 h-3.5 text-blue-500" />
+                            ) : (
+                              <Instagram className="w-3.5 h-3.5 text-pink-500" />
+                            )}
+                          </div>
 
                         {/* Title & Stats Overlay */}
                         <div className="absolute bottom-3 left-3 right-3 text-white">
@@ -463,7 +482,8 @@ export default function PreviewPane({ data, step, activeStaffId }: { data: Salon
                           </div>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 ) : (
                   <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl text-center text-gray-400 text-xs">

@@ -309,20 +309,41 @@ export default function TemplateRenderer({ data, mode }: Props) {
               <h3 className={`text-2xl font-bold mt-1 ${config.headingFont}`}>Reels & Styling Videos</h3>
             </div>
             <div className={`grid gap-4 ${mode === 'desktop' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-              {data.socialVideos.map(video => (
-                <div key={video.id} className="relative aspect-[9/16] rounded-xl overflow-hidden group border border-gray-200 shadow-xs bg-gray-900">
-                  <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                  <div className="absolute bottom-3 left-3 right-3 text-white">
-                    <p className="text-xs font-bold line-clamp-2">{video.title}</p>
-                    {video.likesCount && (
-                      <span className="flex items-center gap-1 text-[10px] text-pink-400 font-semibold mt-1">
-                        <Heart className="w-3 h-3 fill-pink-400" /> {video.likesCount}
-                      </span>
+              {data.socialVideos.map(video => {
+                // Extract YouTube video ID from URL
+                const getYouTubeId = (url: string) => {
+                  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                  return match ? match[1] : null;
+                };
+                
+                const youtubeId = video.platform === 'youtube' ? getYouTubeId(video.url) : null;
+                
+                return (
+                  <div key={video.id} className="relative aspect-[9/16] rounded-xl overflow-hidden group border border-gray-200 shadow-xs bg-gray-900">
+                    {youtubeId ? (
+                      // YouTube video with autoplay
+                      <iframe
+                        src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&rel=0`}
+                        className="absolute inset-0 w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      // Regular video thumbnail for other platforms
+                      <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90" />
                     )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"></div>
+                    <div className="absolute bottom-3 left-3 right-3 text-white pointer-events-none">
+                      <p className="text-xs font-bold line-clamp-2">{video.title}</p>
+                      {video.likesCount && (
+                        <span className="flex items-center gap-1 text-[10px] text-pink-400 font-semibold mt-1">
+                          <Heart className="w-3 h-3 fill-pink-400" /> {video.likesCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
