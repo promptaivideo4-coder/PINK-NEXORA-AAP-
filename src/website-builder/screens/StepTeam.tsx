@@ -26,12 +26,12 @@ const PRESET_AVATARS: string[] = [
   'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=face'
 ];
 
-/** Check if value is a real photo URL (not SVG, not base64, not empty) */
+/** Check if value is a displayable image (http URL or base64 data URL) */
 const isUrl = (v: string): boolean => {
-  return typeof v === 'string' && 
-         v.startsWith('http') && 
-         !v.includes('data:image') && 
-         v.length > 20;
+  if (typeof v !== 'string' || v.length < 20) return false;
+  if (v.startsWith('http')) return true;
+  if (v.startsWith('data:image/')) return true;
+  return false;
 };
 
 const PRIMARY_ROLE_CATEGORIES = [
@@ -156,14 +156,16 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
 
   // Auto-generate bio when form data changes
   const handleAutoGenerateBio = useCallback(() => {
-    if (!name.trim() || !primaryRole || bioInput) return; // Don't overwrite existing bio
+    if (!primaryRole || bioInput) return; // Don't overwrite existing bio
     
+    // Use "New Staff Member" as default name when form is empty
+    const effectiveName = name.trim() || 'New Staff Member';
     const effectiveRole = getEffectiveRole(primaryRole, customRole);
     const assignedServiceNames = assignedServiceIds
       .map(id => data.services.find(s => s.id === id)?.name)
       .filter((name): name is string => !!name);
     
-    const autoBio = generateAutoBio(name, effectiveRole, selectedSkills, assignedServiceNames, data.salonName);
+    const autoBio = generateAutoBio(effectiveName, effectiveRole, selectedSkills, assignedServiceNames, data.salonName);
     
     if (autoBio) {
       setBioInput(autoBio);
@@ -174,13 +176,13 @@ export default function StepTeam({ data, setData, onNext, onPrev, onSave, onOpen
   // Watch for changes and auto-generate bio
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!bioInput && name.trim() && primaryRole) {
+      if (!bioInput && primaryRole) {
         handleAutoGenerateBio();
       }
-    }, 500); // 500ms delay to avoid regenerating while typing
+    }, 300); // 300ms delay
 
     return () => clearTimeout(timer);
-  }, [name, primaryRole, customRole, selectedSkills, assignedServiceIds]);
+  }, [bioInput, name, primaryRole, customRole, selectedSkills, assignedServiceIds, handleAutoGenerateBio]);
 
   // Helper to get effective role string
   const getEffectiveRole = (pRole: string, cRole: string) => {

@@ -171,13 +171,24 @@ export default function StaffManagementModule({ data, setData, onSave, onBackToW
   // Watch for changes and auto-generate bio
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!formBio && formName.trim() && formPrimaryRole) {
-        handleAutoGenerateBio();
+      if (!formBio && formPrimaryRole) {
+        // Use "New Staff Member" as default name when form is empty
+        const effectiveName = formName.trim() || 'New Staff Member';
+        const effectiveRole = formPrimaryRole === 'Other' ? customPrimaryRole : formPrimaryRole;
+        const assignedServiceNames = formAssignedServices
+          .map(id => data.services.find(s => s.id === id)?.name)
+          .filter((name): name is string => !!name);
+        
+        const autoBio = generateAutoBio(effectiveName, effectiveRole, formSkills, assignedServiceNames, data.salonName);
+        
+        if (autoBio) {
+          setFormBio(autoBio);
+        }
       }
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [formName, formPrimaryRole, customPrimaryRole, formSkills, formAssignedServices]);
+  }, [formBio, formName, formPrimaryRole, customPrimaryRole, formSkills, formAssignedServices, data.services, data.salonName]);
 
   // Form Errors
   const [formErrors, setFormErrors] = useState<{ name?: string; role?: string }>({});
