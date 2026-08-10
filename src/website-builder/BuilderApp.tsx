@@ -61,23 +61,33 @@ export default function App({ prefilledData, onNavigateBack }: BuilderAppProps =
 
   const [data, setData] = useState<SalonData>(() => {
     // Priority: localStorage saved state > prefilled from Supabase > defaults
+    let merged: SalonData;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.data) {
           // Merge prefilled on top only if no saved data (first load)
-          return { ...initialData, ...parsed.data };
+          merged = { ...initialData, ...parsed.data };
         }
       }
     } catch (e) {
-      console.error('Failed to parse saved salon data', e);
+      console.error('Failed to parse saved onboarding state', e);
     }
-    // Use prefilled data from Supabase if available (first-time onboarding with existing shop)
-    if (prefilledData) {
-      return { ...initialData, ...prefilledData };
+    if (!merged) {
+      // Use prefilled data from Supabase if available (first-time onboarding with existing shop)
+      if (prefilledData) {
+        merged = { ...initialData, ...prefilledData };
+      } else {
+        merged = { ...initialData };
+      }
     }
-    return initialData;
+    // SAFETY: ensure critical arrays are never undefined (prevents .length crashes)
+    merged.services = merged.services || [];
+    merged.team = merged.team || [];
+    merged.packages = merged.packages || [];
+    merged.gallery = merged.gallery || [];
+    return merged;
   });
 
   const [activeModule, setActiveModule] = useState<'wizard' | 'staff-management' | 'dashboard'>(() => {

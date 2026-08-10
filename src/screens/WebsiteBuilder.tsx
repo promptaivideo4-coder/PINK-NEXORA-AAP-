@@ -200,8 +200,8 @@ export default function WebsiteBuilder({ navigate }: NavigationProps) {
           landmark: shop.landmark || '',
         },
         openingHours: mappedHours,
-        services: mappedServices.length > 0 ? mappedServices : undefined,
-        team: mappedStaff.length > 0 ? mappedStaff : undefined,
+        services: mappedServices, // Always provide array (empty if no services)
+        team: mappedStaff, // Always provide array (empty if no staff)
         publishState: mapPublishState(shop.status),
         websiteSlug: shop.name ? shop.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) : undefined,
       };
