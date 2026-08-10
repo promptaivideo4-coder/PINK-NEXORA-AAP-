@@ -212,8 +212,8 @@ function demoStaff(): StaffMember[] {
 
 function generateDemoTimeSlots(staffId: string, date: string): TimeSlot[] {
   const slots: TimeSlot[] = [];
-  const startHour = 9;
-  const endHour = 18;
+  const startHour = 7; // 7:00 AM
+  const endHour = 22; // 10:00 PM
   const breakStart = 13;
   const breakEnd = 14;
   const seed = (date + staffId).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
