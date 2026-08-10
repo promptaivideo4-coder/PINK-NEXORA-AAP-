@@ -148,6 +148,7 @@ export interface SalonData {
   contactOptions?: EnabledContactOptions;
   bookingRules?: BookingRules;
   logoUrl?: string;
+  ownerPhotoUrl?: string;
   heroImageUrl?: string;
   heroPosition?: 'Top' | 'Center' | 'Bottom';
   gallery?: GalleryImage[];
@@ -217,6 +218,7 @@ export const initialData: SalonData = {
     advanceDepositPercentage: 25
   },
   logoUrl: '',
+  ownerPhotoUrl: '',
   heroImageUrl: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?q=80&w=1000&auto=format&fit=crop',
   heroPosition: 'Center',
   gallery: [

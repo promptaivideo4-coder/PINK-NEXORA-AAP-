@@ -1,6 +1,7 @@
 import { Sparkles, Mic, ImagePlus, ArrowLeft, ArrowRight } from 'lucide-react';
 import { SalonData } from '../types';
 import PreviewPane from '../components/PreviewPane';
+import OwnerPhotoUpload from '../components/OwnerPhotoUpload';
 import { motion } from 'motion/react';
 
 interface Props {
@@ -72,11 +73,11 @@ export default function StepDetails({ data, setData, onNext, onPrev, onSave }: P
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">Owner Photo <span className="text-gray-400 font-normal">(Optional)</span></label>
-                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors group">
-                      <span className="text-sm font-semibold text-gray-500 group-hover:text-[#ac0053] flex items-center gap-2">
-                        <ImagePlus className="w-4 h-4" /> Add Photo
-                      </span>
-                    </div>
+                    <OwnerPhotoUpload
+                      value={data.ownerPhotoUrl}
+                      onChange={(url) => setData({ ...data, ownerPhotoUrl: url })}
+                      onSave={onSave}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">Owner Role <span className="text-gray-400 font-normal">(Optional)</span></label>
