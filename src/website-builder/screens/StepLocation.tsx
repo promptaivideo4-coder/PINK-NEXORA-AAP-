@@ -147,17 +147,19 @@ export default function StepLocation({ data, setData, onNext, onPrev, onSave }: 
       draggable: true,
     }).addTo(map);
 
-    // Click on map → move pin
+    // Click on map → move pin + reverse geocode to fill address
     map.on('click', (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
       marker.setLatLng([lat, lng]);
       updateLatLang(lat, lng);
+      reverseGeocodeAndFill(lat, lng);
     });
 
-    // Drag end → save new position
+    // Drag end → save new position + reverse geocode to fill address
     marker.on('dragend', (e: L.DragEndEvent) => {
       const { lat, lng } = (e.target as L.Marker).getLatLng();
       updateLatLang(lat, lng);
+      reverseGeocodeAndFill(lat, lng);
     });
 
     markerRef.current = marker;
@@ -247,6 +249,50 @@ export default function StepLocation({ data, setData, onNext, onPrev, onSave }: 
   }, [address.latitude, address.longitude]);
 
   /* ----------------------- Helpers ----------------------- */
+  
+  /** OpenStreetMap Nominatim reverse geocoding — FREE, no API key */
+  async function reverseGeocodeAndFill(latitude: number, longitude: number) {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const a = data.address || {};
+      
+      // Build a nice readable full address
+      const parts: string[] = [];
+      if (a.house_number) parts.push(a.house_number);
+      if (a.road) parts.push(a.road);
+      if (a.suburb || a.neighbourhood || a.quarter) parts.push(a.suburb || a.neighbourhood || a.quarter);
+      if (a.city || a.town || a.village) parts.push(a.city || a.town || a.village);
+      if (a.state) parts.push(a.state);
+      if (a.postcode) parts.push(a.postcode);
+      const fullAddress = parts.join(', ');
+      
+      // Capitalize first letter helper
+      const cap = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
+      
+      setData(prev => ({
+        ...prev,
+        address: {
+          ...(prev.address || { area: '', city: '', state: '', pinCode: '' }),
+          fullAddress: fullAddress || prev.address?.fullAddress || '',
+          shopNumber: a.house_number || prev.address?.shopNumber || '',
+          area: cap(a.suburb || a.neighbourhood || a.quarter || '') || prev.address?.area || '',
+          city: cap(a.city || a.town || a.village || '') || prev.address?.city || '',
+          state: a.state || prev.address?.state || '',
+          pinCode: a.postcode || prev.address?.pinCode || '',
+          latitude,
+          longitude,
+        } as SalonAddress,
+      }));
+    } catch {
+      // Silently fail — user can still edit manually
+    }
+  }
+
   const updateLatLang = (lat: number, lng: number) => {
     setData(prev => ({
       ...prev,
@@ -276,9 +322,8 @@ export default function StepLocation({ data, setData, onNext, onPrev, onSave }: 
         (pos) => {
           const { latitude, longitude } = pos.coords;
           updateLatLang(latitude, longitude);
-          updateAddress({
-            fullAddress: `Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`,
-          });
+          // Reverse geocode to fill address — DON'T put raw lat/lng in address
+          reverseGeocodeAndFill(latitude, longitude);
           setIsLocating(false);
         },
         () => {
