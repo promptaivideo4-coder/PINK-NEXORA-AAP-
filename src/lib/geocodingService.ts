@@ -169,12 +169,12 @@ class NominatimProvider {
         let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=${limit}&addressdetails=1&countrycodes=${this.config.countryBias || 'in'}`;
         
         // Scope to configured bounding box (e.g. Jaipur)
-        if (this.config.viewbox && this.config.bounded) {
-          const [lngW, latS, lngE, latN] = this.config.viewbox;
-          url += `&viewbox=${lngW},${latS},${lngE},${latN}&bounded=1`;
-        } else if (this.config.viewbox) {
+        if (this.config.viewbox) {
           const [lngW, latS, lngE, latN] = this.config.viewbox;
           url += `&viewbox=${lngW},${latS},${lngE},${latN}`;
+          // Do NOT use bounded=1 — it's too strict and returns zero results
+          // for many valid Indian addresses. viewbox alone biases results
+          // toward the area while still allowing results from nearby.
         }
         
         const res = await fetch(url, {
