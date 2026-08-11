@@ -51,9 +51,14 @@ export default function Settings({ navigate }: NavigationProps) {
     address: string | null;
     city: string | null;
     area: string | null;
+    zone: string | null;
+    landmark: string | null;
     pincode: string | null;
     latitude: number | null;
     longitude: number | null;
+    locationAccuracyM: number | null;
+    locationSource: 'gps' | 'manual' | null;
+    locationConfirmed: boolean;
   } | null>(null);
   const [locLoading, setLocLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -69,9 +74,14 @@ export default function Settings({ navigate }: NavigationProps) {
             address: shop?.address ?? null,
             city: shop?.city ?? null,
             area: shop?.area ?? null,
+            zone: shop?.zone ?? null,
+            landmark: shop?.landmark ?? null,
             pincode: shop?.pincode ?? null,
             latitude: typeof shop?.latitude === 'number' ? shop.latitude : null,
             longitude: typeof shop?.longitude === 'number' ? shop.longitude : null,
+            locationAccuracyM: shop?.locationAccuracyM ?? null,
+            locationSource: shop?.locationSource ?? null,
+            locationConfirmed: Boolean(shop?.locationConfirmed),
           });
         }
       } catch {
@@ -96,9 +106,14 @@ export default function Settings({ navigate }: NavigationProps) {
         address: shop?.address ?? null,
         city: shop?.city ?? null,
         area: shop?.area ?? null,
+        zone: shop?.zone ?? null,
+        landmark: shop?.landmark ?? null,
         pincode: shop?.pincode ?? null,
         latitude: typeof shop?.latitude === 'number' ? shop.latitude : null,
         longitude: typeof shop?.longitude === 'number' ? shop.longitude : null,
+        locationAccuracyM: shop?.locationAccuracyM ?? null,
+        locationSource: shop?.locationSource ?? null,
+        locationConfirmed: Boolean(shop?.locationConfirmed),
       });
     } catch {
       /* keep current */
@@ -136,9 +151,14 @@ export default function Settings({ navigate }: NavigationProps) {
         address: shop?.address ?? null,
         city: shop?.city ?? null,
         area: shop?.area ?? null,
+        zone: shop?.zone ?? null,
+        landmark: shop?.landmark ?? null,
         pincode: shop?.pincode ?? null,
         latitude: typeof shop?.latitude === 'number' ? shop.latitude : null,
         longitude: typeof shop?.longitude === 'number' ? shop.longitude : null,
+        locationAccuracyM: shop?.locationAccuracyM ?? null,
+        locationSource: shop?.locationSource ?? null,
+        locationConfirmed: Boolean(shop?.locationConfirmed),
       });
     } catch {
       /* keep current */
@@ -761,14 +781,15 @@ export default function Settings({ navigate }: NavigationProps) {
                   confirmed={shopLoc ? {
                     latitude: typeof shopLoc.latitude === 'number' ? shopLoc.latitude : 0,
                     longitude: typeof shopLoc.longitude === 'number' ? shopLoc.longitude : 0,
+                    fullAddress: shopLoc.address || '',
                     address: shopLoc.address || '',
                     city: shopLoc.city || '',
                     area: shopLoc.area || '',
-                    zone: '',
-                    landmark: '',
+                    zone: shopLoc.zone || '',
+                    landmark: shopLoc.landmark || '',
                     pincode: shopLoc.pincode || '',
-                    accuracyM: null,
-                    source: 'manual',
+                    accuracyM: shopLoc.locationAccuracyM ?? null,
+                    source: shopLoc.locationSource || 'manual',
                   } : null}
                   onConfirm={handleSaveLocation}
                   onSave={handleSaveLocation}

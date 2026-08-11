@@ -1,6 +1,8 @@
-// Razorpay Test Keys
+// Razorpay Test KEY_ID (PUBLIC — safe in frontend, used by checkout.js)
 export const RAZORPAY_KEY_ID = 'rzp_test_TIzKly1Z2NMnum';
-export const RAZORPAY_KEY_SECRET = '9SehLfvRW6eVtHXtFXzL2Ovm';
+
+// SECURITY: RAZORPAY_KEY_SECRET must NEVER be in frontend code.
+// Server-side verification must use environment variables only.
 
 export interface RazorpayOrder {
   id: string;

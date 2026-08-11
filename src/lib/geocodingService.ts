@@ -118,6 +118,26 @@ class GeocodingCache {
 
 const cache = new GeocodingCache();
 
+// ===== Inflight Deduplication =====
+
+// Tracks in-flight promises by key. If the same request is already pending,
+// we return the existing Promise instead of firing a new HTTP call.
+// Entry is deleted in both success and failure branches so subsequent calls
+// with the same key will issue a fresh request (not a stuck one).
+const inflight = new Map<string, Promise<any>>();
+
+function withInflight<T>(key: string, factory: () => Promise<T>): Promise<T> {
+  const existing = inflight.get(key);
+  if (existing) return existing as Promise<T>;
+  
+  const promise = factory().finally(() => {
+    inflight.delete(key);
+  });
+  
+  inflight.set(key, promise);
+  return promise;
+}
+
 // ===== Provider Implementations =====
 
 class NominatimProvider {
@@ -130,71 +150,75 @@ class NominatimProvider {
   async autocomplete(query: string, limit = 5): Promise<AutocompleteResult[]> {
     if (!query || query.length < 3) return [];
     
-    const cacheKey = `nominatim:autocomplete:${query}`;
+    const cacheKey = `nominatim:autocomplete:${query.toLowerCase()}`;
     const cached = cache.get<AutocompleteResult[]>(cacheKey);
     if (cached) return cached;
     
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=${limit}&addressdetails=1&countrycodes=${this.config.countryBias || 'in'}`;
-      const res = await fetch(url, {
-        headers: { 'Accept': 'application/json', 'Accept-Language': this.config.language || 'en' }
-      });
-      
-      if (!res.ok) return [];
-      
-      const data = await res.json();
-      const results: AutocompleteResult[] = data.map((item: any) => ({
-        placeId: `nominatim:${item.place_id}`,
-        displayName: item.display_name,
-        address: this.normalizeAddress(item.address || {}),
-        latitude: parseFloat(item.lat),
-        longitude: parseFloat(item.lon),
-      }));
-      
-      cache.set(cacheKey, results);
-      return results;
-    } catch {
-      return [];
-    }
+    return withInflight(cacheKey, async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=${limit}&addressdetails=1&countrycodes=${this.config.countryBias || 'in'}`;
+        const res = await fetch(url, {
+          headers: { 'Accept': 'application/json', 'Accept-Language': this.config.language || 'en' }
+        });
+        
+        if (!res.ok) return [];
+        
+        const data = await res.json();
+        const results: AutocompleteResult[] = data.map((item: any) => ({
+          placeId: `nominatim:${item.place_id}`,
+          displayName: item.display_name,
+          address: this.normalizeAddress(item.address || {}),
+          latitude: parseFloat(item.lat),
+          longitude: parseFloat(item.lon),
+        }));
+        
+        cache.set(cacheKey, results);
+        return results;
+      } catch {
+        return [];
+      }
+    });
   }
   
   async forwardGeocode(address: string): Promise<GeocodingResult | null> {
     if (!address) return null;
     
-    const cacheKey = `nominatim:forward:${address}`;
+    const cacheKey = `nominatim:forward:${address.toLowerCase()}`;
     const cached = cache.get<GeocodingResult>(cacheKey);
     if (cached) return cached;
     
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=1&countrycodes=${this.config.countryBias || 'in'}`;
-      const res = await fetch(url, {
-        headers: { 'Accept': 'application/json', 'Accept-Language': this.config.language || 'en' }
-      });
-      
-      if (!res.ok) return null;
-      
-      const data = await res.json();
-      if (!data || data.length === 0) return null;
-      
-      const item = data[0];
-      const result: GeocodingResult = {
-        latitude: parseFloat(item.lat),
-        longitude: parseFloat(item.lon),
-        displayName: item.display_name,
-        address: this.normalizeAddress(item.address || {}),
-        boundingBox: item.boundingbox ? [
-          parseFloat(item.boundingbox[0]),
-          parseFloat(item.boundingbox[1]),
-          parseFloat(item.boundingbox[2]),
-          parseFloat(item.boundingbox[3]),
-        ] : undefined,
-      };
-      
-      cache.set(cacheKey, result);
-      return result;
-    } catch {
-      return null;
-    }
+    return withInflight(cacheKey, async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=1&countrycodes=${this.config.countryBias || 'in'}`;
+        const res = await fetch(url, {
+          headers: { 'Accept': 'application/json', 'Accept-Language': this.config.language || 'en' }
+        });
+        
+        if (!res.ok) return null;
+        
+        const data = await res.json();
+        if (!data || data.length === 0) return null;
+        
+        const item = data[0];
+        const result: GeocodingResult = {
+          latitude: parseFloat(item.lat),
+          longitude: parseFloat(item.lon),
+          displayName: item.display_name,
+          address: this.normalizeAddress(item.address || {}),
+          boundingBox: item.boundingbox ? [
+            parseFloat(item.boundingbox[0]),
+            parseFloat(item.boundingbox[1]),
+            parseFloat(item.boundingbox[2]),
+            parseFloat(item.boundingbox[3]),
+          ] : undefined,
+        };
+        
+        cache.set(cacheKey, result);
+        return result;
+      } catch {
+        return null;
+      }
+    });
   }
   
   async reverseGeocode(latitude: number, longitude: number): Promise<GeocodingAddress | null> {
@@ -205,22 +229,24 @@ class NominatimProvider {
     const cached = cache.get<GeocodingAddress>(cacheKey);
     if (cached) return cached;
     
-    try {
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=18`;
-      const res = await fetch(url, {
-        headers: { 'Accept': 'application/json', 'Accept-Language': this.config.language || 'en' }
-      });
-      
-      if (!res.ok) return null;
-      
-      const data = await res.json();
-      const address = this.normalizeAddress(data.address || {});
-      
-      cache.set(cacheKey, address);
-      return address;
-    } catch {
-      return null;
-    }
+    return withInflight(cacheKey, async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=18`;
+        const res = await fetch(url, {
+          headers: { 'Accept': 'application/json', 'Accept-Language': this.config.language || 'en' }
+        });
+        
+        if (!res.ok) return null;
+        
+        const data = await res.json();
+        const address = this.normalizeAddress(data.address || {});
+        
+        cache.set(cacheKey, address);
+        return address;
+      } catch {
+        return null;
+      }
+    });
   }
   
   private normalizeAddress(raw: any): GeocodingAddress {

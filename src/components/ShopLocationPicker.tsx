@@ -139,20 +139,36 @@ export default function ShopLocationPicker({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
+  // Race-condition protection: track the latest pin position
+  // Reverse geocode responses for older positions must be ignored
+  const latestPositionRef = useRef<{ lat: number; lng: number } | null>(null);
+  const reverseGeocodeInflightRef = useRef<string | null>(null);
+
   // Debounced geocode function using service layer
+  // RACE-CONDITION PROTECTION: track the query this call was made for
+  // so stale responses from earlier queries are discarded.
+  const latestQueryRef = useRef<string>('');
   const debouncedGeocode = useRef(
     debounce(async (query: string) => {
       if (query.length < 3) {
         setSuggestions([]);
+        latestQueryRef.current = '';
         return;
       }
+      latestQueryRef.current = query;
       setIsGeocoding(true);
       try {
         const results = await geocodingService.current.autocomplete(query, 5);
-        setSuggestions(results);
-        setShowSuggestions(results.length > 0);
+        // Only apply results if the user hasn't typed more since we started
+        if (latestQueryRef.current === query) {
+          setSuggestions(results);
+          setShowSuggestions(results.length > 0);
+        }
+        // else: stale response, discard
       } catch {
-        setSuggestions([]);
+        if (latestQueryRef.current === query) {
+          setSuggestions([]);
+        }
       } finally {
         setIsGeocoding(false);
       }
@@ -202,6 +218,9 @@ export default function ShopLocationPicker({
       }
 
       // Extract structured address
+      // CRITICAL: We set the main `address` field to the FULL address
+      // (this is what gets saved to Supabase as location_address)
+      // Individual fields are set separately for the UI inputs
       if (result.address) {
         const addr = result.address;
         const fullParts: string[] = [];
@@ -214,8 +233,9 @@ export default function ShopLocationPicker({
         if (addr.postcode) fullParts.push(addr.postcode);
         const fullAddress = fullParts.join(', ');
         
+        // The main address field = full address (saved to Supabase)
         if (fullAddress) setAddress(fullAddress);
-        if (addr.houseNumber) setAddress(addr.houseNumber);
+        // Individual fields for UI editing
         if (addr.suburb) setArea(addr.suburb);
         if (addr.city) setCity(addr.city);
         if (addr.state) setZone(addr.state);
@@ -291,12 +311,27 @@ export default function ShopLocationPicker({
   }, [lat, lng]);
 
   // Reverse geocode — auto-fill details using service layer
+  // RACE-CONDITION PROTECTION:
+  //   - latestPositionRef tracks the pin's current position
+  //   - reverseGeocodeInflightRef tracks the in-flight request's key
+  //   - Responses for stale positions are IGNORED
   async function reverseGeocodeAt(latitude: number, longitude: number) {
+    const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+    const myPosition = { lat: latitude, lng: longitude };
+    latestPositionRef.current = myPosition;
+    reverseGeocodeInflightRef.current = key;
+
     setGeocoding(true);
     try {
-      // Try service layer first
       const address = await geocodingService.current.reverseGeocode(latitude, longitude);
-      
+
+      // Check if position changed while we were fetching
+      const cur = latestPositionRef.current;
+      if (!cur || cur.lat !== latitude || cur.lng !== longitude) {
+        // Stale response — pin has moved, ignore this result
+        return;
+      }
+
       if (address) {
         if (address.city) setCity((c) => c || address.city!);
         if (address.suburb) setArea((a) => a || address.suburb!);
@@ -309,6 +344,9 @@ export default function ShopLocationPicker({
       } else {
         // Fallback to existing BigDataCloud reverse geocoding
         const place = await reverseGeocodePlace(latitude, longitude);
+        // Stale check again after fallback
+        const cur2 = latestPositionRef.current;
+        if (cur2 && (cur2.lat !== latitude || cur2.lng !== longitude)) return;
         if (place) {
           if (place.city) setCity((c) => c || place.city!);
           if (place.locality) setArea((a) => a || place.locality!);
@@ -363,6 +401,7 @@ export default function ShopLocationPicker({
     return {
       latitude: lat as number,
       longitude: lng as number,
+      fullAddress: address.trim(),
       address: address.trim(),
       city: city.trim(),
       area: area.trim(),
@@ -392,6 +431,11 @@ export default function ShopLocationPicker({
   // STEP: Save Shop Location — ONLY yahan se Supabase persist
   async function handleSaveShopLocation() {
     if (!onSave) return;
+    if (saving) return; // DUPLICATE-SAVE PREVENTION
+    if (!isValidLatLng(lat, lng)) {
+      setSaveError('Invalid coordinates. Please set your location on the map.');
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
