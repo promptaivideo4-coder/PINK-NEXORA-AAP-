@@ -40,7 +40,7 @@ import {
   type AutocompleteResult,
   type GeocodingResult,
 } from '../lib/geocodingService';
-import { GEOCODING_CONFIG } from '../lib/geocodingConfig';
+import { GEOCODING_CONFIG, JAIPUR_VIEWBOX } from '../lib/geocodingConfig';
 
 export interface ConfirmedShopLocation {
   latitude: number;
@@ -75,7 +75,9 @@ interface Props {
   confirmed?: ConfirmedShopLocation | null;
 }
 
-const DEFAULT_CENTER: [number, number] = [26.9124, 75.7873];
+const DEFAULT_CENTER: [number, number] = GEOCODING_CONFIG.defaultCenter || [26.9124, 75.7873];
+const DEFAULT_CITY = GEOCODING_CONFIG.defaultCity || 'Jaipur';
+const DEFAULT_STATE = GEOCODING_CONFIG.defaultState || 'Rajasthan';
 
 const markerIcon = L.divIcon({
   className: '',
@@ -117,11 +119,11 @@ export default function ShopLocationPicker({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
 
-  // Location state
+  // Location state — default to Jaipur/Rajasthan for new forms
   const [lat, setLat] = useState<number | null>(initialLat ?? null);
   const [lng, setLng] = useState<number | null>(initialLng ?? null);
   const [address, setAddress] = useState(confirmed?.address || '');
-  const [city, setCity] = useState(confirmed?.city || '');
+  const [city, setCity] = useState(confirmed?.city || DEFAULT_CITY);
   const [area, setArea] = useState(confirmed?.area || '');
   const [zone, setZone] = useState(confirmed?.zone || '');
   const [landmark, setLandmark] = useState(confirmed?.landmark || '');
@@ -254,12 +256,19 @@ export default function ShopLocationPicker({
     if (!mapRef.current || leafletRef.current) return;
     const map = L.map(mapRef.current, { zoomControl: true }).setView(
       DEFAULT_CENTER,
-      13
+      12
     );
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(map);
+
+    // Restrict map panning/zooming to Jaipur area when no saved location
+    if (JAIPUR_VIEWBOX && lat === null && lng === null) {
+      const [lngW, latS, lngE, latN] = JAIPUR_VIEWBOX;
+      map.setMaxBounds([[latS, lngW], [latN, lngE]]);
+      map.fitBounds([[latS, lngW], [latN, lngE]]);
+    }
 
     const start: [number, number] =
       lat !== null && lng !== null ? [lat, lng] : DEFAULT_CENTER;

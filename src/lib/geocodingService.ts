@@ -28,6 +28,16 @@ export interface GeocodingConfig {
   language?: string;
   countryBias?: string;
   maxResults?: number;
+  /** Bounding box [lngW, latS, lngE, latN] to restrict search area */
+  viewbox?: [number, number, number, number];
+  /** If true, results are strictly limited to viewbox */
+  bounded?: boolean;
+  /** Default city for new forms */
+  defaultCity?: string;
+  /** Default state for new forms */
+  defaultState?: string;
+  /** Default map center [lat, lng] */
+  defaultCenter?: [number, number];
 }
 
 export interface GeocodingAddress {
@@ -156,7 +166,17 @@ class NominatimProvider {
     
     return withInflight(cacheKey, async () => {
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=${limit}&addressdetails=1&countrycodes=${this.config.countryBias || 'in'}`;
+        let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=${limit}&addressdetails=1&countrycodes=${this.config.countryBias || 'in'}`;
+        
+        // Scope to configured bounding box (e.g. Jaipur)
+        if (this.config.viewbox && this.config.bounded) {
+          const [lngW, latS, lngE, latN] = this.config.viewbox;
+          url += `&viewbox=${lngW},${latS},${lngE},${latN}&bounded=1`;
+        } else if (this.config.viewbox) {
+          const [lngW, latS, lngE, latN] = this.config.viewbox;
+          url += `&viewbox=${lngW},${latS},${lngE},${latN}`;
+        }
+        
         const res = await fetch(url, {
           headers: { 'Accept': 'application/json', 'Accept-Language': this.config.language || 'en' }
         });

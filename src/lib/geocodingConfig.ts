@@ -23,11 +23,17 @@ import type { GeocodingConfig, GeocodingProvider } from './geocodingService';
 
 export const PROVIDER: GeocodingProvider = 'nominatim';
 
+// Jaipur bounding box (approximate) for scoped autocomplete
+// Format: [left, bottom, right, top] = [lngW, latS, lngE, latN]
+export const JAIPUR_VIEWBOX: [number, number, number, number] = [
+  75.55, 26.70,   // southwest corner (lng, lat)
+  76.10, 27.15,   // northeast corner (lng, lat)
+];
+
 export const GEOCODING_CONFIG: GeocodingConfig = {
   provider: PROVIDER,
   
   // API Key (required for paid providers)
-  // Get from: https://www.mapbox.com/ or https://developers.google.com/maps
   apiKey: import.meta.env.VITE_GEOCODING_API_KEY,
   
   // Base URL (optional, for custom deployments)
@@ -39,8 +45,19 @@ export const GEOCODING_CONFIG: GeocodingConfig = {
   // Country bias (ISO country code)
   countryBias: 'in',
   
+  // Restrict autocomplete to Jaipur bounding box
+  viewbox: JAIPUR_VIEWBOX,
+  
+  // When true, search results are strictly limited to viewbox area
+  bounded: true,
+  
   // Max results per query
   maxResults: 5,
+  
+  // Default location values (for new forms)
+  defaultCity: 'Jaipur',
+  defaultState: 'Rajasthan',
+  defaultCenter: [26.9124, 75.7873],
 };
 
 // ===== Provider-Specific Notes =====
