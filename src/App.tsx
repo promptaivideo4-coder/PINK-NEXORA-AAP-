@@ -47,47 +47,83 @@ import { OfflineSyncProvider } from './contexts/OfflineSyncContext';
 import AddToHomeScreenPrompt from './components/AddToHomeScreenPrompt';
 import { ScreenName } from './types';
 import { supabase } from './lib/supabase';
-import { Session } from '@supabase/supabase-js';
+import { clearOwnerSessionData } from './utils/storage';
+import { useLocationSync } from './hooks/useLocationSync';
+import { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { Download, X, WifiOff, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useLocation } from './contexts/LocationContext';
+import {
+  isOnMainWebsiteAuthRoute,
+  redirectToMainWebsiteAuth,
+} from './lib/authRoutes';
+
+/** Entry screen for a fresh load, including the Main Website auth route. */
+function resolveInitialScreen(): ScreenName {
+  if (typeof window === 'undefined') return 'splash';
+  // Main Website auth route → the app's own login screen.
+  if (isOnMainWebsiteAuthRoute()) return 'login';
+  const params = new URLSearchParams(window.location.search);
+  const previewScreen = params.get('screen');
+  if (previewScreen === 'dashboard') return 'dashboard';
+  if (previewScreen === 'new-staff') return 'new-staff';
+  if (previewScreen === 'staff-detail') return 'staff-detail';
+  if (previewScreen === 'staff-schedule') return 'staff-schedule';
+  if (previewScreen === 'staff-attendance') return 'staff-attendance';
+  if (previewScreen === 'leave-swap') return 'leave-swap';
+  if (previewScreen === 'staff-payroll') return 'staff-payroll';
+  if (previewScreen === 'staff-payroll-detail') return 'staff-payroll-detail';
+  if (previewScreen === 'staff-payroll-breakdown') return 'staff-payroll-breakdown';
+  if (previewScreen === 'staff-roles-access') return 'staff-roles-access';
+  if (previewScreen === 'staff-performance') return 'staff-performance';
+  if (previewScreen === 'staff-self-service') return 'staff-self-service';
+  if (previewScreen === 'staff-website-booking') return 'staff-website-booking';
+  const isStaffPreview = previewScreen === 'staff'
+    || window.location.hash === '#staff'
+    || window.location.hash === '#/staff';
+  if (isStaffPreview) return 'staff';
+  return 'splash';
+}
 
 export default function App() {
   const { requestLocation } = useLocation();
-  const locationAutoAskedRef = React.useRef(false);
-  const [currentScreen, setCurrentScreen] = useState<ScreenName>(() => {
-    // Handy direct preview routes for the owner workspace while screens are being integrated.
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const previewScreen = params.get('screen');
-      if (previewScreen === 'dashboard') return 'dashboard';
-      if (previewScreen === 'new-staff') return 'new-staff';
-      if (previewScreen === 'staff-detail') return 'staff-detail';
-      if (previewScreen === 'staff-schedule') return 'staff-schedule';
-      if (previewScreen === 'staff-attendance') return 'staff-attendance';
-      if (previewScreen === 'leave-swap') return 'leave-swap';
-      if (previewScreen === 'staff-payroll') return 'staff-payroll';
-      if (previewScreen === 'staff-payroll-detail') return 'staff-payroll-detail';
-      if (previewScreen === 'staff-payroll-breakdown') return 'staff-payroll-breakdown';
-      if (previewScreen === 'staff-roles-access') return 'staff-roles-access';
-      if (previewScreen === 'staff-performance') return 'staff-performance';
-      if (previewScreen === 'staff-self-service') return 'staff-self-service';
-      if (previewScreen === 'staff-website-booking') return 'staff-website-booking';
-      const isStaffPreview = previewScreen === 'staff'
-        || window.location.hash === '#staff'
-        || window.location.hash === '#/staff';
-      if (isStaffPreview) return 'staff';
-    }
-    return 'splash';
-  });
+  const [currentScreen, setCurrentScreen] = useState<ScreenName>(resolveInitialScreen);
   const currentScreenRef = React.useRef(currentScreen);
   const [session, setSession] = useState<Session | null>(null);
+  /** True once the Supabase client has reported its initial session state. */
+  const sessionResolvedRef = React.useRef(false);
+  /** True while a SIGNED_OUT cleanup/redirect is already in flight. */
+  const signOutHandledRef = React.useRef(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallToast, setShowInstallToast] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  /**
+   * Tracking entry point handed to the live-location sync hook: the existing
+   * LocationContext flow, with the same short delay the app has always used so
+   * the dashboard paints before the browser permission prompt appears.
+   */
+  const requestLocationDeferred = React.useCallback(
+    () =>
+      new Promise<void>((resolve) => {
+        window.setTimeout(() => {
+          void requestLocation();
+          resolve();
+        }, 800);
+      }),
+    [requestLocation],
+  );
+
+  // Live location sync — armed ONLY once a valid session exists, and it drives
+  // the existing centralized GPS watcher (no second watcher is created).
+  useLocationSync({
+    enabled: !!session,
+    userId: session?.user?.id ?? null,
+    startTracking: requestLocationDeferred,
+  });
 
   // PWA Update handling
   const {
@@ -199,25 +235,9 @@ export default function App() {
     };
     window.addEventListener('appinstalled', handleAppInstalledGlobal);
 
-    // Initial session check — already-logged-in user reload par bhi location auto-maango
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session && !locationAutoAskedRef.current) {
-        locationAutoAskedRef.current = true;
-        setTimeout(() => requestLocation(), 800);
-      }
-    });
-
-    // 🔹 LOGIN KE TURANT BAAD LOCATION AUTO-REQUEST (requirement: login hote hi location)
-    // Jab bhi login hota hai (SIGNED_IN), ek baar (per browser session) location permission
-    // maang lo → browser ka prompt turant aata hai.
-    const unsubscribeAuth = supabase.auth.onAuthStateChange((_event, s) => {
-      if (s && !locationAutoAskedRef.current) {
-        locationAutoAskedRef.current = true;
-        // Thoda sa delay taaki dashboard render ho jaye, phir permission prompt
-        setTimeout(() => requestLocation(), 800);
-      }
-    });
+    // NOTE: session bootstrapping and auth-event handling live in the single
+    // `supabase.auth.onAuthStateChange` subscription below — this effect must
+    // not open a second one.
 
     // Handle initial hash routing and hash changes
     const handleHashRouting = () => {
@@ -227,6 +247,13 @@ export default function App() {
       // Usually format is #access_token=...&type=recovery
       if (hash.includes('type=recovery') || hash.includes('error_description=Email+link+is+invalid+or+has+expired')) {
         setCurrentScreen('reset-password');
+        return;
+      }
+
+      // Main Website auth route (path based: /auth/login, plus the legacy
+      // #/app/owner/login hash) always resolves to the app's login screen.
+      if (isOnMainWebsiteAuthRoute()) {
+        setCurrentScreen('login');
         return;
       }
 
@@ -300,31 +327,105 @@ export default function App() {
     handleHashRouting();
     window.addEventListener('hashchange', handleHashRouting);
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      const activeScreen = currentScreenRef.current;
-      
-      if (!session) {
-        // Only force welcome if we are on a protected screen
-        const authScreens: ScreenName[] = ['splash', 'welcome', 'login', 'register-stepper', 'website-builder', 'dashboard', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll', 'staff-payroll-detail', 'staff-payroll-breakdown', 'staff-roles-access', 'staff-performance', 'staff-self-service', 'staff-website-booking'];
-        if (!authScreens.includes(activeScreen)) {
-          setCurrentScreen('welcome');
-        }
-      } else if (['splash', 'welcome', 'login'].includes(activeScreen)) {
-        // Automatically go to dashboard if logged in from these entry screens
-        setCurrentScreen('dashboard');
-      }
-    });
-
     return () => {
-      subscription.unsubscribe();
-      unsubscribeAuth.data.subscription.unsubscribe();
       window.removeEventListener('hashchange', handleHashRouting);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalledGlobal);
     };
-  }, [requestLocation]);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // THE one and only auth-state subscription for this application.
+  //
+  // Every auth concern (session state, protected-state cleanup, entry routing,
+  // sign-out redirect, and — through the `session` state — starting/stopping
+  // live location sync) flows from this single subscription. Do not add a
+  // second `onAuthStateChange` listener anywhere else in the app.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    /** Session is valid → initialize authenticated application state. */
+    const handleAuthenticated = (event: AuthChangeEvent, nextSession: Session) => {
+      signOutHandledRef.current = false;
+      setSession(nextSession);
+      // Live location sync is armed automatically by `useLocationSync` once
+      // this state flips to a valid session — nothing to start here.
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        const activeScreen = currentScreenRef.current;
+        if (['splash', 'welcome', 'login'].includes(activeScreen)) {
+          // Signed in from an entry screen → straight into the workspace.
+          setCurrentScreen('dashboard');
+        }
+      }
+    };
+
+    /** Session became invalid → clean up protected state and leave the app. */
+    const handleSignedOut = () => {
+      if (signOutHandledRef.current) return; // never run the redirect twice
+      signOutHandledRef.current = true;
+      setSession(null); // also disarms live location sync (see useLocationSync)
+      clearOwnerSessionData();
+
+      // Deferred so an explicit `navigate('welcome')` from a logout button
+      // (Settings / Profile) cannot land after this and leave the URL on
+      // /auth/login while the UI shows something else.
+      window.setTimeout(() => {
+        redirectToMainWebsiteAuth();
+        // Signed-out users never remain inside a protected screen.
+        setCurrentScreen('login');
+      }, 0);
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      sessionResolvedRef.current = true;
+
+      switch (event) {
+        case 'INITIAL_SESSION':
+          // Restored (or absent) session on load. An absent session here means
+          // a fresh visitor — they keep the splash/welcome entry flow, so no
+          // redirect happens (that is what prevents a redirect loop).
+          if (nextSession) handleAuthenticated(event, nextSession);
+          else setSession(null);
+          break;
+
+        case 'SIGNED_IN':
+        case 'TOKEN_REFRESHED':
+        case 'USER_UPDATED':
+          if (nextSession) handleAuthenticated(event, nextSession);
+          break;
+
+        case 'PASSWORD_RECOVERY':
+          // PKCE recovery links arrive as `?code=` and are exchanged by the
+          // client; land the user on the existing reset-password screen.
+          setSession(nextSession);
+          setCurrentScreen('reset-password');
+          break;
+
+        case 'SIGNED_OUT':
+          handleSignedOut();
+          break;
+
+        default:
+          setSession(nextSession);
+      }
+    });
+
+    // Belt and braces: if the INITIAL_SESSION event was emitted before this
+    // component subscribed (very early hydration), read the session once.
+    // This is a one-shot read, not a second subscription.
+    if (!sessionResolvedRef.current) {
+      supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+        if (sessionResolvedRef.current) return;
+        sessionResolvedRef.current = true;
+        if (currentSession) handleAuthenticated('INITIAL_SESSION', currentSession);
+      });
+    }
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
