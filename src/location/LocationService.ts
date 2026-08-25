@@ -44,6 +44,8 @@ type Unsubscribe = () => void;
 class LocationService {
   private isInitialized = false;
   private isStarted = false;
+  /** Invalidates an in-progress start when the authenticated owner logs out. */
+  private startGeneration = 0;
   private updateCount = 0;
   private currentPermission: PermissionState = 'unknown';
   private lastAccepted: ValidatedLocation | null = null;
@@ -109,9 +111,14 @@ class LocationService {
 
   /** Start GPS tracking - main entry point */
   async start(): Promise<boolean> {
+    const generation = this.startGeneration;
     if (!this.isInitialized) {
       await this.initialize();
     }
+
+    // Logout/unmount may have stopped the service while initialization was
+    // awaiting permissions. Do not resurrect the browser watcher afterwards.
+    if (generation !== this.startGeneration) return false;
 
     if (this.isStarted) {
       logger.logWarn('Location Service already started');
@@ -146,6 +153,7 @@ class LocationService {
   /** Stop everything */
   stop(): void {
     logger.logInfo('Stopping Location Service...');
+    this.startGeneration += 1;
     gpsWatcher.stop();
     if (this.moderateCheckInterval) {
       clearInterval(this.moderateCheckInterval);

@@ -102,18 +102,14 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   /**
-   * Tracking entry point handed to the live-location sync hook: the existing
-   * LocationContext flow, with the same short delay the app has always used so
-   * the dashboard paints before the browser permission prompt appears.
+   * Tracking entry point handed to the live-location sync hook. Keep the
+   * existing LocationContext permission/status flow, but start immediately so
+   * logout cannot leave a delayed orphaned GPS request behind.
    */
   const requestLocationDeferred = React.useCallback(
-    () =>
-      new Promise<void>((resolve) => {
-        window.setTimeout(() => {
-          void requestLocation();
-          resolve();
-        }, 800);
-      }),
+    () => {
+      void requestLocation();
+    },
     [requestLocation],
   );
 
@@ -390,9 +386,13 @@ export default function App() {
           break;
 
         case 'SIGNED_IN':
-        case 'TOKEN_REFRESHED':
         case 'USER_UPDATED':
           if (nextSession) handleAuthenticated(event, nextSession);
+          break;
+
+        case 'TOKEN_REFRESHED':
+          if (nextSession) handleAuthenticated(event, nextSession);
+          else handleSignedOut();
           break;
 
         case 'PASSWORD_RECOVERY':

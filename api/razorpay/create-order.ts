@@ -7,14 +7,22 @@ import Razorpay from 'razorpay';
 type Request = IncomingMessage & { method?: string; body?: any };
 type Response = ServerResponse & { status: (code: number) => Response; json: (body: unknown) => void };
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_TIzKly1Z2NMnum',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '9SehLfvRW6eVtHXtFXzL2Ovm',
-});
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+const razorpaySecret = process.env.RAZORPAY_KEY_SECRET;
+const razorpay = razorpayKeyId && razorpaySecret
+  ? new Razorpay({
+      key_id: razorpayKeyId,
+      key_secret: razorpaySecret,
+    })
+  : null;
 
 export default async function handler(req: Request, res: Response) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!razorpay) {
+    return res.status(503).json({ error: 'Payment service is not configured' });
   }
 
   try {

@@ -229,10 +229,10 @@ export function useLocationSync(options: UseLocationSyncOptions): UseLocationSyn
       setActive(false);
       setState('idle');
     }
-    // IMPORTANT: the shared GPS watcher is deliberately left running. It is a
-    // single global resource also used by public screens (e.g. Nearby Salons),
-    // so signing out stops ONLY this hook's backend push — it must not kill
-    // device location for the rest of the app.
+    // The authenticated location session owns the shared GPS watcher for the
+    // app. Stop the actual browser watch on sign-out, disabled transitions, and
+    // unmount so no orphaned geolocation subscription survives the session.
+    locationService.stop();
   }, []);
 
   // ---------------------------------------------------------------------
