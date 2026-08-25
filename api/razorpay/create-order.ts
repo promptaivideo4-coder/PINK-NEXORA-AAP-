@@ -1,12 +1,18 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import Razorpay from 'razorpay';
+
+// Plain Node handler types — this project ships Vercel serverless functions on
+// the Vite framework, not Next.js, so the Next-specific request/response types
+// are declared locally (same pattern as api/auth/login.ts).
+type Request = IncomingMessage & { method?: string; body?: any };
+type Response = ServerResponse & { status: (code: number) => Response; json: (body: unknown) => void };
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_TIzKly1Z2NMnum',
   key_secret: process.env.RAZORPAY_KEY_SECRET || '9SehLfvRW6eVtHXtFXzL2Ovm',
 });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: Request, res: Response) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -24,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       amount: amount, // paise me
       currency: currency || 'INR',
       receipt: receipt || `booking_${Date.now()}`,
-      payment_capture: 1, // auto capture
+      payment_capture: true, // auto capture
       notes: {
         bookingId: bookingDetails?.bookingId || '',
         customerName: bookingDetails?.customerName || '',

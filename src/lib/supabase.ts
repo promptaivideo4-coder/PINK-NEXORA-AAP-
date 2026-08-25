@@ -22,7 +22,60 @@ const configuredAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 const effectiveUrl = configuredUrl || DEFAULT_SUPABASE_URL;
 const effectiveKey = configuredAnonKey || DEFAULT_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(effectiveUrl, effectiveKey);
+/**
+ * Nexora universal auth storage key.
+ * Every Nexora surface (main website + shop owner PWA) shares this key so a
+ * session established on one surface is picked up by the others. Override with
+ * VITE_SUPABASE_STORAGE_KEY when pointing at a different Supabase project.
+ */
+export const DEFAULT_SUPABASE_STORAGE_KEY = 'nexora.auth.qwaehqsmodekbgvnaavz';
+export const SUPABASE_STORAGE_KEY =
+  import.meta.env.VITE_SUPABASE_STORAGE_KEY?.trim() || DEFAULT_SUPABASE_STORAGE_KEY;
+
+/** Supabase's built-in per-project storage key (`sb-<ref>-auth-token`). */
+const LEGACY_SUPABASE_STORAGE_KEY = `sb-${effectiveUrl.replace(/^https?:\/\//, '').split('.')[0]}-auth-token`;
+
+/**
+ * One-time migration of a session written under Supabase's default storage key
+ * (from before the Nexora universal key existed) so an already-signed-in owner
+ * is not silently logged out by the key change.
+ */
+function migrateLegacyAuthStorage() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (localStorage.getItem(SUPABASE_STORAGE_KEY)) return;
+    const legacy = localStorage.getItem(LEGACY_SUPABASE_STORAGE_KEY);
+    if (!legacy) return;
+    localStorage.setItem(SUPABASE_STORAGE_KEY, legacy);
+    localStorage.removeItem(LEGACY_SUPABASE_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable (private mode / installed PWA) — the next
+    // login simply writes the session under the current storage key.
+  }
+}
+
+migrateLegacyAuthStorage();
+
+/**
+ * The single Supabase client for this application. Import `supabase` from this
+ * module everywhere — never call `createClient` a second time.
+ *
+ * `flowType: 'pkce'` keeps the authorization-code + PKCE flow (no implicit
+ * tokens in the URL fragment). `detectSessionInUrl` lets PKCE `?code=`
+ * callbacks (OAuth, email confirmation, password recovery) finish the exchange.
+ */
+export const supabase = createClient(effectiveUrl, effectiveKey, {
+  auth: {
+    storageKey: SUPABASE_STORAGE_KEY,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+  },
+});
+
+/** Resolved Supabase project URL used by the client. */
+export const getSupabaseUrl = () => effectiveUrl;
 
 /** True when a usable Supabase client is available. */
 export const isSupabaseConfigured = () =>
@@ -81,7 +134,8 @@ async function applyAuthTokens(result: AuthApiResponse) {
     // Some installed browsers block direct cross-origin requests after the
     // server exchange. Keep the authenticated session locally so login is
     // still successful; the next app load restores it through Supabase.
-    const projectRef = new URL(effectiveUrl).hostname.split('.')[0];
+    // NOTE: written under the Nexora universal storage key so the persisted
+    // session is the one the Supabase client reads back on reload.
     const expiresAt = result.expires_at || Math.floor(Date.now() / 1000) + (result.expires_in || 3600);
     const session = {
       access_token: result.access_token,
@@ -91,7 +145,11 @@ async function applyAuthTokens(result: AuthApiResponse) {
       token_type: result.token_type || 'bearer',
       user: result.user,
     };
-    localStorage.setItem(`sb-${projectRef}-auth-token`, JSON.stringify(session));
+    try {
+      localStorage.setItem(SUPABASE_STORAGE_KEY, JSON.stringify(session));
+    } catch {
+      // Storage unavailable — the in-memory session still applies for this run.
+    }
     return { session, user: result.user };
   }
 }

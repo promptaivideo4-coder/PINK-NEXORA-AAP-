@@ -781,7 +781,6 @@ export default function Settings({ navigate }: NavigationProps) {
                   confirmed={shopLoc ? {
                     latitude: typeof shopLoc.latitude === 'number' ? shopLoc.latitude : 0,
                     longitude: typeof shopLoc.longitude === 'number' ? shopLoc.longitude : 0,
-                    fullAddress: shopLoc.address || '',
                     address: shopLoc.address || '',
                     city: shopLoc.city || '',
                     area: shopLoc.area || '',

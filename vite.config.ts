@@ -60,8 +60,14 @@ export default defineConfig(() => {
           clientsClaim: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           // Don't cache API calls, Supabase calls, or non-GET requests
+          // `/auth/login` is deliberately NOT denied: it is a first-class app
+          // route (App.tsx renders the Login screen for it), so navigation
+          // requests to it must fall back to the precached index.html. Denying
+          // it would push that navigation to the network and break the route
+          // offline. Only same-origin API routes and PKCE `?code=` callbacks
+          // (which must hit the network to be exchanged) are excluded.
           navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/api\//, /^\/auth\//, /\?.*code=/],
+          navigateFallbackDenylist: [/^\/api\//, /\?.*code=/],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

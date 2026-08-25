@@ -1,9 +1,14 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import crypto from 'crypto';
+
+// Plain Node handler types — see api/razorpay/create-order.ts for why the
+// Next.js types are not used in this project.
+type Request = IncomingMessage & { method?: string; body?: any };
+type Response = ServerResponse & { status: (code: number) => Response; json: (body: unknown) => void };
 
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: Request, res: Response) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
