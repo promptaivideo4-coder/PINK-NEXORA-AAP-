@@ -95,6 +95,10 @@ export default function App() {
   const sessionResolvedRef = React.useRef(false);
   /** True while a SIGNED_OUT cleanup/redirect is already in flight. */
   const signOutHandledRef = React.useRef(false);
+  /** True once Supabase has reported the initial session (restored or absent).
+   *  Route guards must only fire after this — otherwise a returning user with
+   *  a valid stored session would flash the Login screen on every refresh. */
+  const [sessionResolved, setSessionResolved] = React.useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallToast, setShowInstallToast] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
@@ -375,6 +379,7 @@ export default function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       sessionResolvedRef.current = true;
+      setSessionResolved(true);
 
       switch (event) {
         case 'INITIAL_SESSION':
@@ -418,6 +423,7 @@ export default function App() {
       supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
         if (sessionResolvedRef.current) return;
         sessionResolvedRef.current = true;
+        setSessionResolved(true);
         if (currentSession) handleAuthenticated('INITIAL_SESSION', currentSession);
       });
     }
@@ -451,7 +457,23 @@ export default function App() {
     window.scrollTo(0, 0);
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // PROTECTED-ROUTE GUARD
+  //
+  // Every screen except the public entry flow requires a valid Supabase
+  // session. Previously nothing enforced this: `?screen=dashboard` (and the
+  // staff-preview URLs) rendered protected screens for logged-out visitors,
+  // and the `default:` case rendered the Dashboard for any unknown screen.
+  // The guard fires only after the initial session has been resolved so a
+  // returning user with a stored session never sees a login flash on refresh.
+  // ---------------------------------------------------------------------------
+  const PUBLIC_SCREENS = new Set<ScreenName>(['splash', 'welcome', 'login', 'reset-password', 'register-stepper']);
+  const isPublicScreen = PUBLIC_SCREENS.has(currentScreen);
+
   const renderScreen = () => {
+    if (sessionResolved && !session && !isPublicScreen) {
+      return <Login navigate={navigate} />;
+    }
     switch (currentScreen) {
       case 'splash':
         return <Splash navigate={navigate} />;

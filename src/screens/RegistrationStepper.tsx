@@ -84,7 +84,7 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
             contactNumber,
           });
         } catch (err: any) {
-          console.warn('Shop workspace bootstrap skipped:', err?.message || err);
+          console.error('Shop workspace bootstrap FAILED (owner must retry from Dashboard):', err?.message || err);
         }
         // Save canonical shop location — confirmed lat/lng + details
         try {
@@ -103,7 +103,7 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
             confirmedAt: new Date().toISOString(),
           });
         } catch (err: any) {
-          console.warn('Shop location save skipped:', err?.message || err);
+          console.error('Shop location save FAILED (owner must retry from Settings):', err?.message || err);
         }
         navigate('website-builder');
       } else if (data.user) {

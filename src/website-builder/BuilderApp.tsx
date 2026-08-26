@@ -26,6 +26,36 @@ import { initialData, SalonData } from './types';
 import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle2, ArrowRight, ArrowLeft, Wifi, WifiOff, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchMyShop } from '../lib/shopRepository';
+
+/**
+ * onboarding_progress.business_id links the builder row to the salon's
+ * ORGANIZATION (per the table's migration comment). The old code stored the
+ * user id there. Resolve the real organization id once per session.
+ */
+let cachedOwnerId: string | null | undefined;
+async function getOwnerId(): Promise<string | null> {
+  if (cachedOwnerId !== undefined) return cachedOwnerId;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    cachedOwnerId = session?.user?.id ?? null;
+  } catch {
+    cachedOwnerId = null;
+  }
+  return cachedOwnerId;
+}
+
+let cachedOrgId: string | null | undefined;
+async function resolveBusinessId(): Promise<string | null> {
+  if (cachedOrgId !== undefined) return cachedOrgId;
+  try {
+    const shop = await fetchMyShop(supabase);
+    cachedOrgId = shop?.organizationId ?? null;
+  } catch {
+    cachedOrgId = null;
+  }
+  return cachedOrgId;
+}
 
 /* -------------------------------------------------------------------------- */
 /*  ERROR BOUNDARY — catches any render crash and shows a recovery UI          */
@@ -37,27 +67,21 @@ interface EBState { hasError: boolean; error: Error | null; }
 class BuilderErrorBoundary extends Component<EBProps, EBState> {
   state: EBState = { hasError: false, error: null };
   static getDerivedStateFromError(error: Error): EBState { return { hasError: true, error }; }
-  componentDidCatch(error: Error, info: ErrorInfo) { 
+  componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('BuilderErrorBoundary caught:', error, info);
-    // Auto-recovery: Try to fix corrupted localStorage
+    // RECOVERY POLICY (final audit): a render error must NEVER silently
+    // destroy the owner's draft (the old code wiped team/services/packages/
+    // gallery from localStorage on ANY crash). We only clear storage when it
+    // is actually unparseable (corrupted), and even then the user sees the
+    // recovery UI with an explicit reset action.
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        // Remove potentially corrupted team data
-        if (parsed.data) {
-          parsed.data.team = [];
-          parsed.data.services = [];
-          parsed.data.packages = [];
-          parsed.data.gallery = [];
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-          console.log('✅ Auto-recovery: Cleared corrupted data, reloading...');
-          // Auto-reload after fixing data
-          setTimeout(() => window.location.reload(), 500);
-        }
+        JSON.parse(saved); // throws => genuinely corrupted
       }
-    } catch (e) {
-      console.error('Auto-recovery failed:', e);
+    } catch (parseError) {
+      console.warn('Builder onboarding state is corrupted JSON — clearing it so the wizard can restart cleanly.', parseError);
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     }
   }
   render() {
@@ -65,13 +89,26 @@ class BuilderErrorBoundary extends Component<EBProps, EBState> {
       return (
         <div className="h-screen flex flex-col items-center justify-center bg-[#0a0a0a] text-white p-6 text-center gap-4">
           <AlertTriangle className="w-12 h-12 text-red-500" />
-          <h1 className="text-2xl font-bold">Recovering from error...</h1>
+          <h1 className="text-2xl font-bold">Something went wrong in the website builder</h1>
           <p className="text-sm text-gray-400 max-w-md">
-            Fixing data automatically. App will reload in a moment.
+            Your saved setup was NOT deleted. Reload to try again, or reset the
+            setup data below if the builder keeps failing (resetting erases the
+            draft and starts the onboarding over).
           </p>
-          <div className="flex items-center gap-2 text-sm text-gray-500 mt-4">
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            <span>Please wait...</span>
+          <p className="text-xs text-gray-600 font-mono max-w-md break-all">{String(this.state.error?.message || '')}</p>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-lg bg-white text-black text-sm font-semibold flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" /> Reload
+            </button>
+            <button
+              onClick={() => { try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ } window.location.reload(); }}
+              className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold"
+            >
+              Reset setup data
+            </button>
           </div>
         </div>
       );
@@ -149,10 +186,12 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.activeModule === 'staff-management' || parsed.activeModule === 'dashboard') return parsed.activeModule;
+        if (parsed.activeModule === 'staff-management') return 'staff-management';
+        // Only restore the dashboard when the builder state records a real
+        // publish — stale 'dashboard' modules from the old fake-publish era
+        // are redirected back into the wizard.
+        if (parsed.activeModule === 'dashboard' && data.publishState === 'published') return 'dashboard';
       }
-      const dashboardTab = localStorage.getItem(DASHBOARD_TAB_KEY);
-      if (dashboardTab && data.publishState === 'published') return 'dashboard';
     } catch {}
     return 'wizard';
   });
@@ -181,6 +220,37 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
     }
     return false;
   });
+
+  // CROSS-OWNER GUARD: the builder draft lives in localStorage and is shared
+  // by every session on this device. If a DIFFERENT owner signs in, the
+  // previous owner's draft must not leak into (or be overwritten by) the new
+  // owner's workspace. Clear the stale draft and start fresh.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const ownerId = await getOwnerId();
+        if (!ownerId) return;
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+        const parsed = JSON.parse(saved);
+        if (parsed.ownerId && parsed.ownerId !== ownerId) {
+          console.warn('Builder draft belongs to a different owner — clearing stale device-local state.');
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(DASHBOARD_TAB_KEY);
+          setData({ ...initialData, services: [], team: [], packages: [], gallery: [] });
+          setStep(0);
+          setActiveModule('wizard');
+          setDashboardTab('overview');
+          setShowResumeBanner(false);
+          showToast('Signed in on this device as a different owner — the previous setup draft was cleared.');
+        }
+      } catch {
+        // Corrupt/absent state is handled by the initializers and the error
+        // boundary; nothing to reconcile here.
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isInitialMount = useRef(true);
   const dataRef = useRef(data);
@@ -224,15 +294,17 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
     setSaveStatus('saving');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
-    saveTimerRef.current = setTimeout(() => {
+    saveTimerRef.current = setTimeout(async () => {
       const currentData = dataRef.current;
       const lastCompletedStep = Math.max(currentData.lastCompletedStep || 0, step > 0 ? step - 1 : 0);
 
       // 1. INSTANT: Save to localStorage (works offline, PWA)
       try {
+        const ownerId = await getOwnerId();
         localStorage.setItem(
           STORAGE_KEY,
           JSON.stringify({
+            ownerId,
             step,
             data: { ...currentData, lastCompletedStep },
             activeModule,
@@ -260,11 +332,12 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
           try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
+            const businessId = await resolveBusinessId();
             const { error } = await supabase
               .from('onboarding_progress')
               .upsert({
                 id: user.id,
-                business_id: user.id,
+                business_id: businessId,
                 current_step: step + 1,
                 last_completed_step: lastCompletedStep,
                 status: currentData.publishState === 'published' ? 'completed' : 'in_progress',
@@ -300,13 +373,15 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaveStatus('saving');
     const currentData = dataRef.current;
     try {
+      const ownerId = await getOwnerId();
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
+          ownerId,
           step,
           data: currentData,
           activeModule,
@@ -351,9 +426,15 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
       setActiveModule('staff-management');
       showToast('Opened Staff Management Module (Screen 17)');
     } else if (screenId >= 18 && screenId <= 25) {
-      // Ensure published state for dashboard
-      if (data.publishState !== 'published') {
-        setData(prev => ({ ...prev, publishState: 'published', publishedUrl: prev.publishedUrl || `https://nexora.site/${prev.websiteSlug || 'royal-hair-studio'}`, websiteSlug: prev.websiteSlug || 'royal-hair-studio' }));
+      // The dashboard is only unlocked after a REAL database publish.
+      // (The old code forced publishState='published' here and fabricated a
+      // nexora.site URL — removed in the final release audit.)
+      if (dataRef.current.publishState !== 'published') {
+        setActiveModule('wizard');
+        setStep(13); // Step 14 of 15: Publish
+        setShowResumeBanner(false);
+        showToast('Publish your website to the database first to open the dashboard');
+        return;
       }
       setActiveModule('dashboard');
       const tabIndex = screenId - 18;
@@ -387,9 +468,10 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
           onNavigate={navigateToScreen}
         />
         <main className="flex-1 flex overflow-hidden">
-          {/* Force Landing into dashboard mode by ensuring published and passing forcedActiveTab */}
+          {/* Landing in dashboard mode with REAL publish state (the module is
+              only reachable after a verified database publish) */}
           <Landing
-            data={{ ...data, publishState: 'published', publishedUrl: data.publishedUrl || `https://nexora.site/${data.websiteSlug || 'royal-hair-studio'}` }}
+            data={data}
             setData={setData}
             onNext={nextStep}
             goToStep={goToStep}
@@ -615,7 +697,7 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
           {step === 11 && <StepAIContentReview data={data} setData={setData} onNext={nextStep} onPrev={prevStep} onSave={handleSave} />}
           {step === 12 && <StepFullWebsitePreview data={data} setData={setData} onNext={nextStep} onPrev={prevStep} onSave={handleSave} />}
           {step === 13 && <StepPublishSetup data={data} setData={setData} onNext={nextStep} onPrev={prevStep} onSave={handleSave} />}
-          {step === 14 && <StepPublishSuccess data={data} setData={setData} onNext={() => { setData(prev => ({ ...prev, publishState: 'published' })); setActiveModule('dashboard'); setDashboardTab('overview'); handleSave(); showToast('Website Published — Dashboard Active'); }} onSave={handleSave} />}
+          {step === 14 && <StepPublishSuccess data={data} setData={setData} onNext={() => { if (dataRef.current.publishState === 'published') { setActiveModule('dashboard'); setDashboardTab('overview'); handleSave(); showToast('Website Published — Dashboard Active'); } }} onSave={handleSave} />}
           {step === 15 && (
             <BookingConfirmation 
               bookingId="NX-10482"

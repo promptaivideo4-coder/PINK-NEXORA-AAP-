@@ -19,6 +19,7 @@ import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   fetchMyShop,
+  fetchPublishedWebsite,
   listServices,
   listStaff,
   listHours,
@@ -206,9 +207,15 @@ export default function WebsiteBuilder({ navigate }: NavigationProps) {
         websiteSlug: shop.name ? shop.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) : undefined,
       };
 
-      // 6. If published, set the published URL
-      if (shop.status === 'published' && data.websiteSlug) {
-        data.publishedUrl = `/salons/${data.websiteSlug}`;
+      // 6. If published, hydrate the published URL/slug from the database
+      //    (salon_public_websites is the source of truth — the old code
+      //    re-derived the slug from the salon name, which could not match the
+      //    slug the owner actually published).
+      const published = await fetchPublishedWebsite(supabase, shop.id).catch(() => null);
+      if (published && published.isPublished && published.slug) {
+        data.websiteSlug = published.slug;
+        data.publishedUrl = `/salons/${published.slug}`;
+        data.publishState = 'published';
       }
 
       setPrefilledData(data);

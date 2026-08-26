@@ -11,102 +11,11 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 type FilterType = 'All' | 'VIP' | 'Members' | 'New';
 
-const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: 'isabella',
-    name: 'Neha Gupta',
-    type: 'VIP',
-    lastVisit: 'Aug 05',
-    spend: '₹42,000',
-    visits: '24',
-    initials: 'NG',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDSASh8fQbXRphLrWlNUiZJkDAPzXTKKOj0wxBl_dEfVg5YjX_QjzuayOuck-4bqtQuoxVVYJLL35bXm7ClOVeMELqfIMK52Fi-23S7uogMSFKDuKkOPu4GsU1AzN7H9q2fneBzJu3YUgrH2cCRAVNjuZfeNcjendo_pDd8ZyiyZnMQVB_OW8QOuX34tGDizguwOOHdahxKDbJ5ODAoRyA6dl3VzuzcgXKZECHCYTm7fG3qHg87pxhUvs30iDvRfSPSKQYDAOqZzp8',
-    phone: '+91 98765 11223',
-    whatsappNumber: '+91 98765 11223',
-    email: 'neha.gupta@example.com',
-    address: 'Vaishali Nagar, Jaipur',
-    city: 'Vaishali Nagar, Jaipur',
-    joinDate: '10 Jan 2024',
-    notes: 'Allergic to specific brand of PPD hair dye. Ensure use of PPD-free color lines only.',
-    history: [
-      { id: 'h1', date: 'Aug 05, 2026', service: 'Full Highlight & Cut', provider: 'Senior Stylist Aditi', price: '₹8,500' },
-      { id: 'h2', date: 'May 18, 2026', service: 'Root Touch-up & Blowout', provider: 'Stylist Suman', price: '₹3,500' },
-    ]
-  },
-  {
-    id: '1',
-    name: 'Ananya Sharma',
-    type: 'VIP',
-    lastVisit: 'Oct 12',
-    spend: '₹1,25,000',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCt-PXhrzr1JwegXd4yq3Q-tOn-Y6DVNyA-dibhf_9y43Rv1G4vJGXWLGDaKPe25-EoJ9_GW-kQugV8F5X3LuB0mc2esYdTv3yerLaGI8E8K5Jx0dgyG_mRyiWBdsMbasm2_bo3TEC29iDoCiyWuofLHUaJoNEhlfClsnJUrENyongZGvk4WFRz5Od7hjNG9rvh_1PqxWstK0j49Z82TDa2RudlUlAZiyjYBrVKxyI2dTLjfs742Atdy6s0Y4QE-Fw_A1LO-s33uNc',
-    phone: '+91 98765 43210',
-    whatsappNumber: '+91 98765 43210',
-    email: 'ananya.sharma@example.com',
-    address: 'Malviya Nagar, Jaipur, RJ 302017',
-    city: 'Malviya Nagar, Jaipur',
-    joinDate: '15 Jan 2024',
-    notes: 'Prefers quiet sessions. Always books with Rohan. Allergic to lavender products.',
-    history: [
-      { id: 'h1', date: 'Oct 12, 2026', service: 'Balayage & Cut', provider: 'Rohan', price: '₹12,500' },
-      { id: 'h2', date: 'Aug 24, 2026', service: 'Root Touch-up & Gloss', provider: 'Rohan', price: '₹6,500' },
-      { id: 'h3', date: 'Jul 05, 2026', service: 'Full Highlights', provider: 'Rohan', price: '₹14,000' },
-    ]
-  },
-  {
-    id: '2',
-    name: 'Priya Kapoor',
-    type: 'Gold Member',
-    lastVisit: 'Sep 28',
-    visits: '14',
-    initials: 'PK',
-    phone: '+91 98765 87654',
-    whatsappNumber: '+91 98765 87654',
-    email: 'priya.kapoor@example.com',
-    address: 'Raja Park, Jaipur, RJ 302004',
-    city: 'Raja Park, Jaipur',
-    joinDate: '01 Feb 2024',
-    notes: 'Likes to chat during appointments. Prefers morning slots.',
-    history: [
-      { id: 'h4', date: 'Sep 28, 2026', service: 'Women\'s Haircut', provider: 'Ananya', price: '₹3,500' },
-      { id: 'h5', date: 'Aug 15, 2026', service: 'Blowout', provider: 'Ananya', price: '₹2,200' },
-    ]
-  },
-  {
-    id: '3',
-    name: 'Rohan Verma',
-    type: 'Standard',
-    lastVisit: 'Oct 20',
-    spend: '₹34,000',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDXmxb3-cgY68I-Np8VynFSUirxUNp3pSC92c02DpaH20RR7TkS2aNc2eBU28yMr2mvF4ta7pMOlY0VsthN-E0_Nru9VFxYExGswOvPTezXWTYjl2tx7mQIuFUSS39PcdOSb7IcY6NCdVlQlhVNIGbL24TMNycSHwZ55k22K_IwoGyYfxhAeh74HXJiHziItTCLCLb4_MNooy-XIxXXBPCIgNiOFFSNoFcpWolBWfwThWlwRIVFxh7CnY3vhGh228vaddwAWIilJiQ',
-    phone: '+91 98765 32109',
-    whatsappNumber: '+91 98765 32109',
-    email: 'rohan.verma@example.com',
-    address: 'Mansarovar, Jaipur, RJ 302020',
-    city: 'Mansarovar, Jaipur',
-    joinDate: '15 Mar 2024',
-    notes: 'Usually books last minute.',
-    history: [
-      { id: 'h6', date: 'Oct 20, 2026', service: 'Color Correction', provider: 'Amit', price: '₹8,500' },
-      { id: 'h7', date: 'Feb 14, 2026', service: 'Event Styling', provider: 'Ananya', price: '₹4,500' },
-    ]
-  },
-  {
-    id: '4',
-    name: 'Amit Patel',
-    type: 'New',
-    upcomingVisit: 'Oct 25',
-    initials: 'AP',
-    phone: '+91 98765 65432',
-    whatsappNumber: '+91 98765 65432',
-    email: 'amit.patel@example.com',
-    address: 'C-Scheme, Jaipur, RJ 302001',
-    city: 'C-Scheme, Jaipur',
-    joinDate: '01 Apr 2024',
-    notes: 'First time client. Referred by Priya Kapoor.',
-    history: []
-  }
-];
+// Customer records previously shown here were hardcoded demo people (fake
+// names, fake spend). Removed in the final release audit: the CRM list starts
+// EMPTY and only shows customers the owner adds on this device or real data
+// synced later. Real booking customers are visible in the Bookings screen.
+const INITIAL_CUSTOMERS: Customer[] = [];
 
 const ZONES = [
   'Central Jaipur',
@@ -127,6 +36,7 @@ const ZONE_AREAS: Record<string, string[]> = {
 export default function Customers({ navigate }: NavigationProps) {
   const { t } = useLanguage();
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const isCrmEmpty = customers.length === 0;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [zoneFilter, setZoneFilter] = useState<string>('');
@@ -247,23 +157,42 @@ export default function Customers({ navigate }: NavigationProps) {
     setTimeout(() => setSuccessToast(''), 3000);
   };
 
-  const handleImportContacts = () => {
-    const importedSample: Customer = {
-      id: Date.now().toString(),
-      name: 'Kareena Kapoor',
-      type: 'VIP',
-      lastVisit: 'Just now',
-      spend: '₹75,000',
-      initials: 'KK',
-      phone: '+91 99887 76655',
-      email: 'kareena.k@example.com',
-      address: 'Juhu Beach, Mumbai, MH',
-      notes: 'Imported from Device Contacts',
-      history: []
-    };
-    setCustomers(prev => [importedSample, ...prev]);
-    setSuccessToast('Imported Kareena Kapoor from Contacts!');
-    setTimeout(() => setSuccessToast(''), 3000);
+  // REAL contact import via the browser Contact Picker API (Chrome/Edge).
+  // The previous version faked an import by inserting a hardcoded person.
+  const handleImportContacts = async () => {
+    const contacts = (navigator as any).contacts;
+    if (!contacts?.query) {
+      setSuccessToast('Contact import is not supported in this browser (use Chrome/Edge). Add customers manually instead.');
+      setTimeout(() => setSuccessToast(''), 5000);
+      return;
+    }
+    try {
+      const selected = await contacts.query({ name: {}, tel: {}, email: {} });
+      if (!selected || selected.length === 0) {
+        setSuccessToast('No contacts selected.');
+        setTimeout(() => setSuccessToast(''), 4000);
+        return;
+      }
+      const imported: Customer[] = selected.slice(0, 50).map((c: any, i: number) => ({
+        id: `imp-${Date.now()}-${i}`,
+        name: [c.name?.familyName, c.name?.givenName].filter(Boolean).join(' ') || c.name?.formatted || 'Imported contact',
+        type: 'Regular',
+        lastVisit: '—',
+        spend: '₹0',
+        visits: '0',
+        initials: '',
+        phone: c.tel?.[0] || '',
+        email: c.email?.[0] || '',
+        notes: 'Imported from device contacts',
+        history: []
+      }));
+      setCustomers(prev => [...imported, ...prev]);
+      setSuccessToast(`Imported ${imported.length} contact(s) from device.`);
+      setTimeout(() => setSuccessToast(''), 4000);
+    } catch (e: any) {
+      setSuccessToast(e?.message || 'Contact import failed.');
+      setTimeout(() => setSuccessToast(''), 5000);
+    }
   };
 
   return (
@@ -271,7 +200,21 @@ export default function Customers({ navigate }: NavigationProps) {
       <TopBar showBack onBack={() => navigate('dashboard')} navigate={navigate} title={t('customers')} />
 
       <main className="w-full max-w-md mx-auto px-4 pt-6 pb-12 flex-grow space-y-6 flex flex-col">
-        
+
+        {/* Honest CRM state — the hardcoded demo directory was removed in the
+            final release audit. */}
+        {isCrmEmpty && (
+          <div className="rounded-2xl border border-dashed border-outline-variant/60 bg-surface-container-lowest/60 p-5 text-center">
+            <p className="text-sm font-bold">No customers in this directory yet</p>
+            <p className="mt-1 text-xs text-on-surface-variant leading-relaxed">
+              Add a customer, import from device contacts (Chrome/Edge), or see
+              real booking customers in the Bookings screen. Customer profiles
+              are stored on this device; the shared customer CRM syncs with the
+              main website.
+            </p>
+          </div>
+        )}
+
         {/* Top Header Actions */}
         <div className="flex items-center justify-between">
           <div>

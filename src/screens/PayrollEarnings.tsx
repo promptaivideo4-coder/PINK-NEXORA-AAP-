@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useOwnerAccess } from '../hooks/useOwnerAccess';
 import {
   AlertCircle,
   ArrowLeft,
@@ -66,17 +67,15 @@ function money(value: number) {
   return `₹${Math.round(value).toLocaleString('en-IN')}`;
 }
 
+// The hardcoded demo payroll roster was removed in the final release audit —
+// payroll only appears from live staff + bookings (buildLivePayroll) or from
+// records the owner generated on this device.
 function fallbackStaff(): Array<{ id: string; name: string; role: string }> {
   const directory = readJson<any[]>('nexora_staff_directory_demo', []);
   if (directory.length) return directory.slice(0, 8).map((staff) => ({ id: staff.id, name: staff.name, role: staff.role || 'Stylist' }));
   const legacy = readJson<any[]>('nexora_staff_list', []);
   if (legacy.length) return legacy.slice(0, 8).map((staff) => ({ id: staff.id, name: staff.name, role: staff.role || 'Stylist' }));
-  return [
-    { id: 'demo-elena', name: 'Elena Rodriguez', role: 'Senior Stylist' },
-    { id: 'demo-marcus', name: 'Marcus Chen', role: 'Master Barber' },
-    { id: 'demo-sanya', name: 'Sanya Rao', role: 'Color Specialist' },
-    { id: 'demo-adi', name: 'Aditi Mehra', role: 'Nail Artist' },
-  ];
+  return [];
 }
 
 function fallbackPayroll(staff: Array<{ id: string; name: string; role: string }>): PayrollRecord[] {
@@ -99,19 +98,19 @@ function statusClass(status: PaymentStatus) {
   return 'border-amber-200 bg-amber-50 text-amber-800';
 }
 
-function currentRole() {
-  if (typeof window === 'undefined') return 'owner';
-  return (window.localStorage.getItem('nexora-user-role') || window.localStorage.getItem('nexora-demo-role') || 'owner').toLowerCase();
-}
-
-function isAuthorizedRole(role: string) {
-  return ['owner', 'manager', 'admin', 'salon_owner'].some((allowed) => role.includes(allowed));
+function AccessChecking() {
+  return (
+    <div className="min-h-screen bg-[#fcf9f8] flex items-center justify-center">
+      <p className="text-sm font-medium text-gray-500">Checking access…</p>
+    </div>
+  );
 }
 
 export default function PayrollEarnings({ navigate }: NavigationProps) {
-  const [authorized] = useState(() => isAuthorizedRole(currentRole()));
+  const access = useOwnerAccess();
   const [cycle, setCycle] = useState(CYCLES[0]);
-  const [records, setRecords] = useState<PayrollRecord[]>(() => readJson<PayrollRecord[]>(PAYROLL_KEY, fallbackPayroll(fallbackStaff())));
+  // No fake salary fallback — empty until live data or a device-generated record exists.
+  const [records, setRecords] = useState<PayrollRecord[]>(() => readJson<PayrollRecord[]>(PAYROLL_KEY, [] as PayrollRecord[]));
   const [filter, setFilter] = useState<'All' | PaymentStatus>('All');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -224,7 +223,8 @@ export default function PayrollEarnings({ navigate }: NavigationProps) {
     showToast('Payroll statement downloaded');
   };
 
-  if (!authorized) return <UnauthorizedPayroll navigate={navigate} />;
+  if (access.status === 'checking') return <AccessChecking />;
+  if (access.status === 'denied') return <UnauthorizedPayroll navigate={navigate} />;
 
   return (
     <div className="min-h-screen bg-[#fcf9f8] text-on-background antialiased">

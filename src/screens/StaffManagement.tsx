@@ -71,36 +71,9 @@ const ELENA_AVATAR =
 const MARCUS_AVATAR =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuBcjDud8ipDaq3L_FuF5pK08jOkmyhGMdjKJQmJLuiF4U7zsZOL45tonoY185_wyzCGro0RCfsu64ENZzYqxYRHr1C1FC0os9uaTZNy5zusD7HiMJbgOJ8XSuzxyXYvpaFyTHgYNrhUrTaZHO2UA5neNkz-JYdQAoyhDwnx6wwkFzMdHJgnq3xn7TdAQcdGuSEuXGXQSqV0H7Gw0XvfXTMV5BYuI-mFKWD80THGvA-w0_79v7eR4yC_';
 
-const DEMO_STAFF: StaffMember[] = [
-  {
-    id: 'demo-elena',
-    name: 'Elena Rodriguez',
-    role: 'Senior Stylist',
-    skills: ['Coloring', 'Balayage', 'Extensions'],
-    phone: '+91 98765 43210',
-    email: 'elena@nexora.com',
-    rating: 4.9,
-    status: 'Available',
-    shift: '9:00 AM - 6:00 PM',
-    bookingsToday: 8,
-    assignedServices: 12,
-    avatar: ELENA_AVATAR,
-  },
-  {
-    id: 'demo-marcus',
-    name: 'Marcus Chen',
-    role: 'Master Barber',
-    skills: ['Fades', 'Beard Trim'],
-    phone: '+91 98765 43211',
-    email: 'marcus@nexora.com',
-    rating: 4.8,
-    status: 'Busy',
-    shift: '10:00 AM - 7:00 PM',
-    bookingsToday: 5,
-    assignedServices: 8,
-    avatar: MARCUS_AVATAR,
-  },
-];
+// NOTE: the hardcoded demo team (fake names/avatars) was removed in the
+// final release audit — the directory shows REAL staff rows only.
+
 
 const STATUS_OPTIONS: StaffStatus[] = ['Available', 'Busy', 'On Leave', 'Inactive'];
 const FILTER_OPTIONS: StatusFilter[] = ['All', ...STATUS_OPTIONS];
@@ -145,15 +118,20 @@ function toEmploymentStatus(status: StaffStatus) {
   return 'active';
 }
 
+/**
+ * Local (unsynced) staff directory — entries the owner added while no shop
+ * workspace existed. It is seeded with NOTHING: the old hardcoded demo team
+ * was removed. Returns only what the user themselves saved.
+ */
 function getStoredDemoStaff(): StaffMember[] {
-  if (typeof window === 'undefined') return DEMO_STAFF;
+  if (typeof window === 'undefined') return [];
   try {
     const saved = window.localStorage.getItem(DEMO_STORAGE_KEY);
-    if (!saved) return DEMO_STAFF;
+    if (!saved) return [];
     const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEMO_STAFF;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return DEMO_STAFF;
+    return [];
   }
 }
 
@@ -321,13 +299,10 @@ export default function StaffManagement({ navigate }: NavigationProps) {
 
       // Legacy fallback
       const rows = await fetchStaffRows(supabase, shop.id);
-      if (rows.length > 0) {
-        setDataMode('live');
-        setStaffList(rows.map(mapShopStaff));
-      } else {
-        setDataMode('demo');
-        setStaffList(getStoredDemoStaff());
-      }
+      // A shop with zero staff rows is a real (empty) live state — NOT demo
+      // data. Adding staff here writes to Supabase.
+      setDataMode('live');
+      setStaffList(rows.map(mapShopStaff));
     } catch (error) {
       console.warn('Staff directory live data unavailable; using offline demo data.', error);
       setShopId(null);
@@ -590,7 +565,7 @@ export default function StaffManagement({ navigate }: NavigationProps) {
           <p className="text-base text-on-surface-variant">Manage team, schedules &amp; performance</p>
           {dataMode === 'demo' && (
             <span className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-full border border-[#e0bec6] bg-[#fde7f3] px-2.5 py-1 text-[11px] font-semibold text-primary">
-              <AlertCircle className="h-3.5 w-3.5" /> Preview data · changes saved on this device
+              <AlertCircle className="h-3.5 w-3.5" /> {shopId ? 'No saved staff yet · changes saved on this device' : 'No shop workspace yet · changes saved on this device'}
             </span>
           )}
         </section>

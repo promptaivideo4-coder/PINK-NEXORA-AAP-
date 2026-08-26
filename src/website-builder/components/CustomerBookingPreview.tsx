@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SalonData, Service, TeamMember, getPublicStaffData } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { openRazorpayCheckout, createPaymentOrder, type RazorpayPaymentResult } from '../../lib/razorpay';
+import { openRazorpayCheckout, createPaymentOrder, verifyPaymentServer, isRazorpayTestMode, type RazorpayPaymentResult } from '../../lib/razorpay';
 import { 
   Sparkles, 
   Clock, 
@@ -126,7 +126,9 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
   const [cardExpiry, setCardExpiry] = useState('12/28');
   const [cardCvv, setCardCvv] = useState('123');
   const [upiId, setUpiId] = useState('nexora@paytm');
-  const [paymentState, setPaymentState] = useState<'idle' | 'verifying' | 'success'>('idle');
+  const [paymentState, setPaymentState] = useState<'idle' | 'verifying' | 'success' | 'failed'>('idle');
+  /** Server-verified payment identifiers (set ONLY after verifyPaymentServer). */
+  const [verifiedPayment, setVerifiedPayment] = useState<{ paymentId: string; orderId: string } | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const depositPercentage = data.bookingRules?.advanceDepositPercentage ?? 25;
@@ -142,11 +144,13 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
     setPaymentState('verifying');
 
     try {
-      // Create Razorpay order
+      // 1. Create Razorpay order — the server endpoint now requires the
+      //    Supabase session and validates amount + salon ownership.
       const order = await createPaymentOrder(
         depositAmount * 100, // Convert to paise
         {
           bookingId: `BK_${Date.now()}`,
+          salonId: (data as any).salonId, // owner's canonical salon id when known
           customerName,
           service: selectedService.name,
           date: selectedDate.toLocaleDateString('en-IN'),
@@ -156,10 +160,12 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
       );
 
       if (!order) {
-        throw new Error('Failed to create payment order');
+        setPaymentState('failed');
+        if (onShowToast) onShowToast('Could not start payment. Log in as the salon owner and try again.');
+        return;
       }
 
-      // Open Razorpay checkout
+      // 2. Open Razorpay checkout.
       await openRazorpayCheckout(
         order,
         {
@@ -168,20 +174,35 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
           phone: customerPhone,
         },
         (result: RazorpayPaymentResult) => {
-          // Payment successful
-          console.log('Payment successful:', result);
-          setPaymentState('success');
-          setTimeout(() => {
-            setActiveView('confirmed');
-            if (onShowToast) {
-              onShowToast(`Booking confirmed for ${selectedService.name}! Payment ID: ${result.razorpay_payment_id}`);
+          // 3. SERVER-SIDE verification — the client's checkout callback is
+          //    NOT trusted. The booking is only confirmed after the HMAC
+          //    signature verifies (and the payment is re-read from Razorpay
+          //    when reachable).
+          void (async () => {
+            const verification = await verifyPaymentServer(result, depositAmount * 100);
+            if (verification.valid) {
+              setVerifiedPayment({ paymentId: verification.paymentId || result.razorpay_payment_id, orderId: verification.orderId || result.razorpay_order_id });
+              setPaymentState('success');
+              setTimeout(() => {
+                setActiveView('confirmed');
+                if (onShowToast) {
+                  onShowToast(`Deposit verified on server — payment ${result.razorpay_payment_id}`);
+                }
+              }, 800);
+            } else {
+              // Paid-but-unverified is NOT a success. Say exactly what
+              // happened instead of a fake confirmation.
+              setPaymentState('failed');
+              if (onShowToast) {
+                onShowToast(`Payment could not be verified server-side${verification.error ? `: ${verification.error}` : ''}. Do not pay again until the owner checks the dashboard.`);
+              }
             }
-          }, 800);
+          })();
         },
         (error: any) => {
-          // Payment failed
+          // Payment failed / cancelled
           console.error('Payment failed:', error);
-          setPaymentState('idle');
+          setPaymentState('failed');
           if (onShowToast) {
             onShowToast('Payment failed. Please try again.');
           }
@@ -189,7 +210,7 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
       );
     } catch (error) {
       console.error('Payment error:', error);
-      setPaymentState('idle');
+      setPaymentState('failed');
       if (onShowToast) {
         onShowToast('Payment initialization failed. Please try again.');
       }
@@ -232,10 +253,14 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
             <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-5 border border-emerald-100 shadow-xs">
               <CalendarCheck className="w-9 h-9" />
             </div>
-            <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight mb-2">Booking Confirmed!</h1>
-            <p className="text-xs text-gray-500 font-semibold mb-4">Your appointment is fully confirmed.</p>
+            <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight mb-2">Deposit Verified</h1>
+            <p className="text-xs text-gray-500 font-semibold mb-2">
+              {isRazorpayTestMode
+                ? 'Test-mode checkout — the deposit payment was verified on the server. Live bookings additionally persist to the salon dashboard.'
+                : 'The deposit payment was verified on the server.'}
+            </p>
             <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-gray-100 border border-gray-200 font-bold text-[10px] text-gray-500 uppercase tracking-wider">
-              Booking ID: NX-10482
+              Payment: {verifiedPayment?.paymentId || 'unverified'} • Order: {verifiedPayment?.orderId || '—'}
             </div>
           </div>
 
@@ -920,7 +945,7 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
                   <button
                     type="button"
                     onClick={handlePayNow}
-                    disabled={paymentState !== 'idle'}
+                    disabled={paymentState === 'verifying'}
                     className={`w-full font-bold text-xs py-4 px-4 rounded-xl shadow-md transition-all flex justify-center items-center gap-2 select-none cursor-pointer ${
                       paymentState === 'idle'
                         ? 'bg-[#ac0053] hover:bg-[#ba005b] text-white shadow-[#ac0053]/15'
@@ -932,6 +957,12 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
                     {paymentState === 'idle' && (
                       <>
                         <span>Pay Deposit ₹{depositAmount}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                    {paymentState === 'failed' && (
+                      <>
+                        <span>Retry Payment</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -1120,7 +1151,7 @@ export default function CustomerBookingPreview({ data, onBackToWebsite, onShowTo
           </div>
           <button 
             onClick={handlePayNow}
-            disabled={paymentState !== 'idle'}
+            disabled={paymentState === 'verifying'}
             className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-xs flex items-center gap-1 cursor-pointer ${
               paymentState === 'idle'
                 ? 'bg-[#ac0053] text-white hover:bg-[#ba005b]'

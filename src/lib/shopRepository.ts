@@ -302,13 +302,17 @@ export async function updateShopProfile(
     if (input.landmark !== undefined) patch.location_landmark = input.landmark ? input.landmark.trim() : null;
     if (input.pincode !== undefined) patch.location_pincode = input.pincode ? input.pincode.trim() : null;
 
-    const { error } = await client
+    // AFFECTED-ROW VERIFICATION: PostgREST returns 0 rows (no error) when RLS
+    // silently blocks an UPDATE. The previous code returned ok:true in that
+    // case — the "saved" profile never reached the database.
+    const { data: updated, error } = await client
       .from('salons')
       .update(patch)
-      .eq('id', salonId);
+      .eq('id', salonId)
+      .select('id');
 
     if (error) {
-      // Fallback to secure RPC if direct update hits RLS
+      // Direct update rejected → try the secure RPC fallback.
       const rpcUpdates = {
         name: patch.name,
         description: patch.description,
@@ -322,7 +326,30 @@ export async function updateShopProfile(
         p_updates: rpcUpdates,
       });
       if (rpcErr) return { ok: false, error: rpcErr.message };
+      return { ok: true };
     }
+
+    if (!updated || updated.length === 0) {
+      // RLS silent block — fall back to the secure RPC (security definer,
+      // ownership verified server-side).
+      const rpcUpdates = {
+        name: patch.name,
+        description: patch.description,
+        address: patch.address,
+        area: patch.area,
+        city: patch.city,
+        business_category: patch.business_category,
+      };
+      const { error: rpcErr } = await client.rpc('update_salon_profile_secure', {
+        p_salon_id: salonId,
+        p_updates: rpcUpdates,
+      });
+      if (rpcErr) {
+        return { ok: false, error: `Profile save blocked by row-level security and the secure RPC also failed: ${rpcErr.message}` };
+      }
+      return { ok: true };
+    }
+
     return { ok: true };
   } catch (err: any) {
     return { ok: false, error: err?.message || String(err) };
@@ -395,11 +422,13 @@ export async function updateShopLocation(
     const salonIds = ownedSalons.map((s: any) => s.id);
 
     // ---- Full payload (12 fields) ----
-    const patch = {
+    const patch: Record<string, unknown> = {
       latitude: input.latitude,
       longitude: input.longitude,
       location_accuracy_m: typeof input.accuracyM === 'number' ? input.accuracyM : null,
-      location_source: input.source === 'gps' || input.source === 'manual' ? input.source : null,
+      // Only write location_source when the caller actually provides one —
+      // sending null would wipe a previously saved 'gps'/'manual' value.
+      ...(input.source === 'gps' || input.source === 'manual' ? { location_source: input.source } : {}),
       location_address: input.address ?? null,
       location_city: input.city ?? null,
       location_area: input.area ?? null,
@@ -773,6 +802,10 @@ export interface PublishWebsiteResult {
   publishedAt?: string;
   error?: string | null;
   validationErrors?: string[];
+  /** True when the salon's verified flag actually flipped in the database. */
+  verifiedNow?: boolean;
+  /** Human-readable state (e.g. pending Growth Partner approval). */
+  note?: string | null;
 }
 
 export function validateSalonForPublish(shop: MyShop | null): PublishValidationResult {
@@ -909,22 +942,76 @@ export async function publishShopWebsite(
       };
     }
 
-    // 5. Update salons: verified = true, is_active = true, accepts_online_bookings = true
-    const { error: salonUpdateErr } = await client
-      .from('salons')
-      .update({
-        verified: true,
-        is_active: true,
-        accepts_online_bookings: true,
-        updated_at: nowIso,
-      })
-      .eq('id', shop.id);
 
-    if (salonUpdateErr) {
-      console.warn('Direct salons update note:', salonUpdateErr.message);
+    // 5. Make the salon publicly visible.
+    //
+    // Canonical rule (verified against the live project): owners CANNOT flip
+    // `verified` by direct UPDATE — RLS on public.salons blocks it silently
+    // (0 rows, no error). Publication of the verified flag happens ONLY
+    // through the proposal workflow (review_salon_setup RPC, action='publish').
+    //
+    // Previous code attempted the direct UPDATE, logged a console.warn when it
+    // failed, and STILL reported publish success — the website row existed but
+    // the salon stayed unverified, so customers could never book. It now:
+    //   a) tries the RPC when a proposal exists (canonical path),
+    //   b) otherwise attempts the direct UPDATE WITH affected-row + re-fetch
+    //      verification (in case the project's RLS grants it),
+    //   c) reports the honest state instead of a fake success.
+    let verifiedNow = false;
+    let publishNote: string | null = null;
+
+    const confirmVerified = async (): Promise<boolean> => {
+      const { data: rows } = await client
+        .from('salons')
+        .select('id, verified, is_active, accepts_online_bookings')
+        .eq('id', shop.id);
+      const row = (rows ?? [])[0] as any;
+      return Boolean(row && row.verified);
+    };
+
+    // (a) Canonical proposal-publish path, when the owner has a proposal.
+    if (shop.proposalId && ['submitted', 'approved'].includes(shop.proposalStatus ?? '')) {
+      try {
+        await client.rpc('review_salon_setup', {
+          p_proposal_id: shop.proposalId,
+          p_action: 'publish',
+          p_notes: 'Owner published from the website builder.',
+        });
+        verifiedNow = await confirmVerified();
+        if (verifiedNow) {
+          publishNote = 'Published via the proposal workflow (review_salon_setup).';
+        }
+      } catch (rpcCatch: any) {
+        publishNote = `Proposal publish RPC failed: ${rpcCatch?.message || 'unknown error'}`;
+      }
     }
 
-    // 6. Persistence Verification: Re-query from DB to verify
+    // (b) Direct UPDATE with verification (works only if RLS allows it).
+    if (!verifiedNow) {
+      const { data: updatedRows, error: salonUpdateErr } = await client
+        .from('salons')
+        .update({
+          verified: true,
+          is_active: true,
+          accepts_online_bookings: true,
+          updated_at: nowIso,
+        })
+        .eq('id', shop.id)
+        .select('id, verified');
+      if (salonUpdateErr) {
+        publishNote = `Direct salon update rejected by the database: ${salonUpdateErr.message}`;
+      } else if (!updatedRows || updatedRows.length === 0) {
+        // RLS silent block — the update did NOT happen.
+        publishNote = 'Salon visibility update was blocked by database row-level security (owners cannot self-verify). The website is saved and will go live when the setup is approved through the Growth Partner review workflow.';
+      } else {
+        verifiedNow = await confirmVerified();
+        publishNote = verifiedNow
+          ? 'Published: salon marked verified in the database.'
+          : 'Salon update returned a row but the verified flag did not persist; approval is still pending.';
+      }
+    }
+
+    // 6. Persistence Verification: Re-query from DB to verify the website row.
     const { data: verifySpw, error: verifyErr } = await client
       .from('salon_public_websites')
       .select('salon_id, slug, is_published, published_at')
@@ -939,26 +1026,16 @@ export async function publishShopWebsite(
       };
     }
 
-    // 7. Optional local filesystem publish fallback
-    if (input.html) {
-      try {
-        await fetch('/api/publish-site', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ html: input.html, slug: cleanSlug }),
-        });
-      } catch {
-        // Local preview fallback failure is non-fatal
-      }
-    }
-
     const publicPath = `/salons/${verifySpw.slug}`;
     return {
       ok: true,
       slug: verifySpw.slug,
       url: publicPath,
       publishedAt: verifySpw.published_at,
+      verifiedNow,
+      note: publishNote,
     };
+  
   } catch (err: any) {
     return {
       ok: false,

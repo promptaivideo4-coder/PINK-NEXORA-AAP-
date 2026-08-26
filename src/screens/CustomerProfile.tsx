@@ -10,24 +10,7 @@ import TopBar from '../components/TopBar';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Default static Neha Gupta profile data if none in localStorage
-const NEHA_GUPTA: Customer = {
-  id: 'isabella',
-  name: 'Neha Gupta',
-  type: 'VIP',
-  lastVisit: 'Aug 05',
-  spend: '₹42,000',
-  visits: '24',
-  initials: 'NG',
-  image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDSASh8fQbXRphLrWlNUiZJkDAPzXTKKOj0wxBl_dEfVg5YjX_QjzuayOuck-4bqtQuoxVVYJLL35bXm7ClOVeMELqfIMK52Fi-23S7uogMSFKDuKkOPu4GsU1AzN7H9q2fneBzJu3YUgrH2cCRAVNjuZfeNcjendo_pDd8ZyiyZnMQVB_OW8QOuX34tGDizguwOOHdahxKDbJ5ODAoRyA6dl3VzuzcgXKZECHCYTm7fG3qHg87pxhUvs30iDvRfSPSKQYDAOqZzp8',
-  phone: '+91 98765 11223',
-  email: 'neha.gupta@example.com',
-  address: 'Vasant Vihar, New Delhi',
-  notes: 'Allergic to specific brand of PPD hair dye. Ensure use of PPD-free color lines only.',
-  history: [
-    { id: 'h1', date: 'Aug 05, 2026', service: 'Full Highlight & Cut', provider: 'Senior Stylist Aditi', price: '₹8,500' },
-    { id: 'h2', date: 'May 18, 2026', service: 'Root Touch-up & Blowout', provider: 'Stylist Suman', price: '₹3,500' },
-  ]
-};
+/** removed: the NEHA_GUPTA fake default profile (final release audit) */
 
 // Extracted presets matching the HTML exactly
 const DEFAULT_PREFERENCES = [
@@ -52,7 +35,10 @@ type TabType = 'bookings' | 'history' | 'notes' | 'wallet';
 
 export default function CustomerProfile({ navigate }: NavigationProps) {
   const [activeTab, setActiveTab] = useState<TabType>('bookings');
-  const [customer, setCustomer] = useState<Customer>(NEHA_GUPTA);
+  // The hardcoded "Neha Gupta" default profile was removed in the final
+  // release audit — a profile only exists when a real customer record was
+  // selected (from the Customers screen / localStorage bridge).
+  const [customer, setCustomer] = useState<Customer | null>(null);
   
   // Custom states for the Isabella detail cards that aren't strictly on Customer type
   const [preferences, setPreferences] = useState<string[]>(DEFAULT_PREFERENCES);
@@ -80,43 +66,31 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load selected customer from localStorage if available
-    const savedId = localStorage.getItem('selected_customer_id');
+    // Load selected customer from localStorage if available.
+    // (The previous version fell back to a hardcoded "Neha Gupta" profile and
+    // invented store credit / loyalty metrics — removed in the final audit.)
     const savedCustomerStr = localStorage.getItem('selected_customer_data');
-    
-    if (savedCustomerStr) {
-      try {
-        const parsed = JSON.parse(savedCustomerStr) as Customer;
-        setCustomer(parsed);
-        // Map types to reasonable mock metrics for other clients
-        if (parsed.id !== 'isabella') {
-          setStoreCredit(parsed.type === 'VIP' ? 200 : parsed.type === 'Gold Member' ? 100 : 0);
-          setLoyaltyPoints(parsed.type === 'VIP' ? 1200 : parsed.type === 'Gold Member' ? 650 : 150);
-          setPreferences([
-            'Prefers standard salon setup.',
-            'Likes to view magazine catalogs.',
-            parsed.notes || 'No specific requests.'
-          ]);
-          setFormulas([
-            { date: 'Recent Session Formula', formula: 'Standard hydration therapy + premium split-end treatment gloss.' }
-          ]);
-          setPhotos([]);
-        } else {
-          setCustomer(NEHA_GUPTA);
-          setStoreCredit(150.00);
-          setLoyaltyPoints(850);
-          setPreferences(DEFAULT_PREFERENCES);
-          setFormulas(DEFAULT_FORMULAS);
-          setPhotos(DEFAULT_PHOTOS);
-        }
-      } catch (e) {
-        console.error("Error parsing customer details, loading Isabella Rossi", e);
-        setCustomer(NEHA_GUPTA);
-      }
-    } else {
-      setCustomer(NEHA_GUPTA);
+    if (!savedCustomerStr) return; // stays null → "no customer selected" UI
+    try {
+      const parsed = JSON.parse(savedCustomerStr) as Customer;
+      setCustomer(parsed);
+      setPreferences(parsed.notes ? [parsed.notes] : []);
+      setFormulas([]);
+      setPhotos([]);
+    } catch (e) {
+      console.error('Error parsing saved customer data:', e);
     }
   }, []);
+
+  if (!customer) {
+    return (
+      <div className="min-h-screen bg-background text-on-surface flex flex-col items-center justify-center gap-4 p-6">
+        <p className="text-base font-bold">No customer selected</p>
+        <p className="text-sm text-on-surface-variant text-center max-w-xs">Open a customer from the Customers screen to view their profile.</p>
+        <button onClick={() => navigate('customers')} className="rounded-xl bg-primary px-5 py-3 text-xs font-bold text-white">Back to Customers</button>
+      </div>
+    );
+  }
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -305,8 +279,8 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
 
           <div className="bg-white rounded-[20px] p-4 flex flex-col items-center justify-center text-center border border-outline-variant/20 shadow-xs hover:-translate-y-0.5 transition-transform">
             <Star className="w-5 h-5 text-outline-variant mb-1.5" />
-            <span className="text-xl md:text-2xl font-black text-on-surface">{loyaltyPoints}</span>
-            <span className="text-[11px] font-bold text-on-surface-variant mt-0.5 uppercase tracking-wider">Loyalty Pts</span>
+            <span className="text-xl md:text-2xl font-black text-on-surface">—</span>
+            <span className="text-[11px] font-bold text-on-surface-variant mt-0.5 uppercase tracking-wider">Loyalty (not linked)</span>
           </div>
         </section>
 
@@ -580,53 +554,23 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
           {activeTab === 'wallet' && (
             <div className="space-y-6 animate-fade-in">
               
-              {/* VIP Store credit wallet */}
-              <div className="relative overflow-hidden rounded-[24px] p-6 text-white shadow-xl">
-                {/* Visual Glassmorphism style gradients */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-container to-secondary-container opacity-90 z-0"></div>
-                <div className="absolute top-0 right-0 w-48 h-48 bg-white/20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/4 z-0"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full blur-xl translate-y-1/2 -translate-x-1/4 z-0"></div>
-                
-                <div className="relative z-10 flex flex-col h-full justify-between">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest">Store Credit</span>
-                      <span className="text-4xl font-black mt-1">${storeCredit.toFixed(2)}</span>
-                    </div>
-                    <CreditCard className="w-8 h-8 opacity-80" />
-                  </div>
-                  
-                  <div className="flex justify-between items-end pt-2">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-wider text-white/70">Membership tier</span>
-                      <span className="font-bold text-base">VIP Platinum Account</span>
-                    </div>
-                    <button 
-                      onClick={handleTopUp}
-                      className="bg-white text-primary-container hover:bg-white/90 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-sm active:scale-95"
-                    >
-                      Top Up ₹50
-                    </button>
-                  </div>
-                </div>
+              {/* Store credit / loyalty card — the hardcoded "$150 credit /
+                  VIP Platinum / Top Up" card presented fake money. The loyalty
+                  program is not connected to the shared backend yet. */}
+              <div className="rounded-[24px] p-6 border border-dashed border-outline-variant/60 bg-surface-container-lowest/60">
+                <p className="text-sm font-bold">Store credit &amp; loyalty program</p>
+                <p className="mt-1 text-xs text-on-surface-variant leading-relaxed">
+                  Not connected to the shared backend yet. Deposit payments are
+                  collected at booking time via Razorpay checkout and appear in
+                  your wallet once the payout pipeline is enabled.
+                </p>
               </div>
 
-              {/* Saved cards listing */}
+              {/* Saved payment methods — the hardcoded "•••• 4242" card was
+                  removed; no payment method table exists in the backend yet. */}
               <h3 className="text-[16px] font-bold text-on-surface tracking-tight">Saved Payment Methods</h3>
-              
-              <div className="bg-white rounded-2xl p-4 flex items-center justify-between border border-outline-variant/20 shadow-xs">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-8 bg-surface-container rounded-lg flex items-center justify-center border border-outline-variant/10">
-                    <CreditCard className="w-5 h-5 text-on-surface-variant/70" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm text-on-surface">•••• 4242</span>
-                    <span className="text-xs text-on-surface-variant">Expires 12/25</span>
-                  </div>
-                </div>
-                <span className="bg-primary/5 text-primary-container text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
-                  Default
-                </span>
+              <div className="bg-white rounded-2xl p-4 border border-dashed border-outline-variant/50">
+                <p className="text-xs text-on-surface-variant">No saved payment methods. Deposits are collected through Razorpay checkout at booking time.</p>
               </div>
             </div>
           )}

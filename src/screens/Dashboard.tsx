@@ -30,17 +30,22 @@ export default function Dashboard({ navigate }: NavigationProps) {
   const [staffCount, setStaffCount] = useState(0);
   const [walletBalancePaise, setWalletBalancePaise] = useState(0);
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
+  /** Distinguish "shop does not exist" (offer create) from "load failed"
+   *  (offer retry). The old catch-all hid errors and showed the create
+   *  button, which could bootstrap a DUPLICATE workspace on retry. */
+  const [shopLoadError, setShopLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setShopLoadError(null);
     try {
       const myShop = await fetchMyShop(supabase);
       setShop(myShop);
       if (myShop) {
         const [bookingsData, servicesData, staffData, proposalsData] = await Promise.all([
-          fetchMyBookings(supabase, myShop.id).catch(() => []),
-          listServices(supabase, myShop.id).catch(() => []),
-          listStaff(supabase, myShop.id).catch(() => []),
-          fetchOwnerProposals(supabase).catch(() => []),
+          fetchMyBookings(supabase, myShop.id).catch((e: any) => { console.warn('bookings fetch failed:', e?.message || e); return [] as ShopBooking[]; }),
+          listServices(supabase, myShop.id).catch((e: any) => { console.warn('services fetch failed:', e?.message || e); return []; }),
+          listStaff(supabase, myShop.id).catch((e: any) => { console.warn('staff fetch failed:', e?.message || e); return []; }),
+          fetchOwnerProposals(supabase).catch((e: any) => { console.warn('proposals fetch failed:', e?.message || e); return []; }),
         ]);
         setBookings(bookingsData);
         setServiceCount(servicesData.length);
@@ -49,8 +54,11 @@ export default function Dashboard({ navigate }: NavigationProps) {
         const wallet = await fetchWalletOverview(supabase).catch(() => null);
         if (wallet) setWalletBalancePaise(wallet.balancePaise + wallet.pendingPaise);
       }
-    } catch (err) {
-      console.warn('Dashboard live data unavailable:', err);
+    } catch (err: any) {
+      // Keep the real error visible — never masquerade a failed shop lookup
+      // as "no shop yet" (that path leads to duplicate workspace creation).
+      console.error('Dashboard live data unavailable:', err);
+      setShopLoadError(err?.message || String(err));
     } finally {
       setShopLoading(false);
     }
@@ -131,7 +139,20 @@ export default function Dashboard({ navigate }: NavigationProps) {
               </span>
             )}
           </div>
-          {!shopLoading && !shop && (
+          {!shopLoading && shopLoadError && (
+          <div className="mt-2 flex items-center justify-between gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <p className="text-[12px] text-red-700 font-medium">
+              Could not load your shop workspace: {shopLoadError}
+            </p>
+            <button
+              onClick={() => void load()}
+              className="text-[12px] font-bold text-red-700 underline shrink-0"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!shopLoading && !shop && !shopLoadError && (
             <button
               onClick={() => void handleCreateWorkspace()}
               disabled={creatingWorkspace}
