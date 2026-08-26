@@ -57,12 +57,10 @@ export default function Login({ navigate }: NavigationProps) {
     }
   };
 
-  const handleDemoMode = () => {
-    // Demo mode intentionally skips Supabase auth so the PWA can be reviewed
-    // even when a deployment has not received its current public anon key yet.
-    localStorage.setItem('nexora-demo-mode', 'true');
-    navigate('dashboard');
-  };
+  // NOTE: the old "demo mode" button (which wrote localStorage auth-bypass
+  // state and jumped straight to the dashboard without any Supabase session)
+  // was removed in the final release audit. All access requires a real
+  // Supabase Auth session.
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();

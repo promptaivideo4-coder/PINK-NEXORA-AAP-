@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useOwnerAccess } from '../hooks/useOwnerAccess';
 import {
   ArrowLeft,
   BookOpen,
@@ -114,10 +115,12 @@ function safeInitials(name: string) {
   return name.trim().split(/\s+/).map((p) => p[0]).join('').toUpperCase().slice(0, 2) || 'ST';
 }
 
-function isManager() {
-  if (typeof window === 'undefined') return true;
-  const role = (window.localStorage.getItem('nexora-user-role') || window.localStorage.getItem('nexora-demo-role') || 'owner').toLowerCase();
-  return ['owner', 'manager', 'admin', 'salon_owner'].some((allowed) => role.includes(allowed));
+function AccessChecking() {
+  return (
+    <div className="min-h-screen bg-[#fcf9f8] flex items-center justify-center">
+      <p className="text-sm font-medium text-gray-500">Checking access…</p>
+    </div>
+  );
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -242,7 +245,8 @@ function generateDemoTimeSlots(staffId: string, date: string): TimeSlot[] {
    ═══════════════════════════════════════════════════════ */
 
 export default function StaffWebsiteBooking({ navigate }: NavigationProps) {
-  const isMgr = isManager();
+  const access = useOwnerAccess();
+  const isMgr = access.status === 'authorized';
   const [viewMode, setViewMode] = useState<ViewMode>(isMgr ? 'manager' : 'customer');
   const [visibility, setVisibility] = useState<VisibilitySettings>(() =>
     readJson(VISIBILITY_KEY, DEFAULT_VISIBILITY),

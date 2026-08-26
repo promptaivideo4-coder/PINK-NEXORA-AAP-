@@ -130,44 +130,17 @@ function parseShift(value: string) {
   return matches ? { start: matches[1], end: matches[2] } : { start: '09:00', end: '18:00' };
 }
 
+/**
+ * Staff for this module comes from the on-device staff directory (written by
+ * the Staff screens). The hardcoded fake team was removed in the final release
+ * audit — with no directory entries this module simply has no staff.
+ */
 function fallbackStaff(): Staff[] {
   const directory = readJson<any[]>('nexora_staff_directory_demo', []);
   if (directory.length) return directory.slice(0, 8).map((staff) => ({ id: staff.id, name: staff.name, role: staff.role || 'Stylist', photo: staff.avatar }));
   const legacy = readJson<any[]>('nexora_staff_list', []);
   if (legacy.length) return legacy.slice(0, 8).map((staff) => ({ id: staff.id, name: staff.name, role: staff.role || 'Stylist', photo: staff.avatar }));
-  return [
-    { id: 'demo-elena', name: 'Elena Rodriguez', role: 'Senior Stylist', photo: AVATAR_FALLBACK },
-    { id: 'demo-marcus', name: 'Marcus Chen', role: 'Master Barber' },
-    { id: 'demo-sanya', name: 'Sanya Rao', role: 'Color Specialist' },
-    { id: 'demo-adi', name: 'Aditi Mehra', role: 'Nail Artist' },
-  ];
-}
-
-function demoLeaves(staff: Staff[]): LeaveRequest[] {
-  const today = new Date();
-  const first: Staff = staff[0] || { id: 'demo-elena', name: 'Elena Rodriguez', role: 'Senior Stylist' };
-  const second: Staff = staff[1] || { id: 'demo-marcus', name: 'Marcus Chen', role: 'Master Barber' };
-  const third: Staff = staff[2] || { id: 'demo-sanya', name: 'Sanya Rao', role: 'Color Specialist' };
-  const pendingStart = isoDate(addDays(today, 5));
-  const pendingEnd = isoDate(addDays(today, 6));
-  const approvedStart = isoDate(addDays(today, 12));
-  const approvedEnd = isoDate(addDays(today, 13));
-  return [
-    { id: 'leave-demo-1', kind: 'leave', staffId: first.id, staffName: first.name, staffPhoto: first.photo, leaveType: 'Casual', startDate: pendingStart, endDate: pendingEnd, totalDays: 2, reason: 'Family function outside Jaipur', requestDate: isoDate(addDays(today, -1)), status: 'Pending' },
-    { id: 'leave-demo-2', kind: 'leave', staffId: second.id, staffName: second.name, staffPhoto: second.photo, leaveType: 'Sick', startDate: approvedStart, endDate: approvedEnd, totalDays: 2, reason: 'Medical rest recommended', requestDate: isoDate(addDays(today, -4)), status: 'Approved' },
-    { id: 'leave-demo-3', kind: 'leave', staffId: third.id, staffName: third.name, staffPhoto: third.photo, leaveType: 'Personal', startDate: isoDate(addDays(today, -9)), endDate: isoDate(addDays(today, -8)), totalDays: 2, reason: 'Personal appointment', requestDate: isoDate(addDays(today, -12)), status: 'Rejected', rejectionReason: 'Peak weekend coverage already full.' },
-  ];
-}
-
-function demoSwaps(staff: Staff[]): ShiftSwapRequest[] {
-  const today = new Date();
-  const first = staff[0] || { id: 'demo-elena', name: 'Elena Rodriguez' };
-  const second = staff[1] || { id: 'demo-marcus', name: 'Marcus Chen' };
-  const third = staff[2] || { id: 'demo-sanya', name: 'Sanya Rao' };
-  return [
-    { id: 'swap-demo-1', kind: 'swap', requestingStaffId: second.id, requestingStaff: second.name, replacementStaffId: first.id, replacementStaff: first.name, date: isoDate(addDays(today, 8)), originalShift: '10:00 – 19:00', requestedShift: '09:00 – 18:00', reason: 'Doctor appointment in the morning', status: 'Pending' },
-    { id: 'swap-demo-2', kind: 'swap', requestingStaffId: third.id, requestingStaff: third.name, replacementStaffId: second.id, replacementStaff: second.name, date: isoDate(addDays(today, 14)), originalShift: '09:00 – 17:00', requestedShift: '10:00 – 19:00', reason: 'Family commitment', status: 'Pending' },
-  ];
+  return [];
 }
 
 function statusClass(status: RequestStatus) {
@@ -183,13 +156,12 @@ function photoOrInitials(staff: { name: string; photo?: string }) {
 export default function LeaveShiftSwap({ navigate }: NavigationProps) {
   const staff = useMemo(() => fallbackStaff(), []);
   const staffById = useMemo(() => new Map(staff.map((member) => [member.id, member])), [staff]);
-  const [leaves, setLeaves] = useState<LeaveRequest[]>(() => {
-    const stored = readJson<LeaveRequest[]>(LEAVE_KEY, []);
-    return stored.length ? stored : demoLeaves(fallbackStaff());
-  });
+  // No demo seeding — the previous hardcoded requests (fake people, fake
+  // dates) were removed in the final release audit.
+  const [leaves, setLeaves] = useState<LeaveRequest[]>(() => readJson<LeaveRequest[]>(LEAVE_KEY, []));
   const [swaps, setSwaps] = useState<ShiftSwapRequest[]>(() => {
     const stored = readJson<ShiftSwapRequest[]>(SWAP_KEY, []);
-    return stored.length ? stored.map((item) => ({ ...item, kind: 'swap' as const, status: item.status === 'Approved' ? 'Approved' : item.status === 'Rejected' || (item as any).status === 'Declined' ? 'Rejected' : 'Pending' })) : demoSwaps(fallbackStaff());
+    return stored.map((item) => ({ ...item, kind: 'swap' as const, status: item.status === 'Approved' ? 'Approved' : item.status === 'Rejected' || (item as any).status === 'Declined' ? 'Rejected' : 'Pending' }));
   });
   const [activeTab, setActiveTab] = useState<TabId>('pending');
   const [rejectionRequest, setRejectionRequest] = useState<LeaveRequest | null>(null);
@@ -341,8 +313,9 @@ export default function LeaveShiftSwap({ navigate }: NavigationProps) {
   return (
     <div className="min-h-screen bg-[#fcf9f8] text-on-background antialiased">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e8e8e8] bg-[#fcf9f8]/95 backdrop-blur-xl"><div className="mx-auto flex h-16 w-full max-w-4xl items-center justify-between px-4 sm:px-6"><button type="button" onClick={() => navigate('staff')} className="rounded-full p-2 text-primary hover:bg-[#fde7f3]" aria-label="Back to staff directory"><ArrowLeft className="h-5 w-5" /></button><div className="text-center"><h1 className="text-lg font-bold tracking-tight text-primary">Leave &amp; Shift Swap Requests</h1><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-on-surface-variant">NexoraOS · Manager workspace</p></div><button type="button" className="rounded-full p-2 text-on-surface-variant hover:bg-[#fde7f3]" aria-label="More options"><MoreVertical className="h-5 w-5" /></button></div></header>
+      <div className="pt-16"><div className="mx-auto max-w-4xl px-4 sm:px-6"><p className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-[11px] font-semibold text-amber-800">Leave &amp; shift-swap records for this module are stored on this device; backend sync for this screen is not wired yet (staff_leave_requests / staff_shift_swap_requests tables exist in the database). Entries shown here are only the ones created on this device.</p></div></div>
 
-      <main className="mx-auto w-full max-w-4xl px-4 pb-28 pt-24 sm:px-6">
+      <main className="mx-auto w-full max-w-4xl px-4 pb-28 pt-36 sm:px-6">
         <section className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Approvals &amp; availability</p><h2 className="mt-1 text-2xl font-bold tracking-tight text-on-background">Leave &amp; Shift Swap Management</h2><p className="mt-1 text-sm text-on-surface-variant">Approve only after checking the staff schedule and bookings.</p></div><div className="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800"><span className="mr-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-white">{pendingCount}</span> pending</div></section>
 
         <div className="mb-5 hide-scrollbar flex gap-2 overflow-x-auto rounded-2xl border border-[#e8e8e8] bg-white p-2 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">{([{ id: 'pending', label: 'Pending Requests' }, { id: 'approved', label: 'Approved' }, { id: 'rejected', label: 'Rejected' }, { id: 'calendar', label: 'Leave Calendar' }] as Array<{ id: TabId; label: string }>).map((tab) => <button type="button" key={tab.id} onClick={() => { setActiveTab(tab.id); setConflict(null); }} className={`relative flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition ${activeTab === tab.id ? 'bg-primary text-white' : 'text-on-surface-variant hover:bg-[#fde7f3]'}`}>{tab.label}{tab.id === 'pending' && pendingCount > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}>{pendingCount}</span>}</button>)}</div>

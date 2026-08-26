@@ -129,31 +129,14 @@ function uid() {
   return `attendance-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+// The hardcoded demo roster was removed in the final release audit — the
+// attendance screen only works with real staff from the device directory.
 function getFallbackStaff(): StaffMember[] {
   const directory = readJson<any[]>('nexora_staff_directory_demo', []);
   if (directory.length) return directory.slice(0, 8).map((staff) => ({ id: staff.id, name: staff.name, role: staff.role || 'Stylist', photo: staff.avatar }));
   const legacy = readJson<any[]>('nexora_staff_list', []);
   if (legacy.length) return legacy.slice(0, 8).map((staff) => ({ id: staff.id, name: staff.name, role: staff.role || 'Stylist', photo: staff.avatar }));
-  return [
-    { id: 'demo-elena', name: 'Elena Rodriguez', role: 'Senior Stylist', photo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBgK4i87T9zaSWtTpAX8ftOSq5DsvdiLIMBIFtrdKRgquoy229sj4FWpkPoFbDtGT0hQkuA7BxlkH7BBMbGJVV2G2P5B8GPGRRsGpdUnXHEXv80SvpFM2Tvtb-Vl0c404jrR3FnqXOIJ8rxqBRAYFwJSWoMuZ_7dleFJcNF4HPqNuvcZOt2UNuCCs1MtCHRYsr-m8nYSAnK7kGo5LODQoilthjYlH0wE-E7gY--ZupoRur1T2oWS4o1' },
-    { id: 'demo-marcus', name: 'Marcus Chen', role: 'Master Barber', photo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBcjDud8ipDaq3L_FuF5pK08jOkmyhGMdjKJQmJLuiF4U7zsZOL45tonoY185_wyzCGro0RCfsu64ENZzYqxYRHr1C1FC0os9uaTZNy5zusD7HiMJbgOJ8XSuzxyXYvpaFyTHgYNrhUrTaZHO2UA5neNkz-JYdQAoyhDwnx6wwkFzMdHJgnq3xn7TdAQcdGuSEuXGXQSqV0H7Gw0XvfXTMV5BYuI-mFKWD80THGvA-w0_79v7eR4yC_' },
-    { id: 'demo-sanya', name: 'Sanya Rao', role: 'Color Specialist' },
-    { id: 'demo-adi', name: 'Aditi Mehra', role: 'Nail Artist' },
-  ];
-}
-
-function demoRecords(staff: StaffMember[]): AttendanceRecord[] {
-  const previous = isoDate(addDays(TODAY, -1));
-  const twoDaysAgo = isoDate(addDays(TODAY, -2));
-  return [
-    { id: `demo-${staff[0]?.id || 'elena'}-today`, staffId: staff[0]?.id || 'demo-elena', date: TODAY_ISO, checkIn: '09:03', checkOut: '17:45', status: 'Present', managerNote: '' },
-    { id: `demo-${staff[1]?.id || 'marcus'}-today`, staffId: staff[1]?.id || 'demo-marcus', date: TODAY_ISO, checkIn: '10:12', checkOut: '', status: 'Late', managerNote: 'Traffic delay reported' },
-    { id: `demo-${staff[2]?.id || 'sanya'}-today`, staffId: staff[2]?.id || 'demo-sanya', date: TODAY_ISO, checkIn: '', checkOut: '', status: 'Absent', managerNote: 'No check-in recorded' },
-    { id: `demo-${staff[3]?.id || 'adi'}-today`, staffId: staff[3]?.id || 'demo-adi', date: TODAY_ISO, checkIn: '', checkOut: '', status: 'Approved Leave', managerNote: 'Personal leave approved' },
-    { id: `demo-${staff[0]?.id || 'elena'}-previous`, staffId: staff[0]?.id || 'demo-elena', date: previous, checkIn: '09:00', checkOut: '18:00', status: 'Present', managerNote: '' },
-    { id: `demo-${staff[1]?.id || 'marcus'}-previous`, staffId: staff[1]?.id || 'demo-marcus', date: previous, checkIn: '10:02', checkOut: '14:00', status: 'Half Day', managerNote: 'Left early with manager approval' },
-    { id: `demo-${staff[0]?.id || 'elena'}-two-days`, staffId: staff[0]?.id || 'demo-elena', date: twoDaysAgo, checkIn: '09:05', checkOut: '18:10', status: 'Late', managerNote: 'Late arrival recorded' },
-  ];
+  return [];
 }
 
 function statusLabel(status: AttendanceStatus) {
@@ -162,10 +145,8 @@ function statusLabel(status: AttendanceStatus) {
 
 export default function StaffAttendance({ navigate }: NavigationProps) {
   const [staff, setStaff] = useState<StaffMember[]>(getFallbackStaff);
-  const [records, setRecords] = useState<AttendanceRecord[]>(() => {
-    const fallback = getFallbackStaff();
-    return readJson<AttendanceRecord[]>(RECORDS_KEY, demoRecords(fallback));
-  });
+  // No fake attendance seeding — records start empty (device-created only).
+  const [records, setRecords] = useState<AttendanceRecord[]>(() => readJson<AttendanceRecord[]>(RECORDS_KEY, [] as AttendanceRecord[]));
   const [selectedDate, setSelectedDate] = useState(TODAY_ISO);
   const [calendarMonth, setCalendarMonth] = useState(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
   const [staffFilter, setStaffFilter] = useState('all');

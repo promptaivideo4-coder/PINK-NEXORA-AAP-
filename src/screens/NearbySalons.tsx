@@ -8,7 +8,7 @@
  *  - User GPS salon ki location kabhi overwrite nahi karta.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import { NavigationProps } from '../types';
 import { MapPin, X, Navigation as NavIcon, Loader2 } from 'lucide-react';
@@ -45,14 +45,7 @@ function salonAddress(s: Salon | SalonWithDistance): string | null {
   return (s.address as string | null | undefined) ?? null;
 }
 
-const DEMO_SALONS: Salon[] = [
-  { id: 's1', name: 'Star Salon — Raja Park', latitude: 26.8997, longitude: 75.8097, address: 'Raja Park, Jaipur', area: 'Raja Park', city: 'Jaipur', zone: 'East Jaipur', rating: 4.8, ratingAverage: 4.8, featured: true, lastActiveAt: Date.now() - 5 * 60 * 1000 },
-  { id: 's2', name: 'Luxe Beauty Lounge — MI Road', latitude: 26.892, longitude: 75.796, address: 'MI Road, Jaipur', area: 'MI Road', city: 'Jaipur', rating: 4.6, ratingAverage: 4.6, featured: false, lastActiveAt: Date.now() - 30 * 60 * 1000 },
-  { id: 's3', name: 'Rajwada Salon — Johari Bazar', latitude: 26.926, longitude: 75.8235, address: 'Johari Bazar, Jaipur', area: 'Johari Bazar', city: 'Jaipur', rating: 4.5, ratingAverage: 4.5, featured: false, lastActiveAt: Date.now() - 120 * 60 * 1000 },
-  { id: 's4', name: 'Pink City Cuts — Hawa Mahal', latitude: 26.9239, longitude: 75.8267, address: 'Hawa Mahal Rd, Jaipur', area: 'Hawa Mahal', city: 'Jaipur', rating: 4.9, ratingAverage: 4.9, featured: true, lastActiveAt: Date.now() - 2 * 60 * 1000 },
-  { id: 's5', name: 'Sunrise Unisex Salon — Tonk Rd', latitude: 26.88, longitude: 75.808, address: 'Tonk Road, Jaipur', area: 'Tonk Road', city: 'Jaipur', rating: 4.2, ratingAverage: 4.2, featured: false, lastActiveAt: Date.now() - 60 * 60 * 1000 },
-  { id: 's6', name: 'Bold Beauty Studio — Malviya Nagar', latitude: 26.8575, longitude: 75.815, address: 'Malviya Nagar, Jaipur', area: 'Malviya Nagar', city: 'Jaipur', rating: 4.4, ratingAverage: 4.4, featured: true, lastActiveAt: Date.now() - 10 * 60 * 1000 },
-];
+
 
 /** Leaflet CSS marker — default icon assets se bachne ke liye */
 const detailMarkerIcon = L.divIcon({
@@ -177,7 +170,12 @@ export default function NearbySalons({ navigate }: NavigationProps) {
     errorMsg: ctxError,
   } = useLocation();
 
-  const [salons, setSalons] = useState<Salon[]>(DEMO_SALONS);
+  // REAL data only — the previous hardcoded DEMO_SALONS (fake Jaipur salons
+  // with fake ratings) were removed in the final release audit. Empty or
+  // failed loads now show an honest empty/error state.
+  const [salons, setSalons] = useState<Salon[]>([]);
+  const [salonsLoading, setSalonsLoading] = useState(true);
+  const [salonsError, setSalonsError] = useState<string | null>(null);
   const [fallbackGrouped, setFallbackGrouped] = useState<import('../location/types').GroupedSalons | null>(null);
   const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
 
@@ -191,44 +189,52 @@ export default function NearbySalons({ navigate }: NavigationProps) {
   }, [requestLocation]);
 
   // Fetch real salons from Supabase (verified salons with their OWN saved location)
-  useEffect(() => {
-    async function fetchReal() {
-      try {
-        const { data, error } = await supabase
-          .from('salons')
-          .select('id, name, latitude, longitude, rating_average, verified, location_address, location_area, location_city, location_zone, location_landmark, location_pincode, updated_at')
-          .eq('verified', true)
-          .is('deleted_at', null)
-          .limit(80);
-        if (!error && data && data.length > 0) {
-          const mapped: Salon[] = (data as SalonRow[])
-            // NULL coordinates wale salons gracefully skip (koi fake coords nahi) —
-            // owner ne location set nahi ki to salon distance-list me nahi aata.
-            .filter((r) => typeof r.latitude === 'number' && typeof r.longitude === 'number')
-            .map((r) => ({
-              id: String(r.id),
-              name: r.name || 'Salon',
-              latitude: r.latitude as number,
-              longitude: r.longitude as number,
-              address: r.location_address || null,
-              area: r.location_area || null,
-              city: r.location_city || null,
-              zone: r.location_zone || null,
-              landmark: r.location_landmark || null,
-              pincode: r.location_pincode || null,
-              rating: Number(r.rating_average ?? 0),
-              ratingAverage: Number(r.rating_average ?? 0),
-              featured: Boolean(r.featured ?? false),
-              lastActiveAt: r.updated_at ? new Date(r.updated_at).getTime() : Date.now(),
-            }));
-          if (mapped.length > 0) setSalons(mapped);
-        }
-      } catch {
-        // demo salons rahenge
+  const fetchRealSalons = useCallback(async () => {
+    setSalonsLoading(true);
+    setSalonsError(null);
+    try {
+      const { data, error } = await supabase
+        .from('salons')
+        .select('id, name, latitude, longitude, rating_average, verified, location_address, location_area, location_city, location_zone, location_landmark, location_pincode, updated_at')
+        .eq('verified', true)
+        .is('deleted_at', null)
+        .limit(80);
+      if (error) {
+        setSalonsError(error.message);
+        setSalons([]);
+        return;
       }
+      const mapped: Salon[] = (data ?? [])
+        // NULL coordinates wale salons gracefully skip (koi fake coords nahi) —
+        // owner ne location set nahi ki to salon distance-list me nahi aata.
+        .filter((r: SalonRow) => typeof r.latitude === 'number' && typeof r.longitude === 'number')
+        .map((r: SalonRow) => ({
+          id: String(r.id),
+          name: r.name || 'Salon',
+          latitude: r.latitude as number,
+          longitude: r.longitude as number,
+          address: r.location_address || null,
+          area: r.location_area || null,
+          city: r.location_city || null,
+          zone: r.location_zone || null,
+          landmark: r.location_landmark || null,
+          pincode: r.location_pincode || null,
+          rating: Number(r.rating_average ?? 0),
+          ratingAverage: Number(r.rating_average ?? 0),
+          featured: Boolean(r.featured ?? false),
+          lastActiveAt: r.updated_at ? new Date(r.updated_at).getTime() : Date.now(),
+        }));
+      setSalons(mapped);
+    } catch (e: any) {
+      console.error('Nearby salons fetch failed:', e);
+      setSalonsError(e?.message || 'Could not load salons');
+      setSalons([]);
+    } finally {
+      setSalonsLoading(false);
     }
-    fetchReal();
   }, []);
+
+  useEffect(() => { void fetchRealSalons(); }, [fetchRealSalons]);
 
   // STEP 10: low-accuracy fallback — validated location nahi, par lastKnownFix se
   // bhi grouping dikha do (screen low-GPS areas me usable rehti hai).
@@ -289,6 +295,14 @@ export default function NearbySalons({ navigate }: NavigationProps) {
           </p>
         )}
 
+        {/* Database error state (separate from GPS errors) */}
+        {salonsError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-[12px] text-red-700 font-medium">Could not load salons from the database: {salonsError}</p>
+            <button onClick={() => void fetchRealSalons()} className="text-[12px] font-bold text-red-700 underline shrink-0">Retry</button>
+          </div>
+        )}
+
         {/* Salons list – clean */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -308,6 +322,16 @@ export default function NearbySalons({ navigate }: NavigationProps) {
                 {displayGrouped.aroundYou.length > 0 && <Group title="Around You" sub="5–10 km" salons={displayGrouped.aroundYou} onOpen={setSelectedSalon} />}
                 {displayGrouped.everythingElse.length > 0 && <Group title="More" sub="" salons={displayGrouped.everythingElse} onOpen={setSelectedSalon} />}
               </>
+            )}
+
+            {/* Empty state — no verified salons with a saved location yet */}
+            {!salonsLoading && !salonsError && salons.length === 0 && (
+              <div className="bg-white border border-dashed border-[#e0e0e0] rounded-xl p-6 text-center">
+                <p className="text-[13px] font-bold">No verified salons yet</p>
+                <p className="text-[11px] text-[#8a8a8a] mt-1">
+                  Salons appear here once the owner verifies the salon and saves its exact location.
+                </p>
+              </div>
             )}
 
             {/* Fallback when no location – show all unsorted */}

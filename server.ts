@@ -1,9 +1,11 @@
 import dotenv from "dotenv";
 import express from "express";
 import path from "path";
-import fs from "fs";
 import multer from "multer";
 import helmet from "helmet";
+import createOrderHandler from "./api/razorpay/create-order";
+import verifyPaymentHandler from "./api/razorpay/verify-payment";
+import webhookHandler from "./api/razorpay/webhook";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 
@@ -15,7 +17,8 @@ dotenv.config({ path: '.env.local', override: true });
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // Vercel injects PORT; local previews can override it for parallel runs.
+  const PORT = Number(process.env.PORT || 3000);
 
   // Enable JSON body parsing for API endpoints
   app.use(express.json());
@@ -68,6 +71,21 @@ async function startServer() {
   app.post('/api/auth/login', (req, res) => proxyAuthRequest(req, res, 'login', 'token?grant_type=password'));
   app.post('/api/auth/signup', (req, res) => proxyAuthRequest(req, res, 'signup', 'signup'));
 
+  // ---------------------------------------------------------------------------
+  // Razorpay serverless functions — mounted locally so the payment endpoints
+  // behave identically in `npm run dev` and on Vercel (they only existed on
+  // Vercel before, which made local payment testing impossible).
+  // ---------------------------------------------------------------------------
+  app.post('/api/razorpay/create-order', (req, res) => {
+    void createOrderHandler(req as any, res as any);
+  });
+  app.post('/api/razorpay/verify-payment', (req, res) => {
+    void verifyPaymentHandler(req as any, res as any);
+  });
+  app.post('/api/razorpay/webhook', (req, res) => {
+    void webhookHandler(req as any, res as any);
+  });
+
   // Security headers with custom CSP to allow Google AI Studio workers and Monaco editor
   app.use(
     helmet({
@@ -76,7 +94,7 @@ async function startServer() {
           "default-src": ["'self'"],
           "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://studio.google.com", "https://*.google.com", "https://cdn.jsdelivr.net"],
           "worker-src": ["'self'", "blob:", "https://studio.google.com", "https://*.google.com"],
-          "connect-src": ["'self'", "https:", "wss:", "https://*.google.com", "https://*.googleapis.com", "https://*.supabase.co"],
+          "connect-src": ["'self'", "wss:", "https://*.google.com", "https://*.googleapis.com", "https://*.supabase.co", "https://checkout.razorpay.com", "https://api.razorpay.com", "https://*.openstreetmap.org", "https://tile.openstreetmap.org"],
           "img-src": ["'self'", "data:", "blob:", "https://*.google.com", "https://*.googleusercontent.com", "https://tile.openstreetmap.org", "https://*.tile.openstreetmap.org"],
           "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://studio.google.com"],
           "font-src": ["'self'", "https://fonts.gstatic.com"],
@@ -368,65 +386,12 @@ Return ONLY the raw JSON object, without markdown formatting or code blocks.`;
     next(error);
   });
 
-  /* ------------------------------------------------------------------
-     PUBLISHED WEBSITES — the "GO LIVE" part
-     POST /api/publish-site → saves the generated salon website
-     GET  /site/:slug/      → serves the live website (same HTML that was
-                              shown in the Interactive Preview)
-     ------------------------------------------------------------------ */
-  const PUBLISH_DIR = path.join(process.cwd(), "publish");
-  fs.mkdirSync(PUBLISH_DIR, { recursive: true });
-
-  function sanitizeSlug(s: unknown): string {
-    return (
-      String(s || "mysalon")
-        .toLowerCase()
-        .replace(/[^a-z0-9-_]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 60) || "mysalon"
-    );
-  }
-
-  app.post("/api/publish-site", (req, res) => {
-    try {
-      const { html, slug } = req.body || {};
-      if (typeof html !== "string" || html.length < 50) {
-        return res.status(400).json({ ok: false, error: "html is missing or empty" });
-      }
-      const base = sanitizeSlug(slug);
-      let dir = path.join(PUBLISH_DIR, base);
-      let n = 2;
-      while (fs.existsSync(dir)) {
-        dir = path.join(PUBLISH_DIR, `${base}-${n++}`);
-      }
-      fs.mkdirSync(dir, { recursive: true });
-      const finalSlug = path.basename(dir);
-      fs.writeFileSync(path.join(dir, "index.html"), html, "utf8");
-      res.json({ ok: true, url: `/site/${finalSlug}/`, slug: finalSlug });
-    } catch (e) {
-      res.status(500).json({ ok: false, error: String((e as Error)?.message || e) });
-    }
-  });
-
-  app.get(["/site/:slug", "/site/:slug/*"], (req, res) => {
-    try {
-      const slug = sanitizeSlug(req.params.slug);
-      const rest = (req.params[0] as string | undefined) || "";
-      let file = rest ? rest.split("/").pop() || "index.html" : "index.html";
-      if (!file || file === ".") file = "index.html";
-      const safeFile = path.normalize(file).replace(/^(\.\.(\/|\\|$))+/, "");
-      const target = path.join(PUBLISH_DIR, slug, safeFile);
-      if (!target.startsWith(PUBLISH_DIR)) {
-        return res.status(404).json({ ok: false, error: "Not found" });
-      }
-      if (!fs.existsSync(target) || !fs.statSync(target).isFile()) {
-        return res.status(404).json({ ok: false, error: "Site not found" });
-      }
-      res.sendFile(target);
-    } catch (e) {
-      res.status(500).json({ ok: false, error: String((e as Error)?.message || e) });
-    }
-  });
+  // NOTE: The previous filesystem-based "publish" (POST /api/publish-site +
+  // GET /site/:slug) was removed. It was (1) unauthenticated - anyone could
+  // host arbitrary HTML - and (2) non-persistent on Vercel (ephemeral FS), so
+  // "published" sites vanished on every deploy/instance swap. The canonical
+  // published website lives in Supabase `salon_public_websites` and is served
+  // by the main website app from the database, not from this PWA's disk.
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

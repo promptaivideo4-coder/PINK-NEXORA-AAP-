@@ -43,6 +43,12 @@ export default function BookingConfirmation({
 
   return (
     <div className="font-body-md text-body-md text-on-surface antialiased min-h-screen flex flex-col items-center justify-center p-4 bg-[#F9F8F6]">
+      {/* Explicit sample label — this onboarding step shows the TEMPLATE the
+          customer will get. It is not a real booking record (the old version
+          looked identical to a live confirmation). */}
+      <div className="w-full max-w-[600px] mb-3 rounded-xl bg-amber-50 border border-amber-300 px-4 py-2.5 text-[11px] font-bold text-amber-800 text-center">
+        SAMPLE PREVIEW — this is the confirmation template your customers will see. No real booking was created.
+      </div>
       <main className="w-full max-w-[600px] bg-white rounded-2xl shadow-level-1 border border-[#e2e2e2] overflow-hidden">
         <div className="px-6 py-8 md:px-10 md:py-12 flex flex-col items-center text-center border-b border-[#e2e2e2] bg-[#f9f9f9]">
           <div className="mb-8">

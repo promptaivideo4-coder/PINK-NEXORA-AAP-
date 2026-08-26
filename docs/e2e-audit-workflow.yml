@@ -1,0 +1,44 @@
+# Nexora E2E audit — exercises the REAL Supabase backend + deployed Vercel APIs.
+#
+# INSTALL (manual infrastructure action):
+#   1. In the GitHub App settings, enable the `workflows` permission for this
+#      repository (the Arena GitHub App currently lacks it, which is why this
+#      file could not be pushed directly to .github/workflows/).
+#   2. Copy this file to .github/workflows/e2e-audit.yml and push.
+#   3. Trigger it (manual dispatch) — results appear in the run log and in the
+#      `e2e-audit-results` artifact (JSON).
+#
+# GitHub Actions runners have full network egress (this sandbox does not), so
+# this workflow is the canonical "real E2E" gate for the ecosystem. It writes
+# clearly-labeled test rows (E2E-AUDIT-<ts>) into the shared project
+# qwaehqsmodekbgvnaavz so canonical flows are verified against the production
+# schema/RLS; cleanup SQL is printed at the end of each run.
+name: e2e-audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run E2E audit against live Supabase + deployed APIs
+        run: node scripts/e2e-audit.mjs
+
+      - name: Upload audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-audit-results
+          path: e2e-audit-*.json
+          if-no-files-found: ignore

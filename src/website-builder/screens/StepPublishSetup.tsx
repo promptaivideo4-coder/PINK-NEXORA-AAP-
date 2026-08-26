@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { SalonData } from '../types';
 import TemplateRenderer from '../components/TemplateRenderer';
-import { ArrowLeft, ArrowRight, Globe, CheckCircle2, Link2, AlertCircle, Monitor, Smartphone, Circle, Check } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { publishShopWebsite } from '../../lib/shopRepository';
+import { ArrowLeft, ArrowRight, Globe, CheckCircle2, Link2, AlertCircle, Monitor, Smartphone, Circle, Check, Loader2 } from 'lucide-react';
 
 interface Props {
   data: SalonData;
@@ -25,6 +27,9 @@ export default function StepPublishSetup({ data, setData, onNext, onPrev, onSave
   const [slug, setSlug] = useState<string>(data.websiteSlug || slugify(data.salonName) || 'royal-hair-studio');
   const [mode, setMode] = useState<'desktop' | 'mobile'>('desktop');
   const [publishing, setPublishing] = useState(false);
+  /** Honest publish outcome — set only by the real database call. */
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishNote, setPublishNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!data.websiteSlug) {
@@ -57,16 +62,62 @@ export default function StepPublishSetup({ data, setData, onNext, onPrev, onSave
 
   const allRequiredDone = checks.every(c => c.done);
 
-  const handlePublish = () => {
+  /**
+   * REAL publish — persists to the canonical Supabase backend:
+   *   salon_public_websites upsert (source of truth) + salon visibility.
+   * The previous implementation was a 1.2s setTimeout that claimed
+   * "published" without touching the database. Now `publishState: 'published'`
+   * is set ONLY when the database round-trip succeeds, and real errors are
+   * shown instead of a fake success.
+   */
+  const handlePublish = async () => {
+    if (publishing) return;
     setPublishing(true);
-    setData(prev => ({ ...prev, publishState: 'publishing', publishedUrl: fullUrl, websiteSlug: slug }));
+    setPublishError(null);
+    setPublishNote(null);
+    setData(prev => ({ ...prev, publishState: 'publishing', websiteSlug: slug }));
     if (onSave) onSave();
-    setTimeout(() => {
-      setData(prev => ({ ...prev, publishState: 'published', publishedUrl: fullUrl, lastCompletedStep: 14 }));
-      if (onSave) onSave();
+    try {
+      const result = await publishShopWebsite(supabase, {
+        slug,
+        templateKey: data.templateId || 'classic-elegance',
+        config: {
+          profile: { name: data.salonName, tagline: data.tagline, phone: data.phone, email: data.email, address: data.address },
+          template: { key: data.templateId },
+          services: data.services,
+          team: data.team,
+          gallery: data.gallery,
+          packages: data.packages,
+          openingHours: data.openingHours,
+          bookingRules: data.bookingRules,
+          reviewedContent: data.reviewedContent,
+        },
+      });
+
+      if (result.ok) {
+        setData(prev => ({
+          ...prev,
+          publishState: 'published',
+          // Canonical public path served by the main website app (DB-driven),
+          // NOT a fabricated nexora.site/<slug> guess.
+          publishedUrl: result.url || `/salons/${result.slug}`,
+          websiteSlug: result.slug || slug,
+          lastCompletedStep: 14,
+        }));
+        if (onSave) onSave();
+        setPublishNote(result.note || null);
+        setPublishing(false);
+        onNext(); // go to the publish-success step
+      } else {
+        setPublishError(result.validationErrors?.join(' ') || result.error || 'Publish failed. The website was NOT saved.');
+        setData(prev => ({ ...prev, publishState: 'draft' }));
+        setPublishing(false);
+      }
+    } catch (err: any) {
+      setPublishError(err?.message || 'Publish failed unexpectedly. The website was NOT saved. Please try again.');
+      setData(prev => ({ ...prev, publishState: 'draft' }));
       setPublishing(false);
-      onNext(); // go to Step 15
-    }, 1200);
+    }
   };
 
   const previewData: SalonData = {
@@ -120,9 +171,9 @@ export default function StepPublishSetup({ data, setData, onNext, onPrev, onSave
                 />
                 <CheckCircle2 className="absolute right-3.5 text-emerald-500 w-5 h-5" />
               </div>
-              <p className="mt-2 text-emerald-600 font-semibold text-xs flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block animate-pulse"></span>
-                Address is available
+              <p className="mt-2 text-gray-500 font-medium text-xs flex items-center gap-1.5">
+                <Globe className="w-3 h-3" />
+                Final address is confirmed against the database when you publish.
               </p>
             </div>
           </div>
@@ -184,6 +235,20 @@ export default function StepPublishSetup({ data, setData, onNext, onPrev, onSave
                 Please complete all required fields above to proceed with publishing.
               </div>
             )}
+
+            {publishError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 flex gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span><strong>Publish failed — nothing was saved:</strong> {publishError}</span>
+              </div>
+            )}
+
+            {publishNote && !publishError && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{publishNote}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -241,13 +306,13 @@ export default function StepPublishSetup({ data, setData, onNext, onPrev, onSave
         </span>
         <button
           disabled={!allRequiredDone || publishing}
-          onClick={handlePublish}
+          onClick={() => void handlePublish()}
           className="px-8 py-2.5 rounded-xl bg-[#ac0053] text-white font-bold text-xs hover:bg-[#ba005b] flex items-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {publishing ? (
             <>
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Publishing…
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Publishing to database…
             </>
           ) : (
             <>

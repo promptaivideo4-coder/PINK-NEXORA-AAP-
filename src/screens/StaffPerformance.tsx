@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useOwnerAccess } from '../hooks/useOwnerAccess';
 import {
   AlertCircle,
   ArrowLeft,
@@ -102,14 +103,12 @@ function pct(value: number) {
   return `${Math.round(value * 100) / 100}%`;
 }
 
-function isAuthorized() {
-  if (typeof window === 'undefined') return true;
-  const role = (
-    window.localStorage.getItem('nexora-user-role') ||
-    window.localStorage.getItem('nexora-demo-role') ||
-    'owner'
-  ).toLowerCase();
-  return ['owner', 'manager', 'admin', 'salon_owner'].some((allowed) => role.includes(allowed));
+function AccessChecking() {
+  return (
+    <div className="min-h-screen bg-[#fcf9f8] flex items-center justify-center">
+      <p className="text-sm font-medium text-gray-500">Checking access…</p>
+    </div>
+  );
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -228,7 +227,8 @@ function buildAggregate(list: StaffPerf[]): AggregateMetrics {
 /* ───── Main Component ───── */
 
 export default function StaffPerformance({ navigate }: NavigationProps) {
-  const [authorized] = useState(() => isAuthorized());
+  const access = useOwnerAccess();
+  const authorized = access.status === 'authorized';
   const [period, setPeriod] = useState<TimePeriod>('this_month');
   const [sortBy, setSortBy] = useState<SortKey>('revenue');
   const [staffData, setStaffData] = useState<StaffPerf[]>(() => readJson<StaffPerf[]>(STORAGE_KEY, demoStaffPerf()));
@@ -291,7 +291,8 @@ export default function StaffPerformance({ navigate }: NavigationProps) {
 
   const aggregate = useMemo(() => buildAggregate(staffData), [staffData]);
 
-  if (!authorized) return <Unauthorized navigate={navigate} />;
+  if (access.status === 'checking') return <AccessChecking />;
+  if (access.status === 'denied') return <Unauthorized navigate={navigate} />;
 
   return (
     <div className="min-h-screen bg-[#fcf9f8] text-on-background antialiased">

@@ -41,8 +41,11 @@ export default function StepPublishSuccess({ data, setData, onNext, onSave }: Pr
   const [isTuning, setIsTuning] = useState(false);
   const [tuneFlash, setTuneFlash] = useState(false);
 
-  const url = data.publishedUrl || `https://nexora.site/${data.websiteSlug || 'royal-hair-studio'}`;
-  const displayUrl = url.replace(/^https?:\/\//, '');
+  // Only show a URL the database actually assigned during publish. The old
+  // fallback fabricated https://nexora.site/<slug> for unpublished salons.
+  const canonicalPath = data.publishedUrl || null;
+  const url = canonicalPath ? `https://nexora.site${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}` : '';
+  const displayUrl = url || '— not published yet —';
 
   // Initialize interactive confetti
   useEffect(() => {
@@ -85,6 +88,7 @@ export default function StepPublishSuccess({ data, setData, onNext, onSave }: Pr
   }, []);
 
   const handleCopy = async () => {
+    if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -103,18 +107,20 @@ export default function StepPublishSuccess({ data, setData, onNext, onSave }: Pr
   };
 
   const handleWhatsAppShare = () => {
+    if (!url) return;
     const text = `🎉 My salon website is live! Check it out: ${url} — built with Nexora ✨`;
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleFacebookShare = () => {
+    if (!url) return;
     const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
     window.open(fbUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleViewWebsite = () => {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Real-time AI tuner endpoint trigger
