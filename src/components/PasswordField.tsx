@@ -1,20 +1,32 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { PASSWORD_MIN_LENGTH, unmetPasswordRules } from '../lib/passwordValidation';
+import PasswordRequirements from './PasswordRequirements';
 
 interface PasswordFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
   showStrength?: boolean;
+  /** Live checklist of Supabase's mandatory password rules (a-z, A-Z, 0-9, length). */
+  showRules?: boolean;
+  error?: string;
 }
 
-export default function PasswordField({ label, value, onChange, showStrength }: PasswordFieldProps) {
+export default function PasswordField({
+  label,
+  value,
+  onChange,
+  showStrength,
+  showRules,
+  error,
+}: PasswordFieldProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   // Simple password strength calculation
   const strength = () => {
     let score = 0;
-    if (value.length >= 8) score++;
+    if (value.length >= PASSWORD_MIN_LENGTH) score++;
     if (/[A-Z]/.test(value)) score++;
     if (/[a-z]/.test(value)) score++;
     if (/[0-9]/.test(value)) score++;
@@ -30,6 +42,7 @@ export default function PasswordField({ label, value, onChange, showStrength }: 
   };
 
   const currentStrength = getStrengthLabel(strength());
+  const missingRules = unmetPasswordRules(value);
 
   return (
     <div className="space-y-1 w-full">
@@ -38,9 +51,12 @@ export default function PasswordField({ label, value, onChange, showStrength }: 
         <input 
           type={isVisible ? 'text' : 'password'}
           required
+          minLength={PASSWORD_MIN_LENGTH}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full h-11 bg-surface border border-outline-variant/60 rounded-xl px-4 text-xs font-semibold text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+          className={`w-full h-11 bg-surface border rounded-xl px-4 text-xs font-semibold text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none ${
+            error ? 'border-error' : 'border-outline-variant/60'
+          }`}
           placeholder="••••••••"
         />
         <button
@@ -60,6 +76,14 @@ export default function PasswordField({ label, value, onChange, showStrength }: 
                 {currentStrength.label}
             </div>
         </div>
+      )}
+      {showRules && <PasswordRequirements value={value} />}
+      {error ? (
+        <p className="mt-1 text-[10px] font-bold text-error">{error}</p>
+      ) : (
+        showRules && value.length > 0 && missingRules.length === 0 && (
+          <p className="mt-1 text-[10px] font-bold text-emerald-600">Password meets all requirements.</p>
+        )
       )}
     </div>
   );

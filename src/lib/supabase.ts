@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js';
+import { isStrongPassword, PASSWORD_MIN_LENGTH } from './passwordValidation';
 
 /**
  * Public Supabase project settings for Nexora.
@@ -111,6 +112,17 @@ async function directSupabaseAuth(route: 'signup' | 'login', payload: Record<str
   const metadata = payload.data && typeof payload.data === 'object'
     ? payload.data as Record<string, any>
     : undefined;
+
+  // Supabase enforces "minimum character groups" (a-z + A-Z + 0-9). Validate
+  // locally so the owner gets actionable wording instead of the cryptic
+  // "should contain at least one character of each: abcdefghijklmnopqrstuvwxyz,
+  // ABCDEFGHIJKLMNOPQRSTUVWXYZ, 0123456789" error after a failed round-trip.
+  if (!isStrongPassword(password)) {
+    throw new Error(
+      `Password must be at least ${PASSWORD_MIN_LENGTH} characters, including one lowercase letter (a-z), one uppercase letter (A-Z) and one number (0-9).`
+    );
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,

@@ -6,6 +6,7 @@ import SuccessModal from '../components/SuccessModal';
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
 import { fetchMyShop, updateShopProfile, MyShop } from '../lib/shopRepository';
+import { validatePassword, isStrongPassword } from '../lib/passwordValidation';
 import { 
   Building2, 
   User, 
@@ -407,8 +408,10 @@ export default function Profile({ navigate }: NavigationProps) {
       setPasswordError('Please enter your current password.');
       return;
     }
-    if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters long.');
+    // Supabase requires a-z, A-Z and 0-9 — validate before sending it upstream.
+    const passwordCheck = validatePassword(newPassword);
+    if (!passwordCheck.valid) {
+      setPasswordError(passwordCheck.message);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -1172,6 +1175,7 @@ export default function Profile({ navigate }: NavigationProps) {
                     value={newPassword}
                     onChange={setNewPassword}
                     showStrength
+                    showRules
                 />
 
                 <PasswordField 
@@ -1194,7 +1198,7 @@ export default function Profile({ navigate }: NavigationProps) {
                   </button>
                   <button
                     type="submit"
-                    disabled={!currentPassword || newPassword.length < 8 || newPassword !== confirmPassword}
+                    disabled={!currentPassword || !isStrongPassword(newPassword) || newPassword !== confirmPassword}
                     className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:brightness-115 transition-all shadow-sm disabled:bg-surface-container-high disabled:text-on-surface-variant"
                   >
                     Update Password

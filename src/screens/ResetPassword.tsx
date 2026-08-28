@@ -4,6 +4,8 @@ import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, Flower2 } from 'lucide-re
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import PasswordRequirements from '../components/PasswordRequirements';
+import { validatePassword, friendlyPasswordError } from '../lib/passwordValidation';
 
 export default function ResetPassword({ navigate }: NavigationProps) {
   const { t } = useLanguage();
@@ -20,8 +22,9 @@ export default function ResetPassword({ navigate }: NavigationProps) {
       setError(t('passwords_not_match'));
       return;
     }
-    if (password.length < 6) {
-      setError(t('password_too_short'));
+    // Supabase requires a-z, A-Z and 0-9 — catch it here with a friendly message.
+    if (!validatePassword(password).valid) {
+      setError(t('password_requirements'));
       return;
     }
 
@@ -41,7 +44,7 @@ export default function ResetPassword({ navigate }: NavigationProps) {
         navigate('dashboard');
       }, 2000);
     } catch (err: any) {
-      setError(err.message || t('failed_update_password'));
+      setError(friendlyPasswordError(err?.message) || err.message || t('failed_update_password'));
     } finally {
       setLoading(false);
     }
@@ -108,6 +111,7 @@ export default function ResetPassword({ navigate }: NavigationProps) {
                     {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                   </button>
                 </div>
+                <PasswordRequirements value={password} />
               </div>
 
               <div className="flex flex-col gap-2">

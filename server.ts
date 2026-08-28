@@ -40,7 +40,26 @@ async function startServer() {
   const previewAuthProxyOrigin = process.env.NEXORA_AUTH_PROXY_ORIGIN
     || (process.env.NODE_ENV !== 'production' && !hasLocalSupabaseKey ? 'https://shop-onwer-pink-nexora-aap.vercel.app' : '');
 
+  // Supabase requires one lowercase letter, one uppercase letter and one number
+  // in every password. Reject weak passwords before the round-trip so the UI
+  // shows actionable wording instead of Supabase's "should contain at least one
+  // character of each: abcdefghijklmnopqrstuvwxyz, ABCDEFGHIJKLMNOPQRSTUVWXYZ,
+  // 0123456789" message.
+  const SIGNUP_PASSWORD_MESSAGE =
+    'Password must be at least 8 characters, with one lowercase letter (a-z), one uppercase letter (A-Z) and one number (0-9).';
+
   const proxyAuthRequest = async (req: express.Request, res: express.Response, route: 'login' | 'signup', authPath: string) => {
+    if (route === 'signup') {
+      const password = (req.body as { password?: unknown })?.password;
+      const weak =
+        typeof password !== 'string' ||
+        password.length < 8 ||
+        !/[a-z]/.test(password) ||
+        !/[A-Z]/.test(password) ||
+        !/[0-9]/.test(password);
+      if (weak) return res.status(400).json({ error: { message: SIGNUP_PASSWORD_MESSAGE } });
+    }
+
     try {
       const targetUrl = previewAuthProxyOrigin
         ? `${previewAuthProxyOrigin.replace(/\/$/, '')}/api/auth/${route}`
