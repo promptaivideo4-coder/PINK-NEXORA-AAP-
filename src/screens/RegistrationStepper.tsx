@@ -4,6 +4,8 @@ import { X, ChevronDown, ArrowRight, ArrowLeft, AlertCircle, Check, MapPin } fro
 import { NavigationProps } from '../types';
 import { supabase, isSupabaseConfigured, authenticateThroughApp } from '../lib/supabase';
 import { bootstrapMyShop, updateShopLocation } from '../lib/shopRepository';
+import PasswordRequirements from '../components/PasswordRequirements';
+import { validatePassword, friendlyPasswordError } from '../lib/passwordValidation';
 import ShopLocationPicker, { ConfirmedShopLocation } from '../components/ShopLocationPicker';
 
 export default function RegistrationStepper({ navigate }: NavigationProps) {
@@ -22,8 +24,9 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
   const goToLocation = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      setError(passwordCheck.message);
       return;
     }
     if (!businessName.trim()) {
@@ -110,7 +113,7 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
         setError('Account created. Please check your email and verify your account before logging in.');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to sign up.');
+      setError(friendlyPasswordError(err?.message) || err.message || 'Failed to sign up.');
     } finally {
       setLoading(false);
     }
@@ -189,7 +192,8 @@ export default function RegistrationStepper({ navigate }: NavigationProps) {
                   </div>
                   <div>
                     <label htmlFor="password" className="block text-[13px] font-medium text-on-surface-variant mb-1">Password</label>
-                    <input type="password" id="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full bg-surface-container-low border border-surface-variant rounded-[14px] px-4 py-3 text-base text-on-background focus:border-primary-container focus:ring-4 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50 outline-none" />
+                    <input type="password" id="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full bg-surface-container-low border border-surface-variant rounded-[14px] px-4 py-3 text-base text-on-background focus:border-primary-container focus:ring-4 focus:ring-primary-fixed-dim transition-all placeholder:text-on-surface-variant/50 outline-none" />
+                    <PasswordRequirements value={password} />
                   </div>
                 </div>
 
