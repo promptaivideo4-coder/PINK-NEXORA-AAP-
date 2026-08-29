@@ -1,802 +1,570 @@
-import React, { useState } from 'react';
-import TopBar from '../components/TopBar';
-import { NavigationProps, Customer, WhatsAppTemplate, Tag as TagInterface } from '../types';
-import CustomerDetailModal from '../components/CustomerDetailModal';
-import WhatsAppTemplateModal from '../components/WhatsAppTemplateModal';
-import TagModal from '../components/TagModal';
-import { Search, Plus, X, UserPlus, User, RotateCcw, Upload, Check, Mail, Phone, Sparkles, Download, MessageCircle, Settings, Tag as TagIcon, Trash2, ChevronDown } from 'lucide-react';
-import { exportCustomersToCSV } from '../utils/export';
-import { motion, AnimatePresence } from 'motion/react';
-import { useLanguage } from '../contexts/LanguageContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
+import { ScreenName, NavigationProps } from '../types';
+import { Search, Plus, MoreVertical, Edit, Trash2, Eye, User, Phone, Mail, Tag, Clock, Filter, SortDesc, SortAsc } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-type FilterType = 'All' | 'VIP' | 'Members' | 'New';
+interface Customer {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  whatsapp_number: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  customer_type: string;
+  total_visits: number;
+  total_spend_paise: number;
+  join_date: string;
+  last_visit_at: string;
+  notes: string;
+  tags: string[];
+  is_active: boolean;
+  created_at: string;
+  last_booking_at?: string;
+  last_booking_service?: string;
+}
 
-// Customer records previously shown here were hardcoded demo people (fake
-// names, fake spend). Removed in the final release audit: the CRM list starts
-// EMPTY and only shows customers the owner adds on this device or real data
-// synced later. Real booking customers are visible in the Bookings screen.
-const INITIAL_CUSTOMERS: Customer[] = [];
+interface CustomersProps extends NavigationProps {
+  salonId?: string;
+}
 
-const ZONES = [
-  'Central Jaipur',
-  'East Jaipur',
-  'North Jaipur',
-  'South Jaipur',
-  'West Jaipur'
-];
-
-const ZONE_AREAS: Record<string, string[]> = {
-  'Central Jaipur': ['C-Scheme', 'MI Road', 'Sindhi Camp', 'Bani Park', 'Station Road', 'Chandpole', 'Johari Bazaar', 'Tripolia Bazaar', 'Kishanpole Bazaar', 'Ajmeri Gate', 'Chaura Rasta', 'Civil Lines', 'Secretariat Area', 'Ram Niwas Bagh', 'SMS Hospital Area'],
-  'East Jaipur': ['Malviya Nagar', 'Jagatpura', 'Jawahar Nagar', 'Adarsh Nagar', 'Tilak Nagar', 'Transport Nagar', 'Sanganer', 'Pratap Nagar', 'Sitapura', 'Goner Road', 'Agra Road', 'Kho Nagoriyan', 'Bambala', 'Vidyadhar Enclave'],
-  'North Jaipur': ['Vaishali Nagar', 'Jhotwara', 'Vidhyadhar Nagar', 'Murlipura', 'Harmada', 'Kalwar Road', 'Niwaru Road', 'Ambabari', 'Shastri Nagar', 'Banipark Extension', 'Sirsi Road', 'Chomu Road', 'Amer', 'Kukas'],
-  'South Jaipur': ['Mansarovar', 'Muhana', 'Patrakar Colony', 'Iskcon Road', 'New Sanganer Road', 'Durgapura', 'Mahesh Nagar', 'Gopalpura', 'Tonk Road', 'Airport Area', 'Shivdaspura', 'Vatika', 'Chaksu Road'],
-  'West Jaipur': ['Ajmer Road', 'Heerapura', 'Bhankrota', 'Gandhi Path', 'Lalarpura', 'Kanakpura', 'Sirsi Road', 'Khatipura', 'Queens Road', 'Nirman Nagar', 'Shyam Nagar', 'Sodala', 'Vaishali West']
-};
-
-export default function Customers({ navigate }: NavigationProps) {
-  const { t } = useLanguage();
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
-  const isCrmEmpty = customers.length === 0;
+const Customers: React.FC<CustomersProps> = ({ navigate, salonId: propSalonId }) => {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterType>('All');
-  const [zoneFilter, setZoneFilter] = useState<string>('');
-  const [areaFilter, setAreaFilter] = useState<string>('');
-  const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
-  const [zoneSearch, setZoneSearch] = useState('');
-  const [areaSearch, setAreaSearch] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
-  const [templates, setTemplates] = useState<WhatsAppTemplate[]>([
-    { id: '1', name: 'Confirm Appointment', content: 'Hi {client_name}, this is a reminder about your appointment.' },
-    { id: '2', name: 'Service Follow-up', content: 'Hi {client_name}, thank you for visiting! How was your service?' }
-  ]);
-  const [tags, setTags] = useState<TagInterface[]>([
-    { id: '1', name: 'VIP', color: '#EF4444' },
-    { id: '2', name: 'New Client', color: '#10B981' }
-  ]);
-  
-  // Invite Customer Form state
-  const [inviteName, setInviteName] = useState('');
-  const [invitePhone, setInvitePhone] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteType, setInviteType] = useState<Customer['type']>('New');
-  const [successToast, setSuccessToast] = useState('');
+  const [filterType, setFilterType] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'visits' | 'spend' | 'recent'>('recent');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [salonId, setSalonId] = useState<string | null>(propSalonId || null);
+  const [salonInfo, setSalonInfo] = useState<{ id: string; name: string } | null>(null);
 
-  // Dropdown states
-  const [isZoneMenuOpen, setIsZoneMenuOpen] = useState(false);
-  const [isAreaMenuOpen, setIsAreaMenuOpen] = useState(false);
-
-  const toggleSelection = (id: string) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  };
-
-  const handleBulkMessage = (template: WhatsAppTemplate) => {
-    selectedIds.forEach(id => {
-      const customer = customers.find(c => c.id === id);
-      if (customer?.whatsappNumber) {
-        const message = template.content
-          .replace('{client_name}', customer.name)
-          .replace('{service_name}', customer.history[0]?.service || 'your service');
-        window.open(`https://wa.me/${customer.whatsappNumber.replace(/\\s+/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
-      }
-    });
-    setSelectedIds([]);
-  };
-
-  const filters: FilterType[] = ['All', 'VIP', 'Members', 'New'];
-
-  const filteredCustomers = customers.filter(customer => {
-    const matchesFilter =
-      activeFilter === 'All' ||
-      (activeFilter === 'VIP' && customer.type === 'VIP') ||
-      (activeFilter === 'Members' && customer.type === 'Gold Member') ||
-      (activeFilter === 'New' && customer.type === 'New');
-
-    const matchesLocation = (() => {
-      if (!zoneFilter) return true;
-      if (zoneFilter && !areaFilter) {
-        return ZONE_AREAS[zoneFilter].some(area => customer.city?.includes(area));
-      }
-      return customer.city?.includes(areaFilter);
-    })();
-
-    const matchesSearch =
-      searchQuery.trim() === '' ||
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    return matchesFilter && matchesLocation && matchesSearch;
-  });
-
-  const handleClearAll = () => {
-    setCustomers([]);
-  };
-
-  const handleRestore = () => {
-    setCustomers(INITIAL_CUSTOMERS);
-    setSearchQuery('');
-    setActiveFilter('All');
-  };
-
-  const handleAddInvite = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteName.trim()) return;
-
-    const initials = inviteName
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) || 'CL';
-
-    const newCust: Customer = {
-      id: Date.now().toString(),
-      name: inviteName.trim(),
-      type: inviteType,
-      upcomingVisit: 'Pending',
-      initials,
-      phone: invitePhone || '+91 99999 99999',
-      email: inviteEmail || `${inviteName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-      address: 'Client Address',
-      notes: 'Invited via Nexora Client Portal',
-      history: []
-    };
-
-    setCustomers(prev => [newCust, ...prev]);
-    setShowInviteModal(false);
-    setInviteName('');
-    setInvitePhone('');
-    setInviteEmail('');
-    
-    setSuccessToast(`Invitation sent to ${newCust.name}!`);
-    setTimeout(() => setSuccessToast(''), 3000);
-  };
-
-  // REAL contact import via the browser Contact Picker API (Chrome/Edge).
-  // The previous version faked an import by inserting a hardcoded person.
-  const handleImportContacts = async () => {
-    const contacts = (navigator as any).contacts;
-    if (!contacts?.query) {
-      setSuccessToast('Contact import is not supported in this browser (use Chrome/Edge). Add customers manually instead.');
-      setTimeout(() => setSuccessToast(''), 5000);
-      return;
-    }
-    try {
-      const selected = await contacts.query({ name: {}, tel: {}, email: {} });
-      if (!selected || selected.length === 0) {
-        setSuccessToast('No contacts selected.');
-        setTimeout(() => setSuccessToast(''), 4000);
+  // Fetch salon ID if not provided
+  useEffect(() => {
+    const fetchSalonId = async () => {
+      if (propSalonId) {
+        setSalonId(propSalonId);
         return;
       }
-      const imported: Customer[] = selected.slice(0, 50).map((c: any, i: number) => ({
-        id: `imp-${Date.now()}-${i}`,
-        name: [c.name?.familyName, c.name?.givenName].filter(Boolean).join(' ') || c.name?.formatted || 'Imported contact',
-        type: 'Regular',
-        lastVisit: '—',
-        spend: '₹0',
-        visits: '0',
-        initials: '',
-        phone: c.tel?.[0] || '',
-        email: c.email?.[0] || '',
-        notes: 'Imported from device contacts',
-        history: []
-      }));
-      setCustomers(prev => [...imported, ...prev]);
-      setSuccessToast(`Imported ${imported.length} contact(s) from device.`);
-      setTimeout(() => setSuccessToast(''), 4000);
-    } catch (e: any) {
-      setSuccessToast(e?.message || 'Contact import failed.');
-      setTimeout(() => setSuccessToast(''), 5000);
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate('login');
+          return;
+        }
+
+        // Get the user's salon
+        const { data: salon, error: salonError } = await supabase
+          .from('salons')
+          .select('id, name')
+          .eq('owner_id', user.id)
+          .is('deleted_at', null)
+          .maybeSingle();
+
+        if (salonError) {
+          console.error('Error fetching salon:', salonError);
+          setError('Failed to load salon information');
+        } else if (salon) {
+          setSalonId(salon.id);
+          setSalonInfo(salon);
+        } else {
+          // Try via organization_members
+          const { data: orgMember, error: orgError } = await supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .maybeSingle();
+
+          if (orgError || !orgMember) {
+            setError('No salon found for this account');
+          } else {
+            const { data: orgSalon, error: orgSalonError } = await supabase
+              .from('salons')
+              .select('id, name')
+              .eq('organization_id', orgMember.organization_id)
+              .is('deleted_at', null)
+              .maybeSingle();
+
+            if (orgSalonError || !orgSalon) {
+              setError('No salon found for this account');
+            } else {
+              setSalonId(orgSalon.id);
+              setSalonInfo(orgSalon);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user:', err);
+        setError('Failed to authenticate');
+      }
+    };
+
+    fetchSalonId();
+  }, [propSalonId, navigate]);
+
+  // Fetch customers
+  const fetchCustomers = useCallback(async () => {
+    if (!salonId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get customer types
+      const customerTypes = ['VIP', 'Gold Member', 'New', 'Standard', 'Walk-in'];
+
+      // Build query
+      let query = supabase
+        .from('customers')
+        .select(`
+          id, first_name, last_name, full_name, email, phone, whatsapp_number,
+          address, city, state, pincode, customer_type, total_visits, total_spend_paise,
+          join_date, last_visit_at, notes, tags, is_active, created_at,
+          bookings(appointment_start, services(name))
+        `)
+        .eq('salon_id', salonId)
+        .is('deleted_at', null);
+
+      // Apply filters
+      if (searchQuery) {
+        const searchTerm = `%${searchQuery}%`;
+        query = query.or(`
+          ilike(first_name,${searchTerm}),
+          ilike(last_name,${searchTerm}),
+          ilike(full_name,${searchTerm}),
+          ilike(phone,${searchTerm}),
+          ilike(email,${searchTerm}),
+          ilike(city,${searchTerm})
+        `);
+      }
+
+      if (filterType) {
+        query = query.eq('customer_type', filterType);
+      }
+
+      // Apply sorting
+      let orderColumn = 'last_visit_at';
+      switch (sortBy) {
+        case 'name':
+          orderColumn = 'full_name';
+          break;
+        case 'visits':
+          orderColumn = 'total_visits';
+          break;
+        case 'spend':
+          orderColumn = 'total_spend_paise';
+          break;
+        case 'recent':
+        default:
+          orderColumn = 'last_visit_at';
+          break;
+      }
+
+      query = query.order(orderColumn, { ascending: sortOrder === 'asc', nullsLast: true });
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      // Enrich data with last booking info
+      const enrichedCustomers = data.map(customer => {
+        const lastBooking = customer.bookings?.[0];
+        return {
+          ...customer,
+          last_booking_at: lastBooking?.appointment_start || null,
+          last_booking_service: lastBooking?.services?.[0]?.name || null,
+          bookings: undefined, // Remove to clean up response
+        };
+      });
+
+      setCustomers(enrichedCustomers);
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+      setError('Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
+  }, [salonId, searchQuery, filterType, sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (salonId) {
+      fetchCustomers();
+    }
+  }, [salonId, fetchCustomers]);
+
+  // Refresh customers list
+  const refreshCustomers = useCallback(() => {
+    if (salonId) {
+      fetchCustomers();
+    }
+  }, [salonId, fetchCustomers]);
+
+  // Handle customer actions
+  const handleAddCustomer = () => {
+    // For now, redirect to a form or show modal
+    // In a real implementation, this would open a modal or navigate to new-customer screen
+    navigate('customer-profile', { state: { mode: 'new', salonId } });
+  };
+
+  const handleViewCustomer = (customerId: string) => {
+    navigate('customer-profile', { state: { customerId, salonId, mode: 'view' } });
+  };
+
+  const handleEditCustomer = (customerId: string) => {
+    navigate('customer-profile', { state: { customerId, salonId, mode: 'edit' } });
+  };
+
+  const handleToggleStatus = async (customerId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .update({
+          is_active: !currentStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', customerId);
+
+      if (error) {
+        throw error;
+      }
+
+      refreshCustomers();
+    } catch (err) {
+      console.error('Error toggling customer status:', err);
+      setError('Failed to update customer status');
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background text-on-surface font-sans flex flex-col pb-24 md:pb-0 relative overflow-hidden">
-      <TopBar showBack onBack={() => navigate('dashboard')} navigate={navigate} title={t('customers')} />
+  const handleDeleteCustomer = async (customerId: string) => {
+    if (!window.confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
+      return;
+    }
 
-      <main className="w-full max-w-md mx-auto px-4 pt-6 pb-12 flex-grow space-y-6 flex flex-col">
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .update({
+          deleted_at: new Date().toISOString(),
+          is_active: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', customerId);
 
-        {/* Honest CRM state — the hardcoded demo directory was removed in the
-            final release audit. */}
-        {isCrmEmpty && (
-          <div className="rounded-2xl border border-dashed border-outline-variant/60 bg-surface-container-lowest/60 p-5 text-center">
-            <p className="text-sm font-bold">No customers in this directory yet</p>
-            <p className="mt-1 text-xs text-on-surface-variant leading-relaxed">
-              Add a customer, import from device contacts (Chrome/Edge), or see
-              real booking customers in the Bookings screen. Customer profiles
-              are stored on this device; the shared customer CRM syncs with the
-              main website.
-            </p>
-          </div>
-        )}
+      if (error) {
+        throw error;
+      }
 
-        {/* Top Header Actions */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight">{t('client_directory')}</h1>
-            <p className="text-xs text-on-surface-variant">{t('client_directory_desc')}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {selectedIds.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <button
-                    onClick={() => setActiveMenuId(activeMenuId === 'bulk' ? null : 'bulk')}
-                    className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-full transition-colors flex items-center gap-1"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    Bulk Message
-                  </button>
-                  {activeMenuId === 'bulk' && (
-                    <div className="absolute right-0 top-full mt-2 bg-white shadow-xl rounded-xl p-2 z-50 w-48 border border-outline-variant/30 flex flex-col gap-1">
-                      {templates.map(template => (
-                        <button 
-                          key={template.id}
-                          onClick={() => { handleBulkMessage(template); setActiveMenuId(null); }}
-                          className="w-full text-left px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
-                        >
-                          {template.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => exportCustomersToCSV(customers.filter(c => selectedIds.includes(c.id)))}
-                  className="px-3 py-1.5 text-xs font-semibold text-on-surface bg-surface-variant hover:bg-surface-container-high rounded-full transition-colors flex items-center gap-1"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Export
-                </button>
-                <button
-                  onClick={() => alert('Tagging feature placeholder')}
-                  className="px-3 py-1.5 text-xs font-semibold text-on-surface bg-surface-variant hover:bg-surface-container-high rounded-full transition-colors flex items-center gap-1"
-                >
-                  <TagIcon className="w-3.5 h-3.5" />
-                  Tag
-                </button>
-                <button
-                  onClick={() => setIsTagModalOpen(true)}
-                  className="px-3 py-1.5 text-xs font-semibold text-on-surface bg-surface-variant hover:bg-surface-container-high rounded-full transition-colors flex items-center gap-1"
-                >
-                  <TagIcon className="w-3.5 h-3.5" />
-                  Manage Tags
-                </button>
-                <button
-                  onClick={() => {
-                    setCustomers(customers.filter(c => !selectedIds.includes(c.id)));
-                    setSelectedIds([]);
-                  }}
-                  className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-full transition-colors flex items-center gap-1"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Delete
-                </button>
-              </div>
-            )}
-            {customers.length > 0 ? (
-              <>
-                <button
-                  onClick={() => exportCustomersToCSV(customers)}
-                  className="px-3 py-1.5 text-xs font-semibold text-primary border border-primary/30 hover:bg-primary-fixed/20 rounded-full transition-colors flex items-center gap-1"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  {t('export')}
-                </button>
-                <button
-                  onClick={handleClearAll}
-                  className="px-3 py-1.5 text-xs font-semibold text-on-surface-variant border border-outline-variant/40 hover:text-error hover:border-error/40 rounded-full transition-colors"
-                >
-                  {t('clear_directory')}
-                </button>
-                <button
-                  onClick={() => setIsTemplateModalOpen(true)}
-                  className="px-3 py-1.5 text-xs font-semibold text-on-surface-variant border border-outline-variant/40 hover:text-primary hover:border-primary/40 rounded-full transition-colors flex items-center gap-1"
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                  Templates
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={handleRestore}
-                className="px-3 py-1.5 text-xs font-semibold text-primary border border-primary/30 hover:bg-primary-fixed/20 rounded-full transition-colors flex items-center gap-1"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>{t('restore_directory')}</span>
-              </button>
-            )}
-          </div>
+      refreshCustomers();
+    } catch (err) {
+      console.error('Error deleting customer:', err);
+      setError('Failed to delete customer');
+    }
+  };
+
+  // Format currency
+  const formatCurrency = (paise: number | null | undefined) => {
+    if (!paise) return '₹0';
+    const rupees = paise / 100;
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(rupees);
+  };
+
+  // Format phone number
+  const formatPhone = (phone: string | null) => {
+    if (!phone) return 'N/A';
+    if (phone.length === 10) {
+      return `${phone.slice(0, 5)} ${phone.slice(5)}`;
+    }
+    return phone;
+  };
+
+  // Format date
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  // Calculate stats
+  const totalCustomers = customers.length;
+  const activeCustomers = customers.filter(c => c.is_active).length;
+  const totalVisits = customers.reduce((sum, c) => sum + (c.total_visits || 0), 0);
+  const totalRevenue = customers.reduce((sum, c) => sum + (c.total_spend_paise || 0), 0);
+  const vipCustomers = customers.filter(c => c.customer_type === 'VIP').length;
+
+  // Customer types for filter
+  const customerTypes = ['VIP', 'Gold Member', 'New', 'Standard', 'Walk-in'];
+
+  if (!salonId) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-surface">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-screen flex flex-col items-center justify-center bg-surface p-4">
+        <div className="bg-error/10 border border-error rounded-xl p-6 text-center max-w-md">
+          <p className="text-error font-bold text-lg mb-4">Error</p>
+          <p className="text-on-surface-variant mb-6">{error}</p>
+          <button
+            onClick={refreshCustomers}
+            className="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-all"
+          >
+            Retry
+          </button>
         </div>
+      </div>
+    );
+  }
 
-        {/* Search Bar & Filters (Only show if customers exist or searching) */}
-        {(customers.length > 0 || searchQuery !== '') && (
-          <div className="space-y-3">
-            <div className="relative w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/60" />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('search_placeholder_customers')} 
-                className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-3 pl-12 pr-10 focus:outline-none focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 transition-all text-base placeholder:text-on-surface-variant/60 shadow-xs"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-on-surface"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+  return (
+    <div className="w-full min-h-screen bg-surface p-4 md:p-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-on-surface">Customers</h1>
+          <p className="text-sm text-on-surface-variant">
+            {salonInfo?.name || 'Your Salon'}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleAddCustomer}
+            className="bg-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-primary/90 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Add Customer
+          </button>
+        </div>
+      </div>
 
-            {/* Filters */}
-            <div className="flex gap-2">
-              <select 
-                value={activeFilter} 
-                onChange={(e) => setActiveFilter(e.target.value as FilterType)}
-                className="flex-1 bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-2.5 px-4 focus:outline-none focus:border-primary text-sm shadow-xs"
-              >
-                <option value="All">All Statuses</option>
-                <option value="VIP">VIP</option>
-                <option value="Members">Gold Members</option>
-                <option value="New">New</option>
-              </select>
-              {/* Zone Dropdown */}
-              <div className="flex-1 relative z-30">
-                <button 
-                  onClick={() => setIsZoneMenuOpen(!isZoneMenuOpen)}
-                  className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-2.5 px-4 focus:outline-none focus:border-primary text-sm shadow-xs flex items-center justify-between text-left"
-                >
-                  <span className="truncate pr-2">
-                    {zoneFilter || 'Select Zone'}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-on-surface-variant/60 shrink-0" />
-                </button>
-                
-                <AnimatePresence>
-                  {isZoneMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsZoneMenuOpen(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full right-0 left-0 mt-2 bg-white shadow-xl rounded-xl border border-outline-variant/30 p-2 z-50 flex flex-col gap-2 min-w-[200px]"
-                      >
-                        <div className="relative">
-                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant/50" />
-                          <input 
-                            type="text" 
-                            placeholder="Search zone..." 
-                            value={zoneSearch}
-                            onChange={(e) => setZoneSearch(e.target.value)}
-                            className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-lg py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
-                          <button
-                            onClick={() => { setZoneFilter(''); setAreaFilter(''); setZoneSearch(''); setAreaSearch(''); setIsZoneMenuOpen(false); }}
-                            className={`text-left px-2 py-1.5 text-xs rounded-md ${!zoneFilter ? 'bg-primary-container/10 text-primary font-bold' : 'hover:bg-surface-variant'}`}
-                          >
-                            All Zones
-                          </button>
-                          {ZONES.filter(z => z.toLowerCase().includes(zoneSearch.toLowerCase())).map(zone => (
-                            <button
-                              key={zone}
-                              onClick={() => { 
-                                setZoneFilter(zone); 
-                                setAreaFilter(''); 
-                                setAreaSearch(''); 
-                                setIsZoneMenuOpen(false);
-                              }}
-                              className={`text-left px-2 py-1.5 text-xs rounded-md ${zoneFilter === zone ? 'bg-primary-container/10 text-primary font-bold' : 'hover:bg-surface-variant'}`}
-                            >
-                              {zone}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="bg-surface-container-highest rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-on-surface">{totalCustomers}</p>
+          <p className="text-xs text-on-surface-variant">Total</p>
+        </div>
+        <div className="bg-surface-container-highest rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-on-surface">{activeCustomers}</p>
+          <p className="text-xs text-on-surface-variant">Active</p>
+        </div>
+        <div className="bg-surface-container-highest rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-on-surface">{totalVisits}</p>
+          <p className="text-xs text-on-surface-variant">Total Visits</p>
+        </div>
+        <div className="bg-surface-container-highest rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-on-surface">{formatCurrency(totalRevenue)}</p>
+          <p className="text-xs text-on-surface-variant">Total Revenue</p>
+        </div>
+      </div>
 
-              {/* Area Dropdown */}
-              <div className="flex-1 relative z-20">
-                <button 
-                  onClick={() => zoneFilter && setIsAreaMenuOpen(!isAreaMenuOpen)}
-                  disabled={!zoneFilter}
-                  className={`w-full bg-surface-container-lowest border border-outline-variant/50 rounded-[14px] py-2.5 px-4 focus:outline-none focus:border-primary text-sm shadow-xs flex items-center justify-between text-left ${!zoneFilter ? 'opacity-50 cursor-not-allowed bg-surface-variant/30' : ''}`}
-                >
-                  <span className="truncate pr-2">
-                    {zoneFilter && areaFilter 
-                      ? `${zoneFilter} > ${areaFilter}` 
-                      : 'Select Area'}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-on-surface-variant/60 shrink-0" />
-                </button>
-                
-                <AnimatePresence>
-                  {isAreaMenuOpen && zoneFilter && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsAreaMenuOpen(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full right-0 left-[-50%] sm:left-0 mt-2 bg-white shadow-xl rounded-xl border border-outline-variant/30 p-2 z-50 flex flex-col gap-2 min-w-[200px]"
-                      >
-                        <div className="relative">
-                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant/50" />
-                          <input 
-                            type="text" 
-                            placeholder="Search area..." 
-                            value={areaSearch}
-                            onChange={(e) => setAreaSearch(e.target.value)}
-                            className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-lg py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
-                          <button
-                            onClick={() => { setAreaFilter(''); setAreaSearch(''); setIsAreaMenuOpen(false); }}
-                            className={`text-left px-2 py-1.5 text-xs rounded-md ${!areaFilter ? 'bg-primary-container/10 text-primary font-bold' : 'hover:bg-surface-variant'}`}
-                          >
-                            All Areas in {zoneFilter}
-                          </button>
-                          {ZONE_AREAS[zoneFilter].filter(a => a.toLowerCase().includes(areaSearch.toLowerCase())).map(area => (
-                            <button
-                              key={area}
-                              onClick={() => { setAreaFilter(area); setIsAreaMenuOpen(false); }}
-                              className={`text-left px-2 py-1.5 text-xs rounded-md ${areaFilter === area ? 'bg-primary-container/10 text-primary font-bold' : 'hover:bg-surface-variant'}`}
-                            >
-                              {area}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+          <input
+            type="text"
+            placeholder="Search customers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-surface-container-high pl-10 pr-4 py-2.5 rounded-xl text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        
+        <select
+          value={filterType || ''}
+          onChange={(e) => setFilterType(e.target.value || null)}
+          className="bg-surface-container-high px-4 py-2.5 rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="">All Types</option>
+          {customerTypes.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+        
+        <div className="flex gap-1">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'name' | 'visits' | 'spend' | 'recent')}
+            className="bg-surface-container-high px-4 py-2.5 rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="recent">Recent</option>
+            <option value="name">Name</option>
+            <option value="visits">Visits</option>
+            <option value="spend">Spend</option>
+          </select>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="bg-surface-container-high p-2.5 rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-all"
+          >
+            {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Customers List */}
+      <div className="bg-surface-container-highest rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center">
+            <LoadingSpinner size="md" />
+            <p className="text-on-surface-variant mt-4">Loading customers...</p>
           </div>
-        )}
-
-        {/* Success Toast */}
-        <AnimatePresence>
-          {successToast && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-xs"
+        ) : customers.length === 0 ? (
+          <div className="p-8 text-center">
+            <User className="w-12 h-12 mx-auto text-on-surface-variant mb-4 opacity-50" />
+            <p className="text-on-surface-variant">No customers found</p>
+            <p className="text-sm text-on-surface-variant/70 mt-1">
+              Add your first customer to get started
+            </p>
+            <button
+              onClick={handleAddCustomer}
+              className="mt-4 bg-primary text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-primary/90 transition-all"
             >
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{successToast}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Customer List or Empty State */}
-        {filteredCustomers.length > 0 ? (
-          <div className="flex flex-col gap-3">
-            {filteredCustomers.map((customer) => (
-              <div 
+              Add Customer
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-outline-variant">
+            {customers.map((customer) => (
+              <div
                 key={customer.id}
-                className="bg-white/95 backdrop-blur-[20px] border border-surface-variant rounded-[18px] shadow-[0px_4px_20px_rgba(0,0,0,0.03)] p-4 flex items-center justify-between transition-transform cursor-pointer hover:shadow-md relative overflow-hidden"
+                className="p-4 hover:bg-surface-container-low transition-all cursor-pointer"
+                onClick={() => handleViewCustomer(customer.id)}
               >
-                <div 
-                  className="flex items-center gap-3 flex-grow"
-                  onClick={() => {
-                    localStorage.setItem('selected_customer_id', customer.id);
-                    localStorage.setItem('selected_customer_data', JSON.stringify(customer));
-                    navigate('customer-profile');
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(customer.id)}
-                    onChange={(e) => { e.stopPropagation(); toggleSelection(customer.id); }}
-                    className="w-5 h-5 rounded border-outline-variant/40 text-primary focus:ring-primary"
-                  />
-                  {customer.type === 'VIP' && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-container"></div>
-                  )}
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border border-outline-variant/30 overflow-hidden shrink-0 ${customer.image ? 'bg-surface-variant' : 'bg-surface-container-highest text-[18px] font-semibold text-on-surface-variant'}`}>
-                    {customer.image ? (
-                      <img 
-                        src={customer.image} 
-                        alt={customer.name} 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      customer.initials
-                    )}
+                <div className="flex items-center gap-4">
+                  {/* Avatar */}
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-primary font-bold text-lg">
+                      {customer.full_name.charAt(0).toUpperCase()}
+                    </span>
                   </div>
-                  <div>
-                    <h3 className="text-[18px] font-semibold text-on-surface">{customer.name}</h3>
-                    <div className="flex flex-col gap-0.5 mt-1">
-                      <div className="flex items-center gap-2">
-                        {customer.type !== 'Standard' && (
-                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase ${
-                            customer.type === 'VIP' ? 'bg-primary-container/10 text-primary-container' :
-                            customer.type === 'Gold Member' ? 'bg-[#0052da]/10 text-[#0052da]' :
-                            'bg-secondary-container/10 text-secondary-container'
-                          }`}>
-                            {customer.type}
-                          </span>
-                        )}
-                        <span className="text-on-surface-variant/70 text-xs font-medium">
-                          {customer.lastVisit ? `${t('last_visit')}: ${customer.lastVisit}` : `${t('upcoming')}: ${customer.upcomingVisit}`}
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-on-surface truncate">{customer.full_name}</h3>
+                      {customer.customer_type && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          customer.customer_type === 'VIP' ? 'bg-purple-500/10 text-purple-500' :
+                          customer.customer_type === 'Gold Member' ? 'bg-amber-500/10 text-amber-500' :
+                          'bg-success/10 text-success'
+                        }`}>
+                          {customer.customer_type}
                         </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-[11px] text-on-surface-variant/80 mt-1">
-                        {customer.city && <span>{customer.city}</span>}
-                        {customer.whatsappNumber && (
-                          <div 
-                            className="relative" 
-                            onMouseEnter={() => setActiveMenuId(customer.id)}
-                            onMouseLeave={() => setActiveMenuId(null)}
-                          >
-                            <motion.a 
-                              href={`https://wa.me/${customer.whatsappNumber.replace(/\s+/g, '')}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="flex items-center justify-center p-1.5 bg-emerald-100 text-emerald-700 rounded-full hover:bg-emerald-200 transition-colors" 
-                              title="Chat on WhatsApp"
-                              animate={{ scale: [1, 1.05, 1] }}
-                              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </motion.a>
-                            {activeMenuId === customer.id && (
-                              <div className="absolute left-0 bottom-full mb-2 bg-white shadow-xl rounded-xl p-2 z-50 w-48 border border-outline-variant/30 flex flex-col gap-1">
-                                {templates.map(template => (
-                                  <button 
-                                    key={template.id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const message = template.content
-                                        .replace('{client_name}', customer.name)
-                                        .replace('{service_name}', customer.history[0]?.service || 'your service');
-                                      window.open(`https://wa.me/${customer.whatsappNumber.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
-                                    }}
-                                    className="w-full text-left px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-variant rounded-lg transition-colors"
-                                  >
-                                    {template.name}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {customer.joinDate && <span>Joined: {customer.joinDate}</span>}
-                      </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant">
+                      {customer.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {formatPhone(customer.phone)}
+                        </span>
+                      )}
+                      {customer.email && (
+                        <span className="flex items-center gap-1 truncate max-w-[200px]">
+                          <Mail className="w-3 h-3" />
+                          {customer.email}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant mt-1">
+                      {customer.city && (
+                        <span className="flex items-center gap-1">
+                          <span className="text-xs">📍</span>
+                          {customer.city}
+                        </span>
+                      )}
+                      {customer.total_visits > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {customer.total_visits} visits
+                        </span>
+                      )}
+                      {customer.last_visit_at && (
+                        <span className="text-on-surface-variant/70">
+                          Last: {formatDate(customer.last_visit_at)}
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[18px] font-semibold text-on-surface">
-                    {customer.spend || customer.visits || '--'}
-                  </div>
-                  <div className="text-xs font-medium text-on-surface-variant/70">
-                    {customer.spend ? t('ytd_spend') : customer.visits ? t('visits_label') : t('first_visit')}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleViewCustomer(customer.id)}
+                      className="p-2 rounded-lg hover:bg-surface-container-high transition-all"
+                      title="View"
+                    >
+                      <Eye className="w-4 h-4 text-on-surface-variant" />
+                    </button>
+                    <button
+                      onClick={() => handleEditCustomer(customer.id)}
+                      className="p-2 rounded-lg hover:bg-surface-container-high transition-all"
+                      title="Edit"
+                    >
+                      <Edit className="w-4 h-4 text-on-surface-variant" />
+                    </button>
+                    <button
+                      onClick={() => handleToggleStatus(customer.id, customer.is_active)}
+                      className="p-2 rounded-lg hover:bg-surface-container-high transition-all"
+                      title={customer.is_active ? 'Deactivate' : 'Activate'}
+                    >
+                      {customer.is_active ? (
+                        <span className="text-xs bg-success/10 text-success px-2 py-0.5 rounded-full">Active</span>
+                      ) : (
+                        <span className="text-xs bg-error/10 text-error px-2 py-0.5 rounded-full">Inactive</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCustomer(customer.id)}
+                      className="p-2 rounded-lg hover:bg-error/10 transition-all"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4 text-error" />
+                    </button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        ) : (
-          /* NO CUSTOMERS FOUND - EXACT DESIGN MATCH */
-          <div className="flex-1 flex flex-col justify-center items-center py-8">
-            <div className="w-full max-w-md bg-surface-container-lowest rounded-[24px] border border-outline-variant/30 shadow-[0px_10px_40px_rgba(0,0,0,0.08)] p-8 md:p-12 text-center flex flex-col items-center gap-6 relative overflow-hidden group">
-              
-              {/* Abstract background graphic */}
-              <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary-container/20 via-transparent to-transparent"></div>
-
-              {/* Illustration Area */}
-              <div className="relative w-48 h-48 flex items-center justify-center mb-2 transition-transform duration-500 ease-out group-hover:scale-105">
-                {/* Soft Glow */}
-                <div className="absolute inset-0 bg-primary-container/10 rounded-full blur-2xl"></div>
-
-                {/* Floating Elements */}
-                <div className="absolute w-16 h-16 bg-surface-container-lowest border border-outline-variant/40 rounded-2xl shadow-xs rotate-[-12deg] -left-4 top-8 flex items-center justify-center backdrop-blur-sm z-10 animate-bounce [animation-duration:6s]">
-                  <User className="text-outline-variant w-8 h-8" />
-                </div>
-
-                <div className="absolute w-24 h-32 bg-surface-container-lowest border border-outline-variant/50 rounded-2xl shadow-md z-20 flex flex-col items-center p-3 animate-bounce [animation-duration:5s] [animation-delay:0.5s]">
-                  <div className="w-12 h-12 rounded-full bg-surface-variant mb-2 flex items-center justify-center text-on-surface-variant/40">
-                    <User className="w-6 h-6" />
-                  </div>
-                  <div className="w-16 h-2 rounded-full bg-surface-variant mb-1.5"></div>
-                  <div className="w-10 h-2 rounded-full bg-surface-container-highest"></div>
-                </div>
-
-                <div className="absolute w-14 h-14 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-xs rotate-[15deg] -right-2 bottom-6 flex items-center justify-center backdrop-blur-sm z-10 animate-bounce [animation-duration:7s] [animation-delay:1s]">
-                  <UserPlus className="text-outline-variant w-6 h-6" />
-                </div>
-              </div>
-
-              {/* Typography */}
-              <div className="space-y-3 relative z-10">
-                <h2 className="text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight">
-                  {t('no_customers_found')}
-                </h2>
-                <p className="text-xs sm:text-sm text-on-surface-variant max-w-[280px] mx-auto leading-relaxed">
-                  Your client list is empty. Start adding customers to track their history.
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="w-full space-y-3 relative z-10">
-                <button 
-                  onClick={() => setShowInviteModal(true)}
-                  className="w-full bg-primary-container text-on-primary-container font-bold text-sm py-4 px-8 rounded-2xl hover:opacity-90 active:scale-95 transition-all duration-200 shadow-md flex items-center justify-center gap-2 group"
-                >
-                  <UserPlus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span>{t('invite_customer')}</span>
-                </button>
-
-                <button 
-                  onClick={handleImportContacts}
-                  className="w-full bg-transparent text-on-surface-variant font-semibold text-xs py-3 px-8 rounded-2xl border border-outline-variant/50 hover:bg-surface-container-low active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
-                >
-                  <Upload className="w-4 h-4 text-primary" />
-                  <span>{t('import_from_contacts')}</span>
-                </button>
-              </div>
-
-            </div>
-          </div>
         )}
+      </div>
 
-      </main>
-
-      {/* FAB */}
-      <button 
-        onClick={() => setShowInviteModal(true)}
-        className="fixed right-4 bottom-24 md:bottom-8 w-14 h-14 bg-primary-container text-white rounded-2xl flex items-center justify-center shadow-[0px_10px_40px_rgba(230,0,126,0.3)] hover:scale-105 active:scale-95 transition-all z-40"
-        title="Invite / Add Customer"
-      >
-        <Plus className="w-7 h-7" />
-      </button>
-
-      {/* Customer Detail Overlay */}
-      <CustomerDetailModal 
-        customer={selectedCustomer} 
-        onClose={() => setSelectedCustomer(null)} 
-      />
-
-      {/* Invite Customer Modal */}
-      <AnimatePresence>
-        {showInviteModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowInviteModal(false)}
-            className="fixed inset-0 bg-on-surface/40 backdrop-blur-md z-50 flex items-center justify-center p-4"
+      {/* Empty state when no results */}
+      {!loading && customers.length === 0 && searchQuery && (
+        <div className="mt-4 p-6 bg-surface-container-highest rounded-xl text-center">
+          <p className="text-on-surface-variant">No customers match your search</p>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="mt-2 text-primary font-bold text-sm hover:underline"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[28px] shadow-2xl p-6 sm:p-8 w-full max-w-md border border-outline-variant/30"
-            >
-              <div className="flex items-center justify-between pb-4 border-b border-outline-variant/20 mb-6">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center text-primary-container">
-                    <UserPlus className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-extrabold text-on-surface">{t('invite_customer')}</h3>
-                    <p className="text-xs text-on-surface-variant">Send a Nexora booking invitation</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowInviteModal(false)}
-                  className="p-2 rounded-full hover:bg-surface-container text-on-surface-variant transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleAddInvite} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">{t('full_name')} *</label>
-                  <input
-                    type="text"
-                    required
-                    value={inviteName}
-                    onChange={(e) => setInviteName(e.target.value)}
-                    placeholder="e.g. Meera Nair"
-                    className="w-full h-11 px-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">{t('phone_number')}</label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-on-surface-variant/50 absolute left-3.5 top-3.5" />
-                    <input
-                      type="tel"
-                      value={invitePhone}
-                      onChange={(e) => setInvitePhone(e.target.value)}
-                      placeholder="+91 99999 99999"
-                      className="w-full h-11 pl-10 pr-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">{t('email_address')}</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-on-surface-variant/50 absolute left-3.5 top-3.5" />
-                    <input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="client@example.com"
-                      className="w-full h-11 pl-10 pr-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">{t('client_tier')}</label>
-                  <select
-                    value={inviteType}
-                    onChange={(e) => setInviteType(e.target.value as Customer['type'])}
-                    className="w-full h-11 px-4 bg-surface-container-low border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:border-primary-container"
-                  >
-                    <option value="New">{t('new_label')}</option>
-                    <option value="Standard">Standard</option>
-                    <option value="Gold Member">Gold Member</option>
-                    <option value="VIP">VIP</option>
-                  </select>
-                </div>
-
-                <div className="pt-2 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowInviteModal(false)}
-                    className="flex-1 py-3 border border-outline-variant/40 rounded-xl text-xs font-bold text-on-surface-variant hover:bg-surface-container transition-colors"
-                  >
-                    {t('cancel')}
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 bg-primary-container text-white rounded-xl text-xs font-bold hover:bg-primary transition-colors shadow-md shadow-primary-container/20"
-                  >
-                    {t('send_invitation')}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <WhatsAppTemplateModal 
-        isOpen={isTemplateModalOpen} 
-        onClose={() => setIsTemplateModalOpen(false)} 
-        templates={templates}
-        onSave={setTemplates}
-      />
-      <TagModal 
-        isOpen={isTagModalOpen} 
-        onClose={() => setIsTagModalOpen(false)} 
-        tags={tags}
-        onSave={setTags}
-      />
+            Clear search
+          </button>
+        </div>
+      )}
     </div>
   );
-}
+};
 
+export default Customers;
