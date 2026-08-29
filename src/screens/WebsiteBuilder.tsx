@@ -15,7 +15,7 @@
  *   - Existing data auto-filled.
  */
 
-import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   fetchMyShop,
@@ -23,97 +23,18 @@ import {
   listServices,
   listStaff,
   listHours,
-  MyShop,
   ShopService,
   ShopStaff,
   ShopHours,
 } from '../lib/shopRepository';
 import type { SalonData } from '../website-builder/types';
-import { ArrowLeft, Loader2, Store, AlertCircle } from 'lucide-react';
+import { mapHours, mapPublishState, mapServices, mapStaff, slugFromSalonName } from '../website-builder/lib/shopPrefill';
+import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 
 // Lazy-load the heavy builder bundle so the main app stays lean.
 const BuilderApp = lazy(() => import('../website-builder/BuilderApp'));
 
 import type { NavigationProps } from '../types';
-
-/** Map shop status to builder publish state */
-function mapPublishState(status: string): 'draft' | 'publishing' | 'published' {
-  if (status === 'published') return 'published';
-  if (status === 'pending') return 'publishing';
-  return 'draft';
-}
-
-/** Map existing services from Supabase to builder Service[] format */
-function mapServices(services: ShopService[]): SalonData['services'] {
-  return services
-    .filter(s => !s.deletedAt && s.isActive)
-    .map(s => ({
-      id: s.id,
-      name: s.name,
-      category: 'General',
-      description: s.description || '',
-      price: Math.round(s.pricePaise / 100),
-      duration: s.durationMinutes,
-      featured: s.isBookableOnline,
-    }));
-}
-
-/** Map existing staff from Supabase to builder TeamMember[] format */
-function mapStaff(staff: ShopStaff[]): SalonData['team'] {
-  return staff
-    .filter(s => s.employmentStatus !== 'terminated')
-    .map(s => ({
-      id: s.id,
-      name: s.name,
-      role: s.role || 'Staff',
-      specialties: s.specialty ? [s.specialty] : [],
-      imageUrl: '',
-      bio: '',
-      phone: '',
-      status: (s.employmentStatus === 'active' ? 'Available' : s.employmentStatus === 'on_leave' ? 'On Leave' : 'Inactive') as any,
-    }));
-}
-
-/** Map salon hours to builder opening hours */
-function mapHours(hours: ShopHours[]): SalonData['openingHours'] {
-  const DAY_MAP: Record<number, keyof SalonData['openingHours']> = {
-    1: 'monday',
-    2: 'tuesday',
-    3: 'wednesday',
-    4: 'thursday',
-    5: 'friday',
-    6: 'saturday',
-    0: 'sunday',
-  };
-
-  const result: any = {};
-  for (const h of hours) {
-    const key = DAY_MAP[h.dayOfWeek];
-    if (key) {
-      result[key] = {
-        open: !h.isClosed,
-        startTime: h.opensAt || '10:00',
-        endTime: h.closesAt || '20:00',
-      };
-    }
-  }
-
-  // Fill defaults for any missing days
-  const defaultDay = { open: true, startTime: '10:00', endTime: '20:00' };
-  for (const day of ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const) {
-    if (!result[day]) result[day] = day === 'sunday' ? { ...defaultDay, open: false } : defaultDay;
-  }
-  return result;
-}
-
-/** Determine where to start the builder based on shop state */
-function getInitialStep(shop: MyShop | null): number {
-  if (!shop) return 0; // No shop → full onboarding from start
-  if (shop.status === 'published') return 0; // Returning published → show landing/dashboard
-  if (shop.status === 'pending') return 0; // Pending → show landing/dashboard
-  // Draft → resume onboarding
-  return 0;
-}
 
 /** Loading skeleton */
 function LoadingScreen() {
@@ -204,7 +125,7 @@ export default function WebsiteBuilder({ navigate }: NavigationProps) {
         services: mappedServices, // Always provide array (empty if no services)
         team: mappedStaff, // Always provide array (empty if no staff)
         publishState: mapPublishState(shop.status),
-        websiteSlug: shop.name ? shop.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) : undefined,
+        websiteSlug: shop.name ? slugFromSalonName(shop.name) : undefined,
       };
 
       // 6. If published, hydrate the published URL/slug from the database

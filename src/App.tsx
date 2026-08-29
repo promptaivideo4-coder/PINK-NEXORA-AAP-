@@ -59,6 +59,7 @@ import {
   isOnMainWebsiteAuthRoute,
   redirectToMainWebsiteAuth,
 } from './lib/authRoutes';
+import { PUBLIC_SCREENS, resolveInitialScreen } from './lib/workspaceScreens';
 
 function ScreenFallback() {
   return (
@@ -66,33 +67,7 @@ function ScreenFallback() {
       <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
     </div>
   );
-}
 
-/** Entry screen for a fresh load, including the Main Website auth route. */
-function resolveInitialScreen(): ScreenName {
-  if (typeof window === 'undefined') return 'splash';
-  // Main Website auth route → the app's own login screen.
-  if (isOnMainWebsiteAuthRoute()) return 'login';
-  const params = new URLSearchParams(window.location.search);
-  const previewScreen = params.get('screen');
-  if (previewScreen === 'dashboard') return 'dashboard';
-  if (previewScreen === 'new-staff') return 'new-staff';
-  if (previewScreen === 'staff-detail') return 'staff-detail';
-  if (previewScreen === 'staff-schedule') return 'staff-schedule';
-  if (previewScreen === 'staff-attendance') return 'staff-attendance';
-  if (previewScreen === 'leave-swap') return 'leave-swap';
-  if (previewScreen === 'staff-payroll') return 'staff-payroll';
-  if (previewScreen === 'staff-payroll-detail') return 'staff-payroll-detail';
-  if (previewScreen === 'staff-payroll-breakdown') return 'staff-payroll-breakdown';
-  if (previewScreen === 'staff-roles-access') return 'staff-roles-access';
-  if (previewScreen === 'staff-performance') return 'staff-performance';
-  if (previewScreen === 'staff-self-service') return 'staff-self-service';
-  if (previewScreen === 'staff-website-booking') return 'staff-website-booking';
-  const isStaffPreview = previewScreen === 'staff'
-    || window.location.hash === '#staff'
-    || window.location.hash === '#/staff';
-  if (isStaffPreview) return 'staff';
-  return 'splash';
 }
 
 export default function App() {
@@ -476,7 +451,6 @@ export default function App() {
   // The guard fires only after the initial session has been resolved so a
   // returning user with a stored session never sees a login flash on refresh.
   // ---------------------------------------------------------------------------
-  const PUBLIC_SCREENS = new Set<ScreenName>(['splash', 'welcome', 'login', 'reset-password', 'register-stepper']);
   const isPublicScreen = PUBLIC_SCREENS.has(currentScreen);
 
   const renderScreen = () => {
@@ -643,7 +617,9 @@ export default function App() {
       </AnimatePresence>
 
       <div className={`w-full h-screen relative shadow-2xl bg-surface overflow-x-hidden overflow-y-auto ${!isOnline ? 'pt-7' : ''}`}>
-        {renderScreen()}
+        <Suspense fallback={<ScreenFallback />}>
+          {renderScreen()}
+        </Suspense>
       </div>
 
       <FloatingInstallBadge 

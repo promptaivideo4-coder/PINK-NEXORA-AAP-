@@ -14,10 +14,21 @@ export const MAIN_WEBSITE_AUTH_ROUTE = '/auth/login';
 /** Legacy in-app hash equivalent of the same route. */
 const LEGACY_AUTH_HASH = '/app/owner/login';
 
+export type LocationLike = {
+  pathname: string;
+  hash: string;
+};
+
+function readLocation(loc?: LocationLike): LocationLike {
+  if (loc) return loc;
+  if (typeof window === 'undefined') return { pathname: '', hash: '' };
+  return { pathname: window.location.pathname, hash: window.location.hash };
+}
+
 /** True when the browser is already sitting on the Main Website auth route. */
-export function isOnMainWebsiteAuthRoute(): boolean {
-  if (typeof window === 'undefined') return false;
-  const { pathname, hash } = window.location;
+export function isOnMainWebsiteAuthRoute(loc?: LocationLike): boolean {
+  const { pathname, hash } = readLocation(loc);
+  if (!pathname && !hash) return false;
   return (
     pathname === MAIN_WEBSITE_AUTH_ROUTE ||
     pathname.startsWith(`${MAIN_WEBSITE_AUTH_ROUTE}/`) ||

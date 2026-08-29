@@ -120,8 +120,6 @@ export default defineConfig(() => {
       })
     ],
     build: {
-      // Route-level code splitting keeps the entry chunk well under this.
-      chunkSizeWarningLimit: 700,
       rollupOptions: {
         output: {
           manualChunks(id: string) {
