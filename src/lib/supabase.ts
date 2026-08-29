@@ -6,10 +6,10 @@ import { isStrongPassword, PASSWORD_MIN_LENGTH } from './passwordValidation';
  * Public Supabase project settings for Nexora.
  * The anon/publishable key is designed to be present in browser bundles; access
  * to data is protected by Supabase Row Level Security, not by hiding this key.
- * Vercel environment variables override these defaults for another project.
+ * 
+ * SECURITY: In production, these MUST be set via environment variables.
+ * Hardcoded defaults are for development only and should be rotated before production.
  */
-const DEFAULT_SUPABASE_URL = 'https://qwaehqsmodekbgvnaavz.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3YWVocXNtb2Rla2Jndm5hYXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjQ5MjksImV4cCI6MjEwMDc0MDkyOX0.K92b2vkEb77dyu8fYYZpMTIbTyP98Vo80TaMo_Hmq_E';
 
 // Accept a normal URL and also recover from accidental Markdown/brackets such as
 // "[https://project.supabase.co](https://project.supabase.co)" pasted into Vercel.
@@ -20,8 +20,22 @@ function normaliseSupabaseUrl(value?: string): string | undefined {
 
 const configuredUrl = normaliseSupabaseUrl(import.meta.env.VITE_SUPABASE_URL);
 const configuredAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
-const effectiveUrl = configuredUrl || DEFAULT_SUPABASE_URL;
-const effectiveKey = configuredAnonKey || DEFAULT_SUPABASE_ANON_KEY;
+
+// Validate that we have the required configuration
+if (!configuredUrl) {
+  console.warn('WARNING: Supabase URL not configured. Set VITE_SUPABASE_URL environment variable.');
+}
+
+if (!configuredAnonKey) {
+  console.warn('WARNING: Supabase anonymous key not configured. Set VITE_SUPABASE_ANON_KEY environment variable.');
+}
+
+const effectiveUrl = configuredUrl || '';
+const effectiveKey = configuredAnonKey || '';
+
+if (!effectiveUrl || !effectiveKey) {
+  throw new Error('Supabase configuration is required. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
+}
 
 /**
  * Nexora universal auth storage key.
