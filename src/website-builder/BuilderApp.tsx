@@ -3,30 +3,47 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef, useCallback, Component, type ReactNode, type ErrorInfo } from 'react';
+import { useState, useEffect, useRef, Component, type ReactNode, type ErrorInfo, lazy, Suspense } from 'react';
 import Landing from './screens/Landing';
-import HeroSplit from './screens/HeroSplit';
-import StepTemplate from './screens/StepTemplate';
-import StepDetails from './screens/StepDetails';
-import StepServices from './screens/StepServices';
-import StepTeam from './screens/StepTeam';
-import StepPhotos from './screens/StepPhotos';
-import StepSocials from './screens/StepSocials';
-import StepLocation from './screens/StepLocation';
-import StepContactBooking from './screens/StepContactBooking';
-import StepPublish from './screens/StepPublish';
-import StepAIContentReview from './screens/StepAIContentReview';
-import StepFullWebsitePreview from './screens/StepFullWebsitePreview';
-import StepPublishSetup from './screens/StepPublishSetup';
-import StepPublishSuccess from './screens/StepPublishSuccess';
-import BookingConfirmation from './components/BookingConfirmation';
-import StaffManagementModule from './components/StaffManagementModule';
 import TopBar from './components/TopBar';
 import { initialData, SalonData } from './types';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, ArrowRight, ArrowLeft, Wifi, WifiOff, AlertTriangle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, ArrowRight, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { fetchMyShop } from '../lib/shopRepository';
+import {
+  MAX_STEP_INDEX,
+  TOTAL_STEPS,
+  getCurrentScreen as screenIdFor,
+  isDashboardTab,
+  resolveNavigateToScreen,
+} from './lib/workspaceRouting';
+import type { LandingTab } from './dashboard/types';
+
+const HeroSplit = lazy(() => import('./screens/HeroSplit'));
+const StepTemplate = lazy(() => import('./screens/StepTemplate'));
+const StepDetails = lazy(() => import('./screens/StepDetails'));
+const StepServices = lazy(() => import('./screens/StepServices'));
+const StepTeam = lazy(() => import('./screens/StepTeam'));
+const StepPhotos = lazy(() => import('./screens/StepPhotos'));
+const StepSocials = lazy(() => import('./screens/StepSocials'));
+const StepLocation = lazy(() => import('./screens/StepLocation'));
+const StepContactBooking = lazy(() => import('./screens/StepContactBooking'));
+const StepPublish = lazy(() => import('./screens/StepPublish'));
+const StepAIContentReview = lazy(() => import('./screens/StepAIContentReview'));
+const StepFullWebsitePreview = lazy(() => import('./screens/StepFullWebsitePreview'));
+const StepPublishSetup = lazy(() => import('./screens/StepPublishSetup'));
+const StepPublishSuccess = lazy(() => import('./screens/StepPublishSuccess'));
+const BookingConfirmation = lazy(() => import('./components/BookingConfirmation'));
+const StaffManagementModule = lazy(() => import('./components/StaffManagementModule'));
+
+function BuilderFallback() {
+  return (
+    <div className="flex-1 flex items-center justify-center bg-[#f9f9f9]">
+      <div className="w-8 h-8 rounded-full border-2 border-[#ac0053] border-t-transparent animate-spin" />
+    </div>
+  );
+}
 
 /**
  * onboarding_progress.business_id links the builder row to the salon's
@@ -127,12 +144,6 @@ export interface BuilderAppProps {
 
 const STORAGE_KEY = 'nexora_onboarding_state';
 const DASHBOARD_TAB_KEY = 'nexora_dashboard_tab';
-const TOTAL_STEPS = 16;
-const MAX_STEP_INDEX = 15; // 0-based: 0..15 => 1..16
-
-// Dashboard tab mapping for screens 18-25
-type DashboardTab = 'overview' | 'website' | 'bookings' | 'payments' | 'share' | 'settings' | 'referral' | 'branding';
-const DASHBOARD_TABS: DashboardTab[] = ['overview', 'website', 'bookings', 'payments', 'share', 'settings', 'referral', 'branding'];
 
 function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
   const [step, setStep] = useState<number>(() => {
@@ -196,10 +207,10 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
     return 'wizard';
   });
 
-  const [dashboardTab, setDashboardTab] = useState<DashboardTab>(() => {
+  const [dashboardTab, setDashboardTab] = useState<LandingTab>(() => {
     try {
-      const saved = localStorage.getItem(DASHBOARD_TAB_KEY) as DashboardTab | null;
-      if (saved && DASHBOARD_TABS.includes(saved)) return saved;
+      const saved = localStorage.getItem(DASHBOARD_TAB_KEY);
+      if (saved === 'services' || saved === 'staff' || isDashboardTab(saved)) return saved;
     } catch {}
     return 'overview';
   });
@@ -406,44 +417,37 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
   };
 
   // Universal 25-screen navigator
-  const getCurrentScreen = (): number => {
-    if (activeModule === 'staff-management') return 17;
-    if (activeModule === 'dashboard') {
-      const tabIndex = DASHBOARD_TABS.indexOf(dashboardTab);
-      return 18 + tabIndex;
-    }
-    // wizard
-    return step + 1; // step 0 => screen 1, step 15 => screen 16
-  };
+  const getCurrentScreen = (): number =>
+    screenIdFor({
+      activeModule,
+      dashboardTab: isDashboardTab(dashboardTab) ? dashboardTab : 'overview',
+      step,
+    });
 
   const navigateToScreen = (screenId: number) => {
-    if (screenId >= 1 && screenId <= 16) {
+    const intent = resolveNavigateToScreen(screenId, dataRef.current.publishState);
+    if (intent.kind === 'wizard') {
       setActiveModule('wizard');
-      setStep(screenId - 1);
+      setStep(intent.step);
       setShowResumeBanner(false);
-      showToast(`Navigated to Screen ${String(screenId).padStart(2, '0')}`);
-    } else if (screenId === 17) {
-      setActiveModule('staff-management');
-      showToast('Opened Staff Management Module (Screen 17)');
-    } else if (screenId >= 18 && screenId <= 25) {
-      // The dashboard is only unlocked after a REAL database publish.
-      // (The old code forced publishState='published' here and fabricated a
-      // nexora.site URL — removed in the final release audit.)
-      if (dataRef.current.publishState !== 'published') {
-        setActiveModule('wizard');
-        setStep(13); // Step 14 of 15: Publish
-        setShowResumeBanner(false);
-        showToast('Publish your website to the database first to open the dashboard');
-        return;
-      }
-      setActiveModule('dashboard');
-      const tabIndex = screenId - 18;
-      const tab = DASHBOARD_TABS[tabIndex] || 'overview';
-      setDashboardTab(tab as DashboardTab);
-      // For dashboard, ensure step is 0 to render Landing dashboard mode, but keep step for persistence
-      // We don't change step to avoid losing wizard progress; dashboard is separate module
-      showToast(`Opened Dashboard — ${tab} (Screen ${String(screenId).padStart(2, '0')})`);
+      showToast(intent.toast);
+      return;
     }
+    if (intent.kind === 'staff') {
+      setActiveModule('staff-management');
+      showToast(intent.toast);
+      return;
+    }
+    if (intent.kind === 'publish-required') {
+      setActiveModule('wizard');
+      setStep(13); // Step 14 of 15: Publish
+      setShowResumeBanner(false);
+      showToast(intent.toast);
+      return;
+    }
+    setActiveModule('dashboard');
+    setDashboardTab(intent.tab);
+    showToast(intent.toast);
   };
 
   const handleDashboard = () => {
@@ -470,15 +474,17 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
         <main className="flex-1 flex overflow-hidden">
           {/* Landing in dashboard mode with REAL publish state (the module is
               only reachable after a verified database publish) */}
-          <Landing
-            data={data}
-            setData={setData}
-            onNext={nextStep}
-            goToStep={goToStep}
-            onOpenStaffManagement={() => setActiveModule('staff-management')}
-            forcedActiveTab={dashboardTab as any}
-            onTabChange={(tab: any) => setDashboardTab(tab)}
-          />
+          <Suspense fallback={<BuilderFallback />}>
+            <Landing
+              data={data}
+              setData={setData}
+              onNext={nextStep}
+              goToStep={goToStep}
+              onOpenStaffManagement={() => setActiveModule('staff-management')}
+              forcedActiveTab={dashboardTab}
+              onTabChange={(tab) => setDashboardTab(tab)}
+            />
+          </Suspense>
         </main>
         <AnimatePresence>
           {toastMessage && (
@@ -509,12 +515,14 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
           onNavigate={navigateToScreen}
         />
         <main className="flex-1 flex overflow-hidden">
-          <StaffManagementModule
-            data={data}
-            setData={setData}
-            onSave={handleSave}
-            onBackToWizard={() => setActiveModule('wizard')}
-          />
+          <Suspense fallback={<BuilderFallback />}>
+            <StaffManagementModule
+              data={data}
+              setData={setData}
+              onSave={handleSave}
+              onBackToWizard={() => setActiveModule('wizard')}
+            />
+          </Suspense>
         </main>
         <AnimatePresence>
           {toastMessage && (
@@ -545,13 +553,15 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
         onNavigate={navigateToScreen}
       />
       <div className="flex-1 overflow-auto">
-        <Landing 
-          data={data}
-          setData={setData}
-          onNext={nextStep} 
-          goToStep={goToStep}
-          onOpenStaffManagement={() => setActiveModule('staff-management')}
-        />
+        <Suspense fallback={<BuilderFallback />}>
+          <Landing 
+            data={data}
+            setData={setData}
+            onNext={nextStep} 
+            goToStep={goToStep}
+            onOpenStaffManagement={() => setActiveModule('staff-management')}
+          />
+        </Suspense>
       </div>
       <AnimatePresence>
         {toastMessage && (
@@ -580,7 +590,9 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
         onNavigate={navigateToScreen}
       />
       <div className="flex-1 overflow-auto">
-        <HeroSplit onNext={nextStep} />
+        <Suspense fallback={<BuilderFallback />}>
+          <HeroSplit onNext={nextStep} />
+        </Suspense>
       </div>
       <div className="p-4 bg-white border-t border-gray-200 flex justify-between items-center">
         <button onClick={prevStep} className="px-4 py-2 border border-gray-300 rounded-xl text-xs font-semibold">Back</button>
@@ -640,7 +652,7 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
       </AnimatePresence>
       
       <main className="flex-1 flex overflow-hidden">
-        <>
+        <Suspense fallback={<BuilderFallback />}>
           {step === 2 && <StepTemplate data={data} setData={setData} onNext={nextStep} onPrev={prevStep} onSave={handleSave} />}
           {step === 3 && <StepDetails data={data} setData={setData} onNext={nextStep} onPrev={prevStep} onSave={handleSave} />}
           {step === 4 && <StepServices data={data} setData={setData} onNext={nextStep} onPrev={prevStep} onSave={handleSave} />}
@@ -721,7 +733,7 @@ function BuilderApp({ prefilledData, onNavigateBack }: BuilderAppProps = {}) {
               </div>
             </div>
           )}
-        </>
+        </Suspense>
       </main>
 
       {/* Toast Notification */}

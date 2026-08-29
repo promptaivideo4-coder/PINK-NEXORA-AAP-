@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { ScreenName, NavigationProps } from '../types';
-import { Search, Plus, MoreVertical, Edit, Trash2, Eye, User, Phone, Mail, Tag, Clock, Filter, SortDesc, SortAsc } from 'lucide-react';
+import { NavigationProps } from '../types';
+import { Search, Plus, Edit, Trash2, Eye, User, Phone, Mail, Clock, SortDesc, SortAsc } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 interface Customer {
@@ -167,7 +167,7 @@ const Customers: React.FC<CustomersProps> = ({ navigate, salonId: propSalonId })
           break;
       }
 
-      query = query.order(orderColumn, { ascending: sortOrder === 'asc', nullsLast: true });
+      query = query.order(orderColumn, { ascending: sortOrder === 'asc' });
 
       const { data, error } = await query;
 
@@ -210,17 +210,15 @@ const Customers: React.FC<CustomersProps> = ({ navigate, salonId: propSalonId })
 
   // Handle customer actions
   const handleAddCustomer = () => {
-    // For now, redirect to a form or show modal
-    // In a real implementation, this would open a modal or navigate to new-customer screen
-    navigate('customer-profile', { state: { mode: 'new', salonId } });
+    navigate('customer-profile');
   };
 
-  const handleViewCustomer = (customerId: string) => {
-    navigate('customer-profile', { state: { customerId, salonId, mode: 'view' } });
+  const handleViewCustomer = (_customerId: string) => {
+    navigate('customer-profile');
   };
 
-  const handleEditCustomer = (customerId: string) => {
-    navigate('customer-profile', { state: { customerId, salonId, mode: 'edit' } });
+  const handleEditCustomer = (_customerId: string) => {
+    navigate('customer-profile');
   };
 
   const handleToggleStatus = async (customerId: string, currentStatus: boolean) => {

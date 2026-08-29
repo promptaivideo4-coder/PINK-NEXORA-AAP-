@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useOwnerAccess } from '../hooks/useOwnerAccess';
-import { ScreenName, NavigationProps } from '../types';
-import { IndianRupee, Calendar, Clock, Users, TrendingUp, TrendingDown, Filter, Download, Eye } from 'lucide-react';
+import { NavigationProps } from '../types';
+import { IndianRupee, Calendar, Users, TrendingUp, Download, Eye } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { firstRelation } from '../lib/relation';
 
 interface PayrollRecord {
   id: string;
@@ -149,15 +150,30 @@ const PayrollEarnings: React.FC<PayrollEarningsProps> = ({ navigate, salonId: pr
       }
 
       // Enrich with staff info
-      const enrichedRecords = (data || []).map(record => {
-        const staffMember = staff.find(s => s.id === record.staff_id);
+      type PayrollQueryRow = {
+        id: string;
+        staff_id: string;
+        base_salary: number;
+        total_commission: number;
+        total_bonus: number;
+        total_deductions: number;
+        net_payable: number;
+        payment_status: string;
+        processed_at: string | null;
+        settled_at: string | null;
+        payroll_periods?: { period_start: string; period_end: string } | { period_start: string; period_end: string }[] | null;
+      };
+      const enrichedRecords = ((data || []) as PayrollQueryRow[]).map((record) => {
+        const staffMember = (staff || []).find((s: { id: string }) => s.id === record.staff_id);
+        const period = firstRelation(record.payroll_periods);
         return {
           ...record,
           staff_name: staffMember?.full_name || 'Unknown Staff',
-          staff_avatar: staffMember?.avatar_path || null,
-          period_start: record.payroll_periods?.period_start || '',
-          period_end: record.payroll_periods?.period_end || '',
-          payroll_periods: undefined, // Clean up
+          staff_avatar: staffMember?.avatar_path || '',
+          period_start: period?.period_start || '',
+          period_end: period?.period_end || '',
+          processed_at: record.processed_at || '',
+          settled_at: record.settled_at || '',
         };
       });
 
@@ -419,7 +435,7 @@ const PayrollEarnings: React.FC<PayrollEarningsProps> = ({ navigate, salonId: pr
                     </td>
                     <td className="p-4">
                       <button
-                        onClick={() => navigate('staff-payroll-detail', { state: { recordId: record.id, salonId } })}
+                        onClick={() => navigate('staff-payroll-detail')}
                         className="p-2 rounded-lg hover:bg-surface-container-high transition-all"
                         title="View Details"
                       >

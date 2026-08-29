@@ -1,5 +1,15 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createClient } from '@supabase/supabase-js';
+
+type NextApiRequest = IncomingMessage & {
+  method?: string;
+  body?: any;
+  query: Record<string, string | string[] | undefined>;
+};
+type NextApiResponse = ServerResponse & {
+  status: (code: number) => NextApiResponse;
+  json: (body: unknown) => void;
+};
 
 // Initialize Supabase client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://qwaehqsmodekbgvnaavz.supabase.co';
@@ -205,7 +215,8 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { salon_id, customer_id, services, staff_id, appointment_start, appointment_end, advance_paise, notes } = req.body;
+  const { salon_id, services, staff_id, appointment_start, appointment_end, advance_paise, notes } = req.body || {};
+  let customer_id = req.body?.customer_id;
 
   if (!salon_id) {
     return res.status(400).json({ error: 'salon_id is required' });
@@ -436,7 +447,7 @@ async function handleCancel(req: NextApiRequest, res: NextApiResponse) {
         status: 'cancelled',
         cancellation_reason: reason || null,
         cancelled_at: new Date().toISOString(),
-        payment_status: refund_advance ? 'refunded' : booking.payment_status,
+        payment_status: refund_advance ? 'refunded' : (booking as { payment_status?: string }).payment_status,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id as string)
@@ -474,7 +485,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Handle /api/bookings/:id
-  if (req.url?.match(}/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)) {
+  if (req.url?.match(/\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)) {
     if (method === 'GET') {
       return handleGetById(req, res);
     }

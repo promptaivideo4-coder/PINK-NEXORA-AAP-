@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Layout from '../components/Layout';
 import InstallAppBanner from '../components/InstallAppBanner';
 import { NavigationProps } from '../types';
-import { TrendingUp, Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, CreditCard, Store, Rocket, FileCheck, AlertCircle, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Calendar, Users, Wallet, Star, PlusCircle, UserPlus, Scissors, CalendarCheck, Store, Rocket, FileCheck, CheckCircle2 } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';

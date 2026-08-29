@@ -8,23 +8,35 @@ export interface OwnerAccess {
   /** The caller's role in the owning organization (null when denied). */
   role: string | null;
   error: string | null;
+  hasAccess: boolean;
+  loading: boolean;
 }
 
 const MANAGERIAL_ROLES = new Set(['owner', 'manager', 'admin']);
 
+function denied(error: string): OwnerAccess {
+  return { status: 'denied', role: null, error, hasAccess: false, loading: false };
+}
+
+function authorized(role: string): OwnerAccess {
+  return { status: 'authorized', role, error: null, hasAccess: true, loading: false };
+}
+
 /**
  * REAL access check for owner/manager-only screens.
  *
- * The previous implementation read `nexora-user-role` / `nexora-demo-role`
- * from localStorage (defaulting to 'owner'), which is client-trusted: any
- * signed-in user — or a user who edited localStorage — passed the check.
- *
- * Authority now comes from the canonical backend: the caller must have a
+ * Authority comes from the canonical backend: the caller must have a
  * valid Supabase session AND an ACTIVE owner/manager/admin row in
  * `organization_members` (read with their own JWT, RLS-scoped to their rows).
  */
 export function useOwnerAccess(): OwnerAccess {
-  const [state, setState] = useState<OwnerAccess>({ status: 'checking', role: null, error: null });
+  const [state, setState] = useState<OwnerAccess>({
+    status: 'checking',
+    role: null,
+    error: null,
+    hasAccess: false,
+    loading: true,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +44,7 @@ export function useOwnerAccess(): OwnerAccess {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          if (!cancelled) setState({ status: 'denied', role: null, error: 'Not signed in.' });
+          if (!cancelled) setState(denied('Not signed in.'));
           return;
         }
         const { data: members, error } = await supabase
@@ -40,19 +52,20 @@ export function useOwnerAccess(): OwnerAccess {
           .select('organization_id, role, status')
           .eq('user_id', user.id);
         if (error) {
-          // Fail CLOSED: an unreadable membership table must not default to
-          // authorized (the old code's failure mode).
-          if (!cancelled) setState({ status: 'denied', role: null, error: error.message });
+          if (!cancelled) setState(denied(error.message));
           return;
         }
-        const active = (members ?? []).find((m: any) => m.status === 'active' && MANAGERIAL_ROLES.has(String(m.role)));
+        const active = (members ?? []).find(
+          (m: { status: string; role: string }) => m.status === 'active' && MANAGERIAL_ROLES.has(String(m.role)),
+        );
         if (!cancelled) {
           setState(active
-            ? { status: 'authorized', role: String(active.role), error: null }
-            : { status: 'denied', role: null, error: 'Your account does not have owner/manager access to a salon.' });
+            ? authorized(String(active.role))
+            : denied('Your account does not have owner/manager access to a salon.'));
         }
-      } catch (e: any) {
-        if (!cancelled) setState({ status: 'denied', role: null, error: e?.message || 'Access check failed.' });
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Access check failed.';
+        if (!cancelled) setState(denied(message));
       }
     })();
     return () => { cancelled = true; };
