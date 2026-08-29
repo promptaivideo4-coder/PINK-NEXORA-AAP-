@@ -3,6 +3,7 @@ import { SalonData } from '../types';
 import TemplateRenderer from '../components/TemplateRenderer';
 import { supabase } from '../../lib/supabase';
 import { publishShopWebsite } from '../../lib/shopRepository';
+import type { SalonWebsiteConfig } from '../../lib/salonWebsiteConfig';
 import { ArrowLeft, ArrowRight, Globe, CheckCircle2, Link2, AlertCircle, Monitor, Smartphone, Circle, Check, Loader2 } from 'lucide-react';
 
 interface Props {
@@ -78,20 +79,21 @@ export default function StepPublishSetup({ data, setData, onNext, onPrev, onSave
     setData(prev => ({ ...prev, publishState: 'publishing', websiteSlug: slug }));
     if (onSave) onSave();
     try {
+      const websiteConfig: SalonWebsiteConfig = {
+        profile: { name: data.salonName, tagline: data.tagline, phone: data.phone, email: data.email, address: data.address },
+        template: { key: data.templateId },
+        services: data.services,
+        team: data.team,
+        gallery: data.gallery,
+        packages: data.packages,
+        openingHours: data.openingHours,
+        bookingRules: data.bookingRules,
+        reviewedContent: data.reviewedContent,
+      };
       const result = await publishShopWebsite(supabase, {
         slug,
         templateKey: data.templateId || 'classic-elegance',
-        config: {
-          profile: { name: data.salonName, tagline: data.tagline, phone: data.phone, email: data.email, address: data.address },
-          template: { key: data.templateId },
-          services: data.services,
-          team: data.team,
-          gallery: data.gallery,
-          packages: data.packages,
-          openingHours: data.openingHours,
-          bookingRules: data.bookingRules,
-          reviewedContent: data.reviewedContent,
-        },
+        config: websiteConfig,
       });
 
       if (result.ok) {

@@ -1,5 +1,15 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createClient } from '@supabase/supabase-js';
+
+type NextApiRequest = IncomingMessage & {
+  method?: string;
+  body?: any;
+  query: Record<string, string | string[] | undefined>;
+};
+type NextApiResponse = ServerResponse & {
+  status: (code: number) => NextApiResponse;
+  json: (body: unknown) => void;
+};
 
 // Initialize Supabase client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://qwaehqsmodekbgvnaavz.supabase.co';

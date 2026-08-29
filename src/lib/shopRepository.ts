@@ -18,6 +18,13 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  parseSalonWebsiteConfig,
+  salonNameFromConfig,
+  slugFromSalonName,
+  templateKeyFromConfig,
+  type SalonWebsiteConfig,
+} from './salonWebsiteConfig';
 
 // ---------------------------------------------------------------------------
 // Types (mapped from live schema)
@@ -236,7 +243,7 @@ export async function fetchMyShop(client: SupabaseClient): Promise<MyShop | null
     .select('id, status, salon_id')
     .eq('salon_id', salon.id)
     .limit(1);
-  const proposal = (proposals ?? [])[0] as any;
+  const proposal = ((proposals ?? []) as Array<{ id: string; status: string; salon_id: string }>)[0];
 
   let status: ShopStatus;
   if (salon.verified) status = 'published';
@@ -791,7 +798,7 @@ export interface PublishValidationResult {
 export interface PublishWebsiteInput {
   slug?: string;
   templateKey: string;
-  config: Record<string, unknown>;
+  config: SalonWebsiteConfig;
   html?: string;
 }
 
@@ -860,22 +867,39 @@ export function validateSalonForPublish(shop: MyShop | null): PublishValidationR
 /**
  * Fetch existing published website record from salon_public_websites.
  */
+export interface PublishedWebsiteRow {
+  slug: string;
+  templateKey: string;
+  config: SalonWebsiteConfig;
+  isPublished: boolean;
+  publishedAt: string | null;
+}
+
+interface SalonPublicWebsiteQueryRow {
+  slug: string;
+  template_key: string;
+  config: unknown;
+  is_published: boolean | null;
+  published_at: string | null;
+}
+
 export async function fetchPublishedWebsite(
   client: SupabaseClient,
   salonId: string,
-): Promise<{ slug: string; templateKey: string; config: any; isPublished: boolean; publishedAt: string | null } | null> {
+): Promise<PublishedWebsiteRow | null> {
   const { data, error } = await client
     .from('salon_public_websites')
     .select('slug, template_key, config, is_published, published_at')
     .eq('salon_id', salonId)
     .maybeSingle();
   if (error || !data) return null;
+  const row = data as SalonPublicWebsiteQueryRow;
   return {
-    slug: data.slug,
-    templateKey: data.template_key,
-    config: data.config,
-    isPublished: Boolean(data.is_published),
-    publishedAt: data.published_at ?? null,
+    slug: row.slug,
+    templateKey: row.template_key,
+    config: parseSalonWebsiteConfig(row.config),
+    isPublished: Boolean(row.is_published),
+    publishedAt: row.published_at ?? null,
   };
 }
 
@@ -1044,17 +1068,70 @@ export async function publishShopWebsite(
   }
 }
 
+export type OwnerProposalStatus =
+  | 'draft'
+  | 'submitted'
+  | 'approved'
+  | 'changes_requested'
+  | 'rejected'
+  | 'published';
+
 export interface OwnerProposalItem {
   id: string;
   salonId: string;
   growthPartnerId: string;
-  status: 'draft' | 'submitted' | 'approved' | 'changes_requested' | 'rejected' | 'published';
+  status: OwnerProposalStatus;
   version: number;
-  payload: any;
+  payload: SalonWebsiteConfig;
   submittedAt: string | null;
   ownerReviewedAt: string | null;
   ownerNotes: string | null;
   publishedAt: string | null;
+}
+
+/** Live `salon_setup_proposals` row — canonical JSONB column is `payload`. */
+interface SalonSetupProposalQueryRow {
+  id: string;
+  salon_id: string;
+  growth_partner_id: string | null;
+  status: string;
+  version: number | null;
+  payload: unknown;
+  submitted_at: string | null;
+  owner_reviewed_at: string | null;
+  owner_notes: string | null;
+  published_at: string | null;
+}
+
+const OWNER_PROPOSAL_STATUSES: readonly OwnerProposalStatus[] = [
+  'draft',
+  'submitted',
+  'approved',
+  'changes_requested',
+  'rejected',
+  'published',
+];
+
+function parseOwnerProposalStatus(value: unknown): OwnerProposalStatus {
+  if (typeof value === 'string' && (OWNER_PROPOSAL_STATUSES as readonly string[]).includes(value)) {
+    return value as OwnerProposalStatus;
+  }
+  return 'draft';
+}
+
+function mapProposalRow(row: SalonSetupProposalQueryRow): OwnerProposalItem {
+  return {
+    id: row.id,
+    salonId: row.salon_id,
+    growthPartnerId: row.growth_partner_id ?? '',
+    status: parseOwnerProposalStatus(row.status),
+    version: Number(row.version ?? 0),
+    payload: parseSalonWebsiteConfig(row.payload),
+    submittedAt: row.submitted_at ?? null,
+    ownerReviewedAt: row.owner_reviewed_at ?? null,
+    ownerNotes: row.owner_notes ?? null,
+    publishedAt: row.published_at ?? null,
+  };
 }
 
 /**
@@ -1074,18 +1151,7 @@ export async function fetchOwnerProposals(client: SupabaseClient): Promise<Owner
     console.warn('Owner proposals fetch:', error.message);
     return [];
   }
-  return (data ?? []).map((row: any): OwnerProposalItem => ({
-    id: row.id,
-    salonId: row.salon_id,
-    growthPartnerId: row.growth_partner_id,
-    status: row.status as OwnerProposalItem['status'],
-    version: Number(row.version ?? 0),
-    payload: row.payload,
-    submittedAt: row.submitted_at ?? null,
-    ownerReviewedAt: row.owner_reviewed_at ?? null,
-    ownerNotes: row.owner_notes ?? null,
-    publishedAt: row.published_at ?? null,
-  }));
+  return ((data ?? []) as SalonSetupProposalQueryRow[]).map(mapProposalRow);
 }
 
 export interface ReviewProposalInput {

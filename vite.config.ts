@@ -119,6 +119,23 @@ export default defineConfig(() => {
         }
       })
     ],
+    build: {
+      // Route-level code splitting keeps the entry chunk well under this.
+      chunkSizeWarningLimit: 700,
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'react';
+            if (id.includes('node_modules/motion') || id.includes('node_modules/framer-motion')) return 'motion';
+            if (id.includes('node_modules/recharts')) return 'charts';
+            if (id.includes('node_modules/leaflet')) return 'leaflet';
+            if (id.includes('node_modules/lucide-react')) return 'icons';
+            if (id.includes('node_modules/@supabase')) return 'supabase';
+            return undefined;
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

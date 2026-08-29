@@ -1,5 +1,15 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createClient } from '@supabase/supabase-js';
+
+type NextApiRequest = IncomingMessage & {
+  method?: string;
+  body?: any;
+  query: Record<string, string | string[] | undefined>;
+};
+type NextApiResponse = ServerResponse & {
+  status: (code: number) => NextApiResponse;
+  json: (body: unknown) => void;
+};
 
 // Initialize Supabase client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://qwaehqsmodekbgvnaavz.supabase.co';
@@ -394,7 +404,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { method } = req;
 
   // Handle /api/services/:id
-  if (req.url?.match(}/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)) {
+  if (req.url?.match(/\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)) {
     if (method === 'GET') {
       return handleGetById(req, res);
     }

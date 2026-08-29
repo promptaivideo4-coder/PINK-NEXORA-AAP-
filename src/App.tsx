@@ -1,47 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Splash from './screens/Splash';
 import Welcome from './screens/Welcome';
 import Login from './screens/Login';
-import RegistrationStepper from './screens/RegistrationStepper';
-import Dashboard from './screens/Dashboard';
-import Bookings from './screens/Bookings';
-import HelpCenter from './screens/HelpCenter';
-import ServicesList from './screens/ServicesList';
-import ServiceDetail from './screens/ServiceDetail';
-import NewService from './screens/NewService';
-import NewAppointment from './screens/NewAppointment';
-import Profile from './screens/Profile';
-import Customers from './screens/Customers';
-import CustomerProfile from './screens/CustomerProfile';
-import WebsiteBuilder from './screens/WebsiteBuilder';
-import Wallet from './screens/Wallet';
-import TransactionDetail from './screens/TransactionDetail';
-import RevenueAnalytics from './screens/RevenueAnalytics';
-import Reviews from './screens/Reviews';
-import Settings from './screens/Settings';
-import InstallApp from './screens/InstallApp';
 import FloatingInstallBadge from './components/FloatingInstallBadge';
 import { triggerCelebration } from './utils/celebration';
-import AppUpdate from './screens/AppUpdate';
-import StaffManagement from './screens/StaffManagement';
-import NewStaff from './screens/NewStaff';
-import StaffDetail from './screens/StaffDetail';
-import StaffSchedule from './screens/StaffSchedule';
-import StaffAttendance from './screens/StaffAttendance';
-import LeaveShiftSwap from './screens/LeaveShiftSwap';
-import PayrollEarnings from './screens/PayrollEarnings';
-import PayrollBreakdown from './screens/PayrollBreakdown';
-import RolesAccessControl from './screens/RolesAccessControl';
-import StaffPerformance from './screens/StaffPerformance';
-import StaffSelfService from './screens/StaffSelfService';
-import StaffWebsiteBooking from './screens/StaffWebsiteBooking';
-import ServerError from './screens/ServerError';
-import CancellationRefundPolicy from './screens/CancellationRefundPolicy';
-import RoleConflict from './screens/RoleConflict';
-import ResetPassword from './screens/ResetPassword';
-import Marketing from './screens/Marketing';
-import NearbySalons from './screens/NearbySalons';
-import ShopLocation from './screens/ShopLocation';
+
+const RegistrationStepper = lazy(() => import('./screens/RegistrationStepper'));
+const Dashboard = lazy(() => import('./screens/Dashboard'));
+const Bookings = lazy(() => import('./screens/Bookings'));
+const HelpCenter = lazy(() => import('./screens/HelpCenter'));
+const ServicesList = lazy(() => import('./screens/ServicesList'));
+const ServiceDetail = lazy(() => import('./screens/ServiceDetail'));
+const NewService = lazy(() => import('./screens/NewService'));
+const NewAppointment = lazy(() => import('./screens/NewAppointment'));
+const Profile = lazy(() => import('./screens/Profile'));
+const Customers = lazy(() => import('./screens/Customers'));
+const CustomerProfile = lazy(() => import('./screens/CustomerProfile'));
+const WebsiteBuilder = lazy(() => import('./screens/WebsiteBuilder'));
+const Wallet = lazy(() => import('./screens/Wallet'));
+const TransactionDetail = lazy(() => import('./screens/TransactionDetail'));
+const RevenueAnalytics = lazy(() => import('./screens/RevenueAnalytics'));
+const Reviews = lazy(() => import('./screens/Reviews'));
+const Settings = lazy(() => import('./screens/Settings'));
+const InstallApp = lazy(() => import('./screens/InstallApp'));
+const AppUpdate = lazy(() => import('./screens/AppUpdate'));
+const StaffManagement = lazy(() => import('./screens/StaffManagement'));
+const NewStaff = lazy(() => import('./screens/NewStaff'));
+const StaffDetail = lazy(() => import('./screens/StaffDetail'));
+const StaffSchedule = lazy(() => import('./screens/StaffSchedule'));
+const StaffAttendance = lazy(() => import('./screens/StaffAttendance'));
+const LeaveShiftSwap = lazy(() => import('./screens/LeaveShiftSwap'));
+const PayrollEarnings = lazy(() => import('./screens/PayrollEarnings'));
+const PayrollBreakdown = lazy(() => import('./screens/PayrollBreakdown'));
+const RolesAccessControl = lazy(() => import('./screens/RolesAccessControl'));
+const StaffPerformance = lazy(() => import('./screens/StaffPerformance'));
+const StaffSelfService = lazy(() => import('./screens/StaffSelfService'));
+const StaffWebsiteBooking = lazy(() => import('./screens/StaffWebsiteBooking'));
+const ServerError = lazy(() => import('./screens/ServerError'));
+const CancellationRefundPolicy = lazy(() => import('./screens/CancellationRefundPolicy'));
+const RoleConflict = lazy(() => import('./screens/RoleConflict'));
+const ResetPassword = lazy(() => import('./screens/ResetPassword'));
+const Marketing = lazy(() => import('./screens/Marketing'));
+const NearbySalons = lazy(() => import('./screens/NearbySalons'));
+const ShopLocation = lazy(() => import('./screens/ShopLocation'));
 import { ThemeProvider } from './contexts/ThemeContext';
 import { OfflineSyncProvider } from './contexts/OfflineSyncContext';
 import AddToHomeScreenPrompt from './components/AddToHomeScreenPrompt';
@@ -58,6 +59,14 @@ import {
   isOnMainWebsiteAuthRoute,
   redirectToMainWebsiteAuth,
 } from './lib/authRoutes';
+
+function ScreenFallback() {
+  return (
+    <div className="w-full h-screen flex items-center justify-center bg-surface">
+      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    </div>
+  );
+}
 
 /** Entry screen for a fresh load, including the Main Website auth route. */
 function resolveInitialScreen(): ScreenName {

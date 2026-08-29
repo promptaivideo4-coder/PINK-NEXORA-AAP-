@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { ScreenName, NavigationProps } from '../types';
-import { Calendar, Clock, User, Phone, IndianRupee, Search, Plus, MoreVertical, Edit, Trash2, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { NavigationProps } from '../types';
+import { Calendar, Clock, User, Phone, IndianRupee, Search, Plus, Edit, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { firstRelation } from '../lib/relation';
 
 interface Booking {
   id: string;
@@ -154,19 +155,48 @@ const Bookings: React.FC<BookingsProps> = ({ navigate, salonId: propSalonId }) =
         throw error;
       }
 
-      // Enrich data
-      const enrichedBookings = (data || []).map(booking => {
-        const services = booking.booking_items?.map(item => ({
-          name: item.services?.name || 'Unknown Service',
-          duration_minutes: item.services?.duration_minutes || 0,
-          price_paise: item.unit_price_paise || 0,
-        })) || [];
+      type BookingQueryRow = {
+        id: string;
+        salon_id: string;
+        staff_id: string | null;
+        customer_id: string | null;
+        appointment_start: string;
+        appointment_end: string;
+        status: string;
+        total_paise: number;
+        advance_paise: number;
+        payment_status: string;
+        customer_name: string;
+        customer_phone: string;
+        customer_email: string;
+        notes: string;
+        staff?: { full_name: string; phone: string } | { full_name: string; phone: string }[] | null;
+        customers?: { customer_type: string } | { customer_type: string }[] | null;
+        booking_items?: Array<{
+          service_id: string;
+          unit_price_paise: number;
+          quantity: number;
+          services?: { name: string; duration_minutes: number } | { name: string; duration_minutes: number }[] | null;
+        }> | null;
+      };
+      const enrichedBookings = ((data || []) as BookingQueryRow[]).map((booking) => {
+        const serviceRows = booking.booking_items ?? [];
+        const services = serviceRows.map((item) => {
+          const svc = firstRelation(item.services);
+          return {
+            name: svc?.name || 'Unknown Service',
+            duration_minutes: svc?.duration_minutes || 0,
+            price_paise: item.unit_price_paise || 0,
+          };
+        });
+        const staff = firstRelation(booking.staff);
+        const customer = firstRelation(booking.customers);
 
         return {
           ...booking,
-          staff_name: booking.staff?.full_name || null,
-          staff_phone: booking.staff?.phone || null,
-          customer_type: booking.customers?.customer_type || null,
+          staff_name: staff?.full_name || undefined,
+          staff_phone: staff?.phone || undefined,
+          customer_type: customer?.customer_type || undefined,
           services,
           staff: undefined,
           customers: undefined,
@@ -208,13 +238,12 @@ const Bookings: React.FC<BookingsProps> = ({ navigate, salonId: propSalonId }) =
     navigate('new-appointment');
   };
 
-  const handleViewBooking = (bookingId: string) => {
-    // In a real implementation, this would navigate to a booking detail screen
-    navigate('new-appointment', { state: { bookingId, mode: 'view', salonId } });
+  const handleViewBooking = (_bookingId: string) => {
+    navigate('new-appointment');
   };
 
-  const handleEditBooking = (bookingId: string) => {
-    navigate('new-appointment', { state: { bookingId, mode: 'edit', salonId } });
+  const handleEditBooking = (_bookingId: string) => {
+    navigate('new-appointment');
   };
 
   const handleCancelBooking = async (bookingId: string) => {

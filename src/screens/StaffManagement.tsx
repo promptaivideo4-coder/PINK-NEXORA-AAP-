@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { ScreenName, NavigationProps } from '../types';
-import { Search, Plus, MoreVertical, Edit, Trash2, Eye, User, Clock, Star, Filter } from 'lucide-react';
+import { NavigationProps } from '../types';
+import { Search, Plus, Edit, Trash2, Eye, User, Clock, Star } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
-import ErrorBoundary from '../components/ErrorBoundary';
+import { firstRelation } from '../lib/relation';
 
 interface StaffMember {
   id: string;
@@ -117,7 +116,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ navigate, salonId: pr
           id, full_name, email, phone, primary_role, specialty, 
           rating_average, review_count, is_active, is_public, 
           avatar_path, created_at, staff_role_id,
-          staff_roles(name as role_name, description as role_description)
+          staff_roles(name, description)
         `)
         .eq('salon_id', salonId)
         .is('deleted_at', null);
@@ -150,7 +149,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ navigate, salonId: pr
         throw error;
       }
 
-      setStaffMembers(data || []);
+      type StaffQueryRow = StaffMember & {
+        staff_roles?: { name: string; description: string } | { name: string; description: string }[] | null;
+      };
+      const rows = (data || []) as StaffQueryRow[];
+      setStaffMembers(rows.map((row) => {
+        const role = firstRelation(row.staff_roles);
+        return {
+          ...row,
+          role_name: role?.name,
+          role_description: role?.description,
+        };
+      }));
     } catch (err) {
       console.error('Error fetching staff:', err);
       setError('Failed to load staff members');
@@ -175,16 +185,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ navigate, salonId: pr
   // Handle staff actions
   const handleAddStaff = () => {
     if (salonId) {
-      navigate('new-staff', { state: { salonId } });
+      navigate('new-staff');
     }
   };
 
-  const handleViewStaff = (staffId: string) => {
-    navigate('staff-detail', { state: { staffId, salonId } });
+  const handleViewStaff = (_staffId: string) => {
+    navigate('staff-detail');
   };
 
-  const handleEditStaff = (staffId: string) => {
-    navigate('staff-detail', { state: { staffId, salonId, mode: 'edit' } });
+  const handleEditStaff = (_staffId: string) => {
+    navigate('staff-detail');
   };
 
   const handleToggleStatus = async (staffId: string, currentStatus: boolean) => {
