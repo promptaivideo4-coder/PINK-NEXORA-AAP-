@@ -11,6 +11,19 @@ export default defineConfig(({ mode }) => {
   // replay path from the built service worker.
   const env = loadEnv(mode, process.cwd(), 'VITE_');
 
+  // The service worker needs the project coordinates at BUILD time (they are
+  // baked in by `define` below). Without the anon key esbuild statically
+  // eliminates the guard in `src/sw.ts`, so the built worker silently loses
+  // Background Sync. In-page replay still works (it uses the runtime client),
+  // but warn loudly so this never ships unnoticed.
+  if (!env.VITE_SUPABASE_ANON_KEY) {
+    console.warn(
+      '\n[vite] VITE_SUPABASE_ANON_KEY is not set — the service worker will be built\n' +
+        '       WITHOUT Background Sync. Offline writes will still replay while the app\n' +
+        '       is open, but not after the tab is closed. Set the variable to fix this.\n',
+    );
+  }
+
   return {
     // Supabase coordinates are baked into the service-worker bundle so
     // `src/sw.ts` can replay the offline write queue. Only the public anon key
