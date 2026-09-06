@@ -7,6 +7,12 @@ export interface PendingAction {
   type: 'CREATE_APPOINTMENT' | 'UPDATE_PROFILE' | 'CREATE_CLIENT';
   data: any;
   timestamp: number;
+  /** Number of failed replay attempts. */
+  attempts?: number;
+  /** Message of the most recent failure, shown in the sync popover. */
+  lastError?: string;
+  /** Access token captured at enqueue time; used only by the service worker. */
+  accessToken?: string;
 }
 
 export async function openDB(): Promise<IDBDatabase> {
@@ -54,4 +60,53 @@ export async function removeFromQueue(id: number): Promise<void> {
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
+}
+
+/**
+ * Re-inserts an action with the same key so failed attempts can record
+ * `attempts` / `lastError` without losing their place in the queue.
+ */
+export async function updateAction(action: PendingAction): Promise<void> {
+  if (action.id == null) return;
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.put(action);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/** Number of actions waiting to be replayed. */
+export async function countQueue(): Promise<number> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.count();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/** Empties the queue. Used by the "discard pending changes" escape hatch. */
+export async function clearQueue(): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.clear();
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/** True when IndexedDB is available (it is not in private-mode Safari, SSR, etc.). */
+export function isOfflineQueueSupported(): boolean {
+  try {
+    return typeof indexedDB !== 'undefined' && indexedDB !== null;
+  } catch {
+    return false;
+  }
 }

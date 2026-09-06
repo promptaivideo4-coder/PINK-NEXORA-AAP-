@@ -59,7 +59,7 @@ import {
   isOnMainWebsiteAuthRoute,
   redirectToMainWebsiteAuth,
 } from './lib/authRoutes';
-import { PUBLIC_SCREENS, resolveInitialScreen } from './lib/workspaceScreens';
+import { PREVIEW_SCREEN_MAP, PUBLIC_SCREENS, resolveInitialScreen } from './lib/workspaceScreens';
 
 function ScreenFallback() {
   return (
@@ -241,61 +241,16 @@ export default function App() {
         return;
       }
 
-      // Direct screen preview links used during screen integration.
+      // Direct screen preview links used during screen integration. The
+      // mapping lives in `workspaceScreens.ts` so there is exactly one
+      // source of truth for `?screen=` -> ScreenName.
       const params = new URLSearchParams(window.location.search);
-      if (params.get('screen') === 'dashboard') {
-        setCurrentScreen('dashboard');
+      const previewScreen = params.get('screen');
+      if (previewScreen && PREVIEW_SCREEN_MAP[previewScreen]) {
+        setCurrentScreen(PREVIEW_SCREEN_MAP[previewScreen]);
         return;
       }
-      if (params.get('screen') === 'new-staff') {
-        setCurrentScreen('new-staff');
-        return;
-      }
-      if (params.get('screen') === 'staff-detail') {
-        setCurrentScreen('staff-detail');
-        return;
-      }
-      if (params.get('screen') === 'staff-schedule') {
-        setCurrentScreen('staff-schedule');
-        return;
-      }
-      if (params.get('screen') === 'staff-attendance') {
-        setCurrentScreen('staff-attendance');
-        return;
-      }
-      if (params.get('screen') === 'leave-swap') {
-        setCurrentScreen('leave-swap');
-        return;
-      }
-      if (params.get('screen') === 'staff-payroll') {
-        setCurrentScreen('staff-payroll');
-        return;
-      }
-      if (params.get('screen') === 'staff-payroll-detail') {
-        setCurrentScreen('staff-payroll-detail');
-        return;
-      }
-      if (params.get('screen') === 'staff-payroll-breakdown') {
-        setCurrentScreen('staff-payroll-breakdown');
-        return;
-      }
-      if (params.get('screen') === 'staff-roles-access') {
-        setCurrentScreen('staff-roles-access');
-        return;
-      }
-      if (params.get('screen') === 'staff-performance') {
-        setCurrentScreen('staff-performance');
-        return;
-      }
-      if (params.get('screen') === 'staff-self-service') {
-        setCurrentScreen('staff-self-service');
-        return;
-      }
-      if (params.get('screen') === 'staff-website-booking') {
-        setCurrentScreen('staff-website-booking');
-        return;
-      }
-      if (params.get('screen') === 'staff' || hash === '#staff' || hash === '#/staff') {
+      if (previewScreen === 'staff' || hash === '#staff' || hash === '#/staff') {
         setCurrentScreen('staff');
         return;
       }
@@ -499,7 +454,6 @@ export default function App() {
       case 'transaction-detail':
         return <TransactionDetail navigate={navigate} />;
       case 'revenue-analytics':
-      case 'analytics':
         return <RevenueAnalytics navigate={navigate} />;
       case 'reviews':
         return <Reviews navigate={navigate} />;
@@ -529,8 +483,6 @@ export default function App() {
       case 'staff-payroll':
         return <PayrollEarnings navigate={navigate} />;
       case 'staff-payroll-detail':
-        return <PayrollBreakdown navigate={navigate} />;
-      case 'staff-payroll-breakdown':
         return <PayrollBreakdown navigate={navigate} />;
       case 'staff-roles-access':
         return <RolesAccessControl navigate={navigate} />;

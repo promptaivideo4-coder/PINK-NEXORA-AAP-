@@ -1,9 +1,99 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { NavigationProps } from '../types';
-import { Search, Plus, Edit, Trash2, Eye, User, Clock, Star } from 'lucide-react';
+import { NavigationProps, ScreenName } from '../types';
+import {
+  Search,
+  ArrowLeft,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  User,
+  Clock,
+  Star,
+  CalendarDays,
+  Fingerprint,
+  ArrowLeftRight,
+  ReceiptText,
+  ShieldCheck,
+  TrendingUp,
+  UserCog,
+  Globe,
+} from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { firstRelation } from '../lib/relation';
+
+/**
+ * Staff workspace shortcuts.
+ *
+ * These eight screens were fully built and routed in App.tsx but had NO entry
+ * point anywhere in the UI — they could only be opened by typing
+ * `?screen=staff-schedule` (etc.) into the URL. This grid makes them reachable.
+ */
+const STAFF_TOOLS: Array<{
+  screen: ScreenName;
+  label: string;
+  description: string;
+  icon: typeof CalendarDays;
+  tone: string;
+}> = [
+  {
+    screen: 'staff-schedule',
+    label: 'Schedule',
+    description: 'Shifts, breaks & the team calendar',
+    icon: CalendarDays,
+    tone: 'bg-primary/10 text-primary',
+  },
+  {
+    screen: 'staff-attendance',
+    label: 'Attendance',
+    description: 'Clock-ins, late marks & CSV export',
+    icon: Fingerprint,
+    tone: 'bg-emerald-500/10 text-emerald-600',
+  },
+  {
+    screen: 'leave-swap',
+    label: 'Leave & Shift Swap',
+    description: 'Approve or decline requests',
+    icon: ArrowLeftRight,
+    tone: 'bg-amber-500/10 text-amber-600',
+  },
+  {
+    screen: 'staff-payroll',
+    label: 'Payroll',
+    description: 'Earnings, commissions & statements',
+    icon: ReceiptText,
+    tone: 'bg-sky-500/10 text-sky-600',
+  },
+  {
+    screen: 'staff-roles-access',
+    label: 'Roles & Access',
+    description: 'Permissions per role',
+    icon: ShieldCheck,
+    tone: 'bg-violet-500/10 text-violet-600',
+  },
+  {
+    screen: 'staff-performance',
+    label: 'Performance',
+    description: 'Ratings, revenue & utilisation',
+    icon: TrendingUp,
+    tone: 'bg-rose-500/10 text-rose-600',
+  },
+  {
+    screen: 'staff-self-service',
+    label: 'Self Service',
+    description: 'What your staff see on their own devices',
+    icon: UserCog,
+    tone: 'bg-teal-500/10 text-teal-600',
+  },
+  {
+    screen: 'staff-website-booking',
+    label: 'Website Booking',
+    description: 'Who appears on your public site',
+    icon: Globe,
+    tone: 'bg-indigo-500/10 text-indigo-600',
+  },
+];
 
 interface StaffMember {
   id: string;
@@ -291,11 +381,23 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ navigate, salonId: pr
     <div className="w-full min-h-screen bg-surface p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-on-surface">Staff Management</h1>
-          <p className="text-sm text-on-surface-variant">
-            {salonInfo?.name || 'Your Salon'}
-          </p>
+        <div className="flex items-start gap-3">
+          {/* This screen does not use the shared Layout, so without this the
+              only way out is the browser back button. */}
+          <button
+            type="button"
+            onClick={() => navigate('dashboard')}
+            aria-label="Back to dashboard"
+            className="mt-0.5 p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-on-surface">Staff Management</h1>
+            <p className="text-sm text-on-surface-variant">
+              {salonInfo?.name || 'Your Salon'}
+            </p>
+          </div>
         </div>
         
         <div className="flex items-center gap-3">
@@ -326,6 +428,34 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ navigate, salonId: pr
           <p className="text-xs text-on-surface-variant">Avg Rating</p>
         </div>
       </div>
+
+      {/* Staff workspace — entry points to the rest of the staff module */}
+      <section className="mb-6">
+        <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider mb-3">
+          Staff Workspace
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {STAFF_TOOLS.map((tool) => {
+            const Icon = tool.icon;
+            return (
+              <button
+                key={tool.screen}
+                type="button"
+                onClick={() => navigate(tool.screen)}
+                className="flex flex-col gap-2 p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-left hover:border-primary/40 hover:bg-primary/[0.03] transition-all active:scale-[0.98]"
+              >
+                <span className={`w-9 h-9 rounded-lg flex items-center justify-center ${tool.tone}`}>
+                  <Icon className="w-4 h-4" />
+                </span>
+                <span className="text-[13px] font-bold text-on-surface">{tool.label}</span>
+                <span className="text-[11px] text-on-surface-variant leading-snug">
+                  {tool.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">

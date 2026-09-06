@@ -1,12 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, UserPlus, ArrowRight, Check, X } from 'lucide-react';
+import { Search, UserPlus, ArrowRight, Check, X, AlertCircle } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import { NavigationProps } from '../types';
 
 import { queueAction } from '../lib/sync-manager';
+import { supabase } from '../lib/supabase';
+import { fetchMyShop } from '../lib/shopRepository';
 
 const FORM_CACHE_KEY = 'nexora-new-appointment-form';
+
+/** Default appointment length, used until the owner picks a real service. */
+const DEFAULT_DURATION_MINUTES = 30;
+
+type ClientOption = {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string | null;
+  initials: string;
+};
+
+function initialsFor(name: string): string {
+  const parts = name.split(' ').filter(Boolean).slice(0, 2);
+  return parts.map((part) => part[0]).join('').toUpperCase() || '?';
+}
 
 export default function NewAppointment({ navigate }: NavigationProps) {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -14,6 +32,76 @@ export default function NewAppointment({ navigate }: NavigationProps) {
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [policyAgreed, setPolicyAgreed] = useState(false);
+
+  // Real salon + customer data. The client list used to be a hard-coded demo
+  // array, so the id saved onto the booking was `'1'` — a value no table
+  // accepts — and the queued payload used columns that do not exist.
+  const [salonId, setSalonId] = useState<string | null>(null);
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [pendingClient, setPendingClient] = useState<{ name: string; phone: string } | null>(null);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const shop = await fetchMyShop(supabase);
+        if (cancelled) return;
+        if (!shop) {
+          setLoadError('No shop profile found yet. Complete your shop setup before taking bookings.');
+          setClientsLoading(false);
+          return;
+        }
+        setSalonId(shop.id);
+
+        const { data, error } = await supabase
+          .from('customers')
+          .select('id, full_name, first_name, last_name, phone, email')
+          .eq('salon_id', shop.id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (cancelled) return;
+        if (error) {
+          setLoadError(error.message);
+        } else {
+          setClients(
+            (data ?? []).map((row: any) => {
+              const name =
+                row.full_name ||
+                [row.first_name, row.last_name].filter(Boolean).join(' ') ||
+                'Unnamed';
+              return {
+                id: row.id,
+                name,
+                phone: row.phone ?? '',
+                email: row.email,
+                initials: initialsFor(name),
+              };
+            }),
+          );
+        }
+      } catch (error) {
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Failed to load clients.');
+      } finally {
+        if (!cancelled) setClientsLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedClient = useMemo(
+    () => clients.find((client) => client.id === selectedClientId) ?? null,
+    [clients, selectedClientId],
+  );
 
   // Form preservation logic
   useEffect(() => {
@@ -45,26 +133,39 @@ export default function NewAppointment({ navigate }: NavigationProps) {
     localStorage.removeItem(FORM_CACHE_KEY);
   };
 
-  const clients = [
-    { id: '1', name: 'Ananya Sharma', phone: '+91 98765 43210', initials: 'AS', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBqt3CvTQkv49W6kHRrxM8D6AD17xgJJnd1-PXzDvJFntf1vIaWGTBKDrq4178iNlR1oY-i9KXr2tHcivAtU_LIeNeh-KMCH3EZlIXEdAhmNzXCBaYI3yJaOTbEfoBZXI81GOO5xsBP7XZQId6TO1sBrbxZwueWGLrnoWFZxMC9CzTb_Y4VM-2zZsw4FfkeRJbgsPACItgF7as3vVyL-6UYwktjydrHV2UbjorbI4MEGVK9uN8jU3Pk47TTQUpmu0-7pOrkrrVRBZo' },
-    { id: '2', name: 'Rohan Verma', email: 'rohan.verma@example.com', initials: 'RV' }
-  ];
-
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Queue for sync
+    if (!salonId) {
+      setLoadError('Your shop profile is still loading. Please try again in a moment.');
+      return;
+    }
+
+    // Enqueued with the real `customers` columns so the offline replay in
+    // `offlineReplay.ts` can actually insert the row once connectivity returns.
     try {
       await queueAction('CREATE_CLIENT', {
+        salon_id: salonId,
         name: newClientName,
         phone: newClientPhone,
-        created_at: new Date().toISOString()
+        customer_type: 'New',
       });
     } catch (err) {
       console.error('Failed to queue client creation', err);
+      setLoadError('Could not save this client offline. Please retry when you are back online.');
+      return;
     }
 
-    // Simulate adding client locally
+    // Optimistic local selection while the write is still queued.
+    setClients((prev) => [
+      {
+        id: `pending-${Date.now()}`,
+        name: newClientName,
+        phone: newClientPhone,
+        initials: initialsFor(newClientName),
+      },
+      ...prev,
+    ]);
+    setPendingClient({ name: newClientName, phone: newClientPhone });
     setSelectedClientId('new');
     setShowNewClientForm(false);
   };
@@ -169,7 +270,24 @@ export default function NewAppointment({ navigate }: NavigationProps) {
                 
                 <h3 className="text-[13px] font-medium text-on-surface-variant mb-4 uppercase tracking-wider">Recent Clients</h3>
                 
+                {loadError && (
+                  <div className="mb-4 flex items-start gap-2.5 p-3 rounded-xl bg-error/10 border border-error/20">
+                    <AlertCircle className="w-4 h-4 text-error shrink-0 mt-0.5" />
+                    <p className="text-[12px] text-error leading-relaxed">{loadError}</p>
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-3">
+                  {clientsLoading && (
+                    <p className="text-[13px] text-on-surface-variant py-2">Loading clients…</p>
+                  )}
+
+                  {!clientsLoading && clients.length === 0 && (
+                    <p className="text-[13px] text-on-surface-variant py-2">
+                      No clients yet. Use “Add New Client” to create your first one.
+                    </p>
+                  )}
+
                   {clients.map(client => (
                     <div 
                       key={client.id}
@@ -181,12 +299,8 @@ export default function NewAppointment({ navigate }: NavigationProps) {
                       }`}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-semibold text-base ${client.image ? 'bg-surface-container-high' : 'bg-primary-container text-white'}`}>
-                          {client.image ? (
-                            <img src={client.image} alt={client.name} className="w-full h-full object-cover" />
-                          ) : (
-                            client.initials
-                          )}
+                        <div className="w-12 h-12 rounded-full shrink-0 flex items-center justify-center font-semibold text-base bg-primary-container text-white">
+                          {client.initials}
                         </div>
                         <div>
                           <h4 className="text-base font-semibold text-on-surface">{client.name}</h4>
@@ -238,23 +352,54 @@ export default function NewAppointment({ navigate }: NavigationProps) {
 
                 <div className="flex justify-end">
                   <button 
-                    disabled={!policyAgreed || !selectedClientId}
+                    disabled={!policyAgreed || !selectedClientId || !salonId || isSaving}
                     onClick={async () => {
-                      if (!policyAgreed) return;
-                      // In a real app, we'd have all the data from previous steps
-                     try {
+                      if (!policyAgreed || !salonId) return;
+
+                      // The booking is written with the real `bookings` columns
+                      // (salon_id, customer_name/phone, appointment_start/end).
+                      // The old payload used `client_id` / `service_id` /
+                      // `appointment_time`, none of which exist in the schema, so
+                      // a queued booking could never have been inserted.
+                      const contact =
+                        selectedClient ??
+                        (pendingClient
+                          ? { name: pendingClient.name, phone: pendingClient.phone }
+                          : null);
+
+                      if (!contact) {
+                        setLoadError('Select a client before continuing.');
+                        return;
+                      }
+
+                      const start = new Date();
+                      const end = new Date(start.getTime() + DEFAULT_DURATION_MINUTES * 60_000);
+
+                      setIsSaving(true);
+                      try {
                         await queueAction('CREATE_APPOINTMENT', {
-                          client_id: selectedClientId,
-                          service_id: 'haircut-1', // Mock service
-                          staff_id: 'staff-1', // Mock staff
-                          appointment_time: new Date().toISOString(),
-                          status: 'pending'
+                          salon_id: salonId,
+                          customer_id:
+                            selectedClient?.id && !selectedClient.id.startsWith('pending-')
+                              ? selectedClient.id
+                              : null,
+                          customer_name: contact.name,
+                          customer_phone: contact.phone,
+                          appointment_start: start.toISOString(),
+                          appointment_end: end.toISOString(),
+                          status: 'pending',
+                          total_paise: 0,
+                          advance_paise: 0,
                         });
-                     } catch (err) {
+                      } catch (err) {
                         console.error('Failed to queue appointment', err);
-                     }
-                     clearFormCache();
-                     navigate('bookings');
+                        setLoadError('Could not save this booking offline. Please retry when you are back online.');
+                        setIsSaving(false);
+                        return;
+                      }
+                      setIsSaving(false);
+                      clearFormCache();
+                      navigate('bookings');
                    }}
                    className="px-6 py-3 bg-primary text-white rounded-xl text-base font-semibold hover:opacity-90 transition-opacity active:scale-95 shadow-md flex items-center gap-2"
                 >

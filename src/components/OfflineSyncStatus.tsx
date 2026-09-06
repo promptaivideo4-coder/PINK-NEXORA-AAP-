@@ -1,14 +1,30 @@
 import React, { useState } from 'react';
-import { RefreshCw, CheckCircle2, CloudOff, Cloud, Check, ArrowUpRight, Wifi, WifiOff } from 'lucide-react';
+import { RefreshCw, CheckCircle2, CloudOff, Cloud, Check, ArrowUpRight, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useOfflineSync } from '../contexts/OfflineSyncContext';
+import type { PendingAction } from '../lib/offline-db';
 
 interface OfflineSyncStatusProps {
   compact?: boolean;
 }
 
+/** Short, human label for a queued offline write. */
+function describeAction(action: PendingAction): string {
+  switch (action.type) {
+    case 'CREATE_CLIENT':
+      return `New customer · ${String(action.data?.name ?? action.data?.phone ?? 'unnamed')}`;
+    case 'CREATE_APPOINTMENT':
+      return `New booking · ${String(action.data?.customer_name ?? action.data?.name ?? 'unknown client')}`;
+    case 'UPDATE_PROFILE':
+      return 'Shop profile update';
+    default:
+      return String(action.type);
+  }
+}
+
 export default function OfflineSyncStatus({ compact = false }: OfflineSyncStatusProps) {
-  const { isOnline, isSyncing, syncState, pendingCount, lastSyncedAt, triggerSync, pendingActions } = useOfflineSync();
+  const { isOnline, isSyncing, syncState, pendingCount, lastSyncedAt, triggerSync, pendingActions, lastResult } =
+    useOfflineSync();
   const [showPopover, setShowPopover] = useState(false);
 
   // Format relative last sync time
@@ -118,6 +134,10 @@ export default function OfflineSyncStatus({ compact = false }: OfflineSyncStatus
                       </span>
                     ) : syncState === 'pending' ? (
                       <span className="text-amber-500">Pending ({pendingCount} queued)</span>
+                    ) : syncState === 'error' ? (
+                      <span className="text-error flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> Failed
+                      </span>
                     ) : syncState === 'complete' ? (
                       <span className="text-emerald-500 flex items-center gap-1">
                         <Check className="w-3 h-3" /> Complete
@@ -133,14 +153,28 @@ export default function OfflineSyncStatus({ compact = false }: OfflineSyncStatus
                   <span className="font-medium text-on-surface">{formatLastSync()}</span>
                 </div>
 
+                {lastResult && lastResult.rejected > 0 && (
+                  <p className="text-[10px] leading-relaxed text-error">
+                    {lastResult.rejected} queued change{lastResult.rejected === 1 ? '' : 's'} could not be saved
+                    (incomplete data) and {lastResult.rejected === 1 ? 'was' : 'were'} discarded.
+                  </p>
+                )}
+
                 {pendingCount > 0 && (
                   <div className="pt-1.5 border-t border-outline-variant/20">
                     <p className="text-[10px] font-semibold text-amber-500 mb-1">Queued Changes:</p>
                     <ul className="space-y-1 max-h-24 overflow-y-auto pr-1">
-                      {pendingActions.map((act, idx) => (
-                        <li key={idx} className="text-[10px] text-on-surface-variant bg-surface/80 px-2 py-0.5 rounded border border-outline-variant/20 flex items-center gap-1 truncate">
-                          <span className="w-1 h-1 rounded-full bg-amber-400"></span>
-                          <span className="truncate">{act}</span>
+                      {pendingActions.map((act) => (
+                        <li
+                          key={act.id ?? act.timestamp}
+                          title={act.lastError}
+                          className="text-[10px] text-on-surface-variant bg-surface/80 px-2 py-0.5 rounded border border-outline-variant/20 flex items-center gap-1 truncate"
+                        >
+                          <span className={`w-1 h-1 rounded-full shrink-0 ${act.lastError ? 'bg-error' : 'bg-amber-400'}`}></span>
+                          <span className="truncate">
+                            {describeAction(act)}
+                            {act.lastError ? ` — ${act.lastError}` : ''}
+                          </span>
                         </li>
                       ))}
                     </ul>

@@ -21,7 +21,6 @@ export type ScreenName =
   | 'wallet'
   | 'transaction-detail'
   | 'revenue-analytics'
-  | 'analytics'
   | 'reviews'
   | 'install-app'
   | 'app-update'
@@ -33,7 +32,6 @@ export type ScreenName =
   | 'leave-swap'
   | 'staff-payroll'
   | 'staff-payroll-detail'
-  | 'staff-payroll-breakdown'
   | 'staff-roles-access'
   | 'staff-performance'
   | 'staff-self-service'
@@ -49,8 +47,8 @@ export const VALID_SCREENS: ScreenName[] = [
   'help-center', 'profile', 'settings', 'customers', 'customer-profile',
   'cancellation-refund-policy', 'role-conflict',
   'website-builder', 'wallet', 'transaction-detail',
-  'revenue-analytics', 'analytics', 'reviews', 'install-app',
-  'app-update', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll', 'staff-payroll-detail', 'staff-payroll-breakdown', 'staff-roles-access', 'staff-performance', 'staff-self-service', 'staff-website-booking', 'server-error',
+  'revenue-analytics', 'reviews', 'install-app',
+  'app-update', 'staff', 'new-staff', 'staff-detail', 'staff-schedule', 'staff-attendance', 'leave-swap', 'staff-payroll', 'staff-payroll-detail', 'staff-roles-access', 'staff-performance', 'staff-self-service', 'staff-website-booking', 'server-error',
   'marketing', 'nearby-salons', 'shop-location'
 ];
 

@@ -229,6 +229,43 @@ function isInAppBrowser(): boolean {
   return /wv|fbav|fban|whatsapp|instagram|line|messenger|snapchat|twitter|tweetdeck/.test(ua);
 }
 
+/**
+ * Incompatible-browser warning banner.
+ *
+ * Extracted because the exact same markup was rendered twice in this screen
+ * (once in the hero panel, once in the install-instructions modal), and the two
+ * copies had already drifted — one showed the "PWA Blocked" badge, the other
+ * did not. `showBadge` keeps the original visual difference explicit.
+ */
+function IncompatibleBrowserNotice({
+  reason,
+  showBadge = false,
+}: {
+  reason?: string;
+  showBadge?: boolean;
+}) {
+  return (
+    <div className="w-full mb-2 p-4 rounded-2xl bg-error/10 border border-error/20 text-left flex gap-3.5 items-start">
+      <div className="w-9 h-9 rounded-full bg-error/10 flex items-center justify-center shrink-0 text-error">
+        <AlertTriangle className="w-5 h-5" />
+      </div>
+      <div className="flex-1">
+        <h4 className="text-xs sm:text-sm font-bold text-error">Incompatible Browser</h4>
+        <p className="text-[11px] sm:text-xs text-on-surface/85 mt-1 leading-relaxed">
+          {reason}
+        </p>
+        {showBadge && (
+          <div className="mt-2.5 flex items-center gap-2">
+            <span className="text-[10px] font-bold text-error bg-error/5 px-2.5 py-0.5 rounded-full border border-error/10 uppercase tracking-wide">
+              PWA Blocked
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface InstallAppProps extends NavigationProps {
   onInstalled?: () => void;
 }
@@ -732,22 +769,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
           </p>
 
           {detectedPlatform && !detectedPlatform.isCompatible && (
-            <div className="w-full mb-6 p-4 rounded-2xl bg-error/10 border border-error/20 text-left flex gap-3.5 items-start">
-              <div className="w-9 h-9 rounded-full bg-error/10 flex items-center justify-center shrink-0 text-error">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-xs sm:text-sm font-bold text-error">Incompatible Browser</h4>
-                <p className="text-[11px] sm:text-xs text-on-surface/85 mt-1 leading-relaxed">
-                  {detectedPlatform.unsupportedReason}
-                </p>
-                <div className="mt-2.5 flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-error bg-error/5 px-2.5 py-0.5 rounded-full border border-error/10 uppercase tracking-wide">
-                    PWA Blocked
-                  </span>
-                </div>
-              </div>
-            </div>
+            <IncompatibleBrowserNotice reason={detectedPlatform.unsupportedReason} showBadge />
           )}
 
           {/* Benefits List */}
@@ -947,17 +969,7 @@ export default function InstallApp({ navigate, onInstalled }: InstallAppProps) {
 
               <div className="p-6 flex flex-col md:flex-row gap-6 flex-wrap max-w-full">
                 {detectedPlatform && !detectedPlatform.isCompatible && (
-                  <div className="w-full mb-2 p-4 rounded-2xl bg-error/10 border border-error/20 text-left flex gap-3.5 items-start">
-                    <div className="w-9 h-9 rounded-full bg-error/10 flex items-center justify-center shrink-0 text-error">
-                      <AlertTriangle className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-xs sm:text-sm font-bold text-error">Incompatible Browser</h4>
-                      <p className="text-[11px] sm:text-xs text-on-surface/85 mt-1 leading-relaxed">
-                        {detectedPlatform.unsupportedReason}
-                      </p>
-                    </div>
-                  </div>
+                  <IncompatibleBrowserNotice reason={detectedPlatform.unsupportedReason} />
                 )}
 
                 {/* Left Column */}

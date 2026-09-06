@@ -189,7 +189,7 @@ VITE_GEOCODING_API_KEY=your_api_key_here
 
 - `src/lib/geocodingService.ts` - Service layer documentation
 - `src/lib/geocodingConfig.ts` - Provider configuration guide
-- `GEOCODING_ARCHITECTURE.md` - This file
+- `docs/geocoding-architecture.md` - This file
 
 ---
 

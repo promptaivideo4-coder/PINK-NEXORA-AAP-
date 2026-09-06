@@ -5,27 +5,21 @@ import OtpVerificationModal from '../components/OtpVerificationModal';
 import SuccessModal from '../components/SuccessModal';
 import { NavigationProps } from '../types';
 import { supabase } from '../lib/supabase';
-import { fetchMyShop, updateShopProfile, MyShop } from '../lib/shopRepository';
+import { fetchMyShop, updateShopProfile } from '../lib/shopRepository';
 import { validatePassword, isStrongPassword } from '../lib/passwordValidation';
-import { 
-  Building2, 
-  User, 
-  MapPin, 
-  Clock, 
-  Edit2, 
-  Camera, 
-  Check, 
-  Save, 
-  Mail, 
-  Phone, 
-  Bell, 
-  Moon, 
-  Sun,
-  Globe, 
-  Shield, 
-  LogOut, 
+import {
+  Building2,
+  User,
+  MapPin,
+  Clock,
+  Edit2,
+  Camera,
+  Check,
+  Save,
+  Mail,
+  Phone,
+  LogOut,
   ChevronRight,
-  Sparkles,
   FileText,
   Download,
   Lock,
@@ -41,8 +35,6 @@ interface DaySchedule {
   openTime: string;
   closeTime: string;
 }
-
-import { queueAction } from '../lib/sync-manager';
 
 export default function Profile({ navigate }: NavigationProps) {
   const [activeTab, setActiveTab] = useState<'business' | 'personal'>('business');
@@ -158,58 +150,6 @@ export default function Profile({ navigate }: NavigationProps) {
   // Modals state
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSwitchAccountOpen, setIsSwitchAccountOpen] = useState(false);
-
-  // App Preference Modals State
-  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
-  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
-  const [isLocaleModalOpen, setIsLocaleModalOpen] = useState(false);
-  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
-
-  // Preferences Values State
-  const [pushAlertsEnabled, setPushAlertsEnabled] = useState(() => {
-    const saved = localStorage.getItem('nexora_push_alerts');
-    return saved ? saved === 'true' : true;
-  });
-  const [emailSummariesEnabled, setEmailSummariesEnabled] = useState(() => {
-    const saved = localStorage.getItem('nexora_email_summaries');
-    return saved ? saved === 'true' : true;
-  });
-  const [themeSelected, setThemeSelected] = useState<'light' | 'dark' | 'vibrant-pink'>(() => {
-    return (localStorage.getItem('nexora_theme') as any) || 'vibrant-pink';
-  });
-  const [localeLanguage, setLocaleLanguage] = useState(() => {
-    return localStorage.getItem('nexora_language') || 'English';
-  });
-  const [localeCurrency, setLocaleCurrency] = useState(() => {
-    return localStorage.getItem('nexora_currency') || 'INR';
-  });
-  const [biometricLockEnabled, setBiometricLockEnabled] = useState(() => {
-    const saved = localStorage.getItem('nexora_biometric_lock');
-    return saved ? saved === 'true' : false;
-  });
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(() => {
-    const saved = localStorage.getItem('nexora_2fa');
-    return saved ? saved === 'true' : false;
-  });
-  const [staffPermission, setStaffPermission] = useState(() => {
-    return localStorage.getItem('nexora_staff_permissions') || 'Full Access';
-  });
-
-  // Dynamically apply theme changes on mount or state change
-  React.useEffect(() => {
-    if (themeSelected === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else if (themeSelected === 'light') {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    } else {
-      // Vibrant Pink (System/Default Theme)
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('nexora_theme', themeSelected);
-  }, [themeSelected]);
 
   // Change Password Form State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -1060,57 +1000,26 @@ export default function Profile({ navigate }: NavigationProps) {
               </div>
             </div>
 
-            {/* App Preferences Section - Fully Interactive */}
-            <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] space-y-3">
-              <h3 className="text-sm font-bold text-on-surface pb-2 border-b border-outline-variant/40">App Preferences</h3>
-
-              <div className="space-y-1">
-                {[
-                  { 
-                    icon: Bell, 
-                    title: 'Push Alerts & Reminders', 
-                    desc: `${pushAlertsEnabled ? 'Active' : 'Muted'} • Email summaries ${emailSummariesEnabled ? 'On' : 'Off'}`,
-                    action: () => setIsNotificationsModalOpen(true)
-                  },
-                  { 
-                    icon: Moon, 
-                    title: 'Appearance & Theme', 
-                    desc: `Theme: ${themeSelected === 'vibrant-pink' ? 'Vibrant Pink' : themeSelected === 'dark' ? 'Dark' : 'Light'}`,
-                    action: () => setIsThemeModalOpen(true)
-                  },
-                  { 
-                    icon: Globe, 
-                    title: 'Language & Locale', 
-                    desc: `${localeLanguage} • Currency: ${localeCurrency === 'INR' ? 'Indian Rupee (₹)' : 'US Dollar ($)'}`,
-                    action: () => setIsLocaleModalOpen(true)
-                  },
-                  { 
-                    icon: Shield, 
-                    title: 'Security Safeguards', 
-                    desc: `Biometric: ${biometricLockEnabled ? 'On' : 'Off'} • 2FA: ${twoFactorEnabled ? 'On' : 'Off'} • ${staffPermission}`,
-                    action: () => setIsSecurityModalOpen(true)
-                  },
-                ].map((item, idx) => (
-                  <button 
-                    key={idx}
-                    type="button"
-                    onClick={item.action}
-                    className="w-full flex items-center justify-between p-3.5 rounded-xl border border-outline-variant/20 hover:border-primary/30 hover:bg-primary/[0.02] transition-all text-left group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-surface-container-high text-primary flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-all duration-300">
-                        <item.icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors">{item.title}</div>
-                        <div className="text-[11px] text-on-surface-variant">{item.desc}</div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-on-surface-variant group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
-                  </button>
-                ))}
+            {/* App Preferences — owned by the Settings screen.
+                This screen used to host a duplicate Theme / Language /
+                Notifications / Security panel that wrote to its own localStorage
+                keys (`nexora_theme`, `nexora_language`, ...) which nothing in the
+                app reads. The working controls live in Settings, which writes to
+                ThemeContext / LanguageContext, so we deep-link there instead. */}
+            <button
+              type="button"
+              onClick={() => navigate('settings')}
+              className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-5 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-3 text-left hover:border-primary/30 hover:bg-primary/[0.02] transition-all group"
+            >
+              <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Sliders className="w-4 h-4" />
               </div>
-            </div>
+              <div className="flex-1">
+                <div className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors">App Preferences</div>
+                <div className="text-[11px] text-on-surface-variant">Theme, language, notifications &amp; security</div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-on-surface-variant group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
+            </button>
 
             {/* Logout */}
             <button 
@@ -1295,381 +1204,6 @@ export default function Profile({ navigate }: NavigationProps) {
                     </button>
                   );
                 })}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Notification Settings Modal */}
-      <AnimatePresence>
-        {isNotificationsModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-surface rounded-2xl border border-outline-variant/80 p-6 max-w-md w-full shadow-2xl space-y-5"
-            >
-              <div className="flex justify-between items-center pb-3 border-b border-outline-variant/40">
-                <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-                  <Bell className="w-5 h-5 text-primary" />
-                  <span>Notification Settings</span>
-                </h3>
-                <button 
-                  onClick={() => setIsNotificationsModalOpen(false)}
-                  className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {/* Push Alerts Toggle */}
-                <div className="flex items-center justify-between gap-4 p-3 bg-surface-container-low rounded-xl">
-                  <div>
-                    <h4 className="text-xs font-bold text-on-surface">Push Alerts & Reminders</h4>
-                    <p className="text-[10px] text-on-surface-variant">Instant booking and calendar desk alerts</p>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      const next = !pushAlertsEnabled;
-                      setPushAlertsEnabled(next);
-                      localStorage.setItem('nexora_push_alerts', String(next));
-                      triggerToast(next ? 'Push alerts enabled!' : 'Push alerts muted');
-                    }}
-                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0 ${
-                      pushAlertsEnabled ? 'bg-primary justify-end' : 'bg-surface-container-high justify-start'
-                    }`}
-                  >
-                    <motion.div layout className="w-5 h-5 rounded-full bg-white shadow-md" />
-                  </button>
-                </div>
-
-                {/* Email Summaries Toggle */}
-                <div className="flex items-center justify-between gap-4 p-3 bg-surface-container-low rounded-xl">
-                  <div>
-                    <h4 className="text-xs font-bold text-on-surface">Email Summaries</h4>
-                    <p className="text-[10px] text-on-surface-variant">Receive weekly metrics and appointment reports</p>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      const next = !emailSummariesEnabled;
-                      setEmailSummariesEnabled(next);
-                      localStorage.setItem('nexora_email_summaries', String(next));
-                      triggerToast(next ? 'Email summaries enabled!' : 'Email summaries disabled');
-                    }}
-                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0 ${
-                      emailSummariesEnabled ? 'bg-primary justify-end' : 'bg-surface-container-high justify-start'
-                    }`}
-                  >
-                    <motion.div layout className="w-5 h-5 rounded-full bg-white shadow-md" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsNotificationsModalOpen(false);
-                    triggerToast('Notification preferences saved');
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:brightness-115 transition-all shadow-sm cursor-pointer"
-                >
-                  Done
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Theme Selector Modal */}
-      <AnimatePresence>
-        {isThemeModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-surface rounded-2xl border border-outline-variant/80 p-6 max-w-md w-full shadow-2xl space-y-4"
-            >
-              <div className="flex justify-between items-center pb-3 border-b border-outline-variant/40">
-                <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-                  <Moon className="w-5 h-5 text-primary" />
-                  <span>Appearance & Theme</span>
-                </h3>
-                <button 
-                  onClick={() => setIsThemeModalOpen(false)}
-                  className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <p className="text-xs text-on-surface-variant">Switch theme mode dynamically across the salon workspace.</p>
-
-              <div className="space-y-2 pt-1">
-                {[
-                  { value: 'vibrant-pink', label: 'Vibrant Pink (Default)', desc: 'Elegant high-fashion pink branding', icon: Sparkles },
-                  { value: 'light', label: 'Light Mode', desc: 'Sleek, high-contrast crisp display', icon: Sun },
-                  { value: 'dark', label: 'Dark Mode', desc: 'Relaxing eye-safe dark twilight theme', icon: Moon }
-                ].map((t) => {
-                  const isActive = themeSelected === t.value;
-                  return (
-                    <button
-                      key={t.value}
-                      type="button"
-                      onClick={() => {
-                        setThemeSelected(t.value as any);
-                        triggerToast(`App theme set to ${t.label}`);
-                      }}
-                      className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        isActive 
-                          ? 'bg-primary-container/10 border-primary text-primary font-bold shadow-2xs'
-                          : 'bg-surface-container-lowest border-outline-variant/40 text-on-surface hover:bg-surface-container-low'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
-                          <t.icon className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold">{t.label}</div>
-                          <div className="text-[10px] text-on-surface-variant">{t.desc}</div>
-                        </div>
-                      </div>
-                      {isActive && <Check className="w-4 h-4 text-primary shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsThemeModalOpen(false)}
-                  className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:brightness-115 transition-all shadow-sm cursor-pointer"
-                >
-                  Save Theme
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Locale Selection Modal */}
-      <AnimatePresence>
-        {isLocaleModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-surface rounded-2xl border border-outline-variant/80 p-6 max-w-md w-full shadow-2xl space-y-4"
-            >
-              <div className="flex justify-between items-center pb-3 border-b border-outline-variant/40">
-                <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-primary" />
-                  <span>Language & Locale</span>
-                </h3>
-                <button 
-                  onClick={() => setIsLocaleModalOpen(false)}
-                  className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <p className="text-xs text-on-surface-variant">Update the language and currency formats. Selecting INR will automatically convert and display salon service prices in Indian Rupees (₹).</p>
-
-              <div className="space-y-4 pt-1">
-                {/* Language Select */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-on-surface-variant">Language Preference</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { code: 'English', label: 'English (US)' },
-                      { code: 'Hindi', label: 'Hindi (हिन्दी)' },
-                      { code: 'Spanish', label: 'Spanish (Español)' },
-                      { code: 'French', label: 'French (Français)' }
-                    ].map((lang) => {
-                      const isSel = localeLanguage === lang.code;
-                      return (
-                        <button
-                          key={lang.code}
-                          type="button"
-                          onClick={() => {
-                            setLocaleLanguage(lang.code);
-                            localStorage.setItem('nexora_language', lang.code);
-                            triggerToast(`Language changed to ${lang.label}`);
-                          }}
-                          className={`p-3 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer ${
-                            isSel 
-                              ? 'bg-primary-container/10 border-primary text-primary font-bold'
-                              : 'bg-surface border-outline-variant/40 text-on-surface hover:bg-surface-container-low'
-                          }`}
-                        >
-                          {lang.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Currency format selection */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-on-surface-variant">Currency & Price Formats</label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {[
-                      { code: 'INR', label: 'Indian Rupee (₹)', desc: 'INR (en-IN) format' }
-                    ].map((curr) => {
-                      const isSel = localeCurrency === curr.code;
-                      return (
-                        <button
-                          key={curr.code}
-                          type="button"
-                          onClick={() => {
-                            setLocaleCurrency(curr.code);
-                            localStorage.setItem('nexora_currency', curr.code);
-                            triggerToast(`Currency set to ${curr.label}. Prices updated across services.`);
-                            // Trigger dynamic storage update event so other tabs/components hear it if they listen
-                            window.dispatchEvent(new Event('storage'));
-                          }}
-                          className={`p-3 rounded-xl border text-xs font-semibold text-center flex flex-col items-center justify-center transition-all cursor-pointer ${
-                            isSel 
-                              ? 'bg-primary-container/10 border-primary text-primary font-bold'
-                              : 'bg-surface border-outline-variant/40 text-on-surface hover:bg-surface-container-low'
-                          }`}
-                        >
-                          <span>{curr.label}</span>
-                          <span className="text-[10px] font-normal opacity-70 mt-0.5">{curr.desc}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsLocaleModalOpen(false)}
-                  className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:brightness-115 transition-all shadow-sm cursor-pointer"
-                >
-                  Apply Locale Settings
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Security & Privacy Safeguards Modal */}
-      <AnimatePresence>
-        {isSecurityModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-surface rounded-2xl border border-outline-variant/80 p-6 max-w-md w-full shadow-2xl space-y-4"
-            >
-              <div className="flex justify-between items-center pb-3 border-b border-outline-variant/40">
-                <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-primary" />
-                  <span>Security & Safeguards</span>
-                </h3>
-                <button 
-                  onClick={() => setIsSecurityModalOpen(false)}
-                  className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <p className="text-xs text-on-surface-variant">Protect customer databases, payment schedules, and staff permission rosters.</p>
-
-              <div className="space-y-3 pt-1">
-                {/* Biometric lock toggle */}
-                <div className="flex items-center justify-between gap-4 p-3.5 bg-surface-container-low rounded-xl">
-                  <div>
-                    <h4 className="text-xs font-bold text-on-surface">Biometric Lock</h4>
-                    <p className="text-[10px] text-on-surface-variant">FaceID or TouchID before viewing customer files</p>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      const next = !biometricLockEnabled;
-                      setBiometricLockEnabled(next);
-                      localStorage.setItem('nexora_biometric_lock', String(next));
-                      triggerToast(next ? 'Biometric security activated!' : 'Biometric security deactivated');
-                    }}
-                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0 ${
-                      biometricLockEnabled ? 'bg-primary justify-end' : 'bg-surface-container-high justify-start'
-                    }`}
-                  >
-                    <motion.div layout className="w-5 h-5 rounded-full bg-white shadow-md" />
-                  </button>
-                </div>
-
-                {/* Two-Factor Auth toggle */}
-                <div className="flex items-center justify-between gap-4 p-3.5 bg-surface-container-low rounded-xl">
-                  <div>
-                    <h4 className="text-xs font-bold text-on-surface">Two-Factor Auth (2FA)</h4>
-                    <p className="text-[10px] text-on-surface-variant">Require phone SMS token code at login</p>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      const next = !twoFactorEnabled;
-                      setTwoFactorEnabled(next);
-                      localStorage.setItem('nexora_2fa', String(next));
-                      triggerToast(next ? 'Two-Factor Auth (2FA) enabled!' : 'Two-Factor Auth disabled');
-                    }}
-                    className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 flex items-center shrink-0 ${
-                      twoFactorEnabled ? 'bg-primary justify-end' : 'bg-surface-container-high justify-start'
-                    }`}
-                  >
-                    <motion.div layout className="w-5 h-5 rounded-full bg-white shadow-md" />
-                  </button>
-                </div>
-
-                {/* Staff Access permissions dropdown */}
-                <div className="space-y-1 p-3 bg-surface-container-low rounded-xl">
-                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-on-surface-variant">Staff Access Permissions</label>
-                  <p className="text-[9px] text-on-surface-variant mb-2">Controls what team members can see or change</p>
-                  <select
-                    value={staffPermission}
-                    onChange={(e) => {
-                      setStaffPermission(e.target.value);
-                      localStorage.setItem('nexora_staff_permissions', e.target.value);
-                      triggerToast(`Staff access level restricted to: ${e.target.value}`);
-                    }}
-                    className="w-full bg-surface border border-outline-variant/60 text-on-surface text-xs font-semibold rounded-lg h-9 px-2 focus:ring-1 focus:ring-primary outline-none"
-                  >
-                    <option value="Full Access">Full Access (All stylists see stats)</option>
-                    <option value="Restricted Access">Restricted Access (Personal bookings only)</option>
-                    <option value="Admin Only">Admin Only (Only owner sees revenue)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSecurityModalOpen(false);
-                    triggerToast('Security safeguards locked');
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:brightness-115 transition-all shadow-sm cursor-pointer"
-                >
-                  Lock & Save Settings
-                </button>
               </div>
             </motion.div>
           </div>
