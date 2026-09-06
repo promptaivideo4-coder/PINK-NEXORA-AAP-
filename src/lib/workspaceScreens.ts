@@ -18,8 +18,14 @@ export function isPublicScreen(screen: ScreenName): boolean {
   return PUBLIC_SCREENS.has(screen);
 }
 
-/** Direct `?screen=` preview links used during screen integration. */
-const PREVIEW_SCREEN_MAP: Record<string, ScreenName> = {
+/**
+ * Direct `?screen=` preview links used during screen integration.
+ *
+ * Exported so the app shell (App.tsx) and this module share ONE mapping.
+ * Previously App.tsx re-declared the same 14 entries as a hand-written if/else
+ * chain, so adding a screen meant editing two files that silently drifted.
+ */
+export const PREVIEW_SCREEN_MAP: Record<string, ScreenName> = {
   dashboard: 'dashboard',
   'new-staff': 'new-staff',
   'staff-detail': 'staff-detail',
@@ -28,7 +34,6 @@ const PREVIEW_SCREEN_MAP: Record<string, ScreenName> = {
   'leave-swap': 'leave-swap',
   'staff-payroll': 'staff-payroll',
   'staff-payroll-detail': 'staff-payroll-detail',
-  'staff-payroll-breakdown': 'staff-payroll-breakdown',
   'staff-roles-access': 'staff-roles-access',
   'staff-performance': 'staff-performance',
   'staff-self-service': 'staff-self-service',

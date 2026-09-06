@@ -543,6 +543,23 @@ export default function Settings({ navigate }: NavigationProps) {
                 <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
               </div>
 
+              {/* Nearby Salons — built and routed, but had no entry point */}
+              <div 
+                onClick={() => navigate('nearby-salons')}
+                className="p-6 flex items-center justify-between group cursor-pointer hover:bg-surface-container-low/50 transition-colors border-b border-surface-container-highest/60"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Nearby Salons</h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Discover salons around your shop's location</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
+              </div>
+
               {/* Server Error Screen */}
               <div 
                 onClick={() => navigate('server-error')}

@@ -358,8 +358,8 @@ Make sure:
 
 ## 📚 RESOURCES
 
-- **Implementation Details:** `CRITICAL_FIXES_IMPLEMENTED.md`
-- **Executive Summary:** `IMPLEMENTATION_SUMMARY.md`
+- **Implementation Details:** `docs/archive/2026-08-29-critical-fixes-implemented.md`
+- **Executive Summary:** `docs/archive/2026-08-29-implementation-summary.md`
 - **Migration Documentation:** `supabase/README.md`
 - **Supabase Docs:** https://supabase.com/docs
 - **Razorpay Docs:** https://razorpay.com/docs

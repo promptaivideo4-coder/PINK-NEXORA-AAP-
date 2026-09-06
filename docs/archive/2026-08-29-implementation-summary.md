@@ -310,8 +310,8 @@ npm start
 10. `src/screens/PayrollEarnings.tsx` - Updated payroll screen
 11. `src/screens/Bookings.tsx` - Updated bookings screen
 12. `src/lib/supabase.ts` - Updated Supabase client (no hardcoded keys)
-13. `CRITICAL_FIXES_IMPLEMENTED.md` - Implementation details
-14. `IMPLEMENTATION_SUMMARY.md` - This file
+13. `docs/archive/2026-08-29-critical-fixes-implemented.md` - Implementation details
+14. `docs/archive/2026-08-29-implementation-summary.md` - This file
 
 ---
 

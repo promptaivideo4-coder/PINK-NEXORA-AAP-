@@ -101,7 +101,7 @@ The web app manifest (`manifest.webmanifest`) is automatically generated at buil
 - `src/contexts/ThemeContext.tsx`: Updated `localStorage` parse with defensive error handling.
 - `vite.config.ts`: Added `navigateFallbackDenylist` for `/api/`, `/auth/`, and OAuth callbacks.
 - `public/`: Added `pwa-192x192.png`, `pwa-512x512.png`, `apple-touch-icon.png`, and `favicon.ico`.
-- `SHOP_OWNER_PWA_REPORT.md`: This comprehensive architecture and validation report.
+- `docs/shop-owner-pwa-report.md`: This comprehensive architecture and validation report.
 
 ---
 

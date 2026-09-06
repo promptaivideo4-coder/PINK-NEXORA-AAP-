@@ -1,15 +1,42 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  // `process.env` is NOT populated from .env files while the config is being
+  // evaluated, so read them explicitly. Without this the anon key folds to an
+  // empty string and esbuild statically eliminates the whole background-sync
+  // replay path from the built service worker.
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+
   return {
+    // Supabase coordinates are baked into the service-worker bundle so
+    // `src/sw.ts` can replay the offline write queue. Only the public anon key
+    // is injected (never a service-role key), and RLS still governs every write.
+    define: {
+      __NEXORA_SUPABASE_URL__: JSON.stringify(
+        env.VITE_SUPABASE_URL || 'https://qwaehqsmodekbgvnaavz.supabase.co',
+      ),
+      __NEXORA_SUPABASE_ANON_KEY__: JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
+    },
     plugins: [
       react(), 
       tailwindcss(),
       VitePWA({
+        // `injectManifest` builds the service worker from `src/sw.ts` instead of
+        // generating one. The previous `generateSW` mode overwrote the
+        // hand-written `public/sw.js` at build time, so its Background Sync
+        // handler never ran and queued offline writes were lost.
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
+        injectManifest: {
+          // Leaflet + the app bundle push the precache past Workbox's default.
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        },
         registerType: 'autoUpdate', // SW auto-activates + controls page on FIRST visit,
         // so Chrome fires beforeinstallprompt / shows the address-bar install icon
         // immediately instead of requiring a reload. (More reliable installability;
@@ -49,73 +76,18 @@ export default defineConfig(() => {
             }
           ]
         },
-        workbox: {
-          cleanupOutdatedCaches: true,
-          // Bundle (Leaflet + app) 2MiB cross kar sakta hai — precache limit badhao
-          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-          // Let the SW take control immediately after first registration so
-          // Chrome can show the install prompt on the FIRST visit (default
-          // behaviour waits for a reload, which users read as
-          // "download not working").
-          clientsClaim: true,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          // Don't cache API calls, Supabase calls, or non-GET requests
-          // `/auth/login` is deliberately NOT denied: it is a first-class app
-          // route (App.tsx renders the Login screen for it), so navigation
-          // requests to it must fall back to the precached index.html. Denying
-          // it would push that navigation to the network and break the route
-          // offline. Only same-origin API routes and PKCE `?code=` callbacks
-          // (which must hit the network to be exchanged) are excluded.
-          navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/api\//, /\?.*code=/],
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365 // <--- 365 days
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            },
-            {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'gstatic-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365 // <--- 365 days
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            },
-            {
-              urlPattern: /\.(?:png|jpg|jpeg|svg|gif)$/,
-              handler: 'StaleWhileRevalidate',
-              options: {
-                cacheName: 'image-cache',
-                expiration: {
-                  maxEntries: 50
-                }
-              }
-            }
-          ],
-          // Ensure we don't cache sensitive data or non-GET requests
-          // Workbox by default only caches GET requests.
-          // navigateFallbackDenylist is also useful if we had specific API routes handled by the same origin
-        },
+        // NOTE: the old `workbox.*` block was generateSW-only. Its precache,
+        // navigation-fallback and runtime-caching rules now live in `src/sw.ts`,,
+        // which is the service-worker source under the `injectManifest` strategy.
         devOptions: {
           // Register the service worker in dev too, so beforeinstallprompt
           // fires and the PWA install option is actually available/testable.
           enabled: true,
+          // `injectManifest` needs these two explicitly: `type: 'module'` to
+          // match the emitted ESM worker, and `navigateFallback` so the dev
+          // middleware knows which document to serve for SPA routes.
+          type: 'module',
+          navigateFallback: 'index.html',
         }
       })
     ],
