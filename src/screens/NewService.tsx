@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import TopBar from '../components/TopBar';
 import { NavigationProps } from '../types';
 import { ImagePlus, ChevronDown, Clock, X, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { fetchMyShop, createService } from '../lib/shopRepository';
+import Layout from '../components/Layout';
 
 interface ServiceTemplate {
   name: string;
@@ -136,8 +136,8 @@ export default function NewService({ navigate }: NavigationProps) {
   };
 
   return (
+  <Layout currentScreen="new-service" navigate={navigate} title="New Service" showBack onBack={() => navigate('services')}>
     <div className="min-h-screen bg-background text-on-background pb-24 font-body md:pb-8 flex flex-col items-center">
-      <TopBar showBack onBack={() => navigate('services')} navigate={navigate} title="New Service" />
 
       <main className="w-full max-w-md mx-auto mt-8 px-4 space-y-8 pb-[env(safe-area-inset-bottom,20px)] flex-grow">
         <form onSubmit={handleSubmit} className="space-y-8 w-full mx-auto">
@@ -349,5 +349,6 @@ export default function NewService({ navigate }: NavigationProps) {
         </form>
       </main>
     </div>
+  </Layout>
   );
 }

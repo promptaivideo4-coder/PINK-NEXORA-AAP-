@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { NavigationProps } from '../types';
+import Layout from '../components/Layout';
 
 /* ───── Types ───── */
 
@@ -978,6 +979,7 @@ function ModuleCard({
 
 function Unauthorized({ navigate }: NavigationProps) {
   return (
+  <Layout currentScreen="staff-roles-access" navigate={navigate} hideTopBar>
     <div className="min-h-screen bg-[#fcf9f8] text-on-background">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e8e8e8] bg-[#fcf9f8]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
@@ -1014,5 +1016,6 @@ function Unauthorized({ navigate }: NavigationProps) {
         </section>
       </main>
     </div>
-  );
+  
+  </Layout>);
 }

@@ -5,6 +5,7 @@ import { NavigationProps } from '../types';
 import { IndianRupee, Calendar, Users, TrendingUp, Download, Eye } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { firstRelation } from '../lib/relation';
+import Layout from '../components/Layout';
 
 interface PayrollRecord {
   id: string;
@@ -289,6 +290,7 @@ const PayrollEarnings: React.FC<PayrollEarningsProps> = ({ navigate, salonId: pr
   }
 
   return (
+  <Layout currentScreen="staff-payroll" navigate={navigate}>
     <div className="w-full min-h-screen bg-surface p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -497,7 +499,8 @@ const PayrollEarnings: React.FC<PayrollEarningsProps> = ({ navigate, salonId: pr
         </p>
       </div>
     </div>
-  );
+  
+  </Layout>);
 };
 
 export default PayrollEarnings;

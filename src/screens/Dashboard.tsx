@@ -367,13 +367,15 @@ export default function Dashboard({ navigate }: NavigationProps) {
               <Scissors className="w-6 h-6" />
               <span className="text-[13px] font-semibold">{t('new_service')}</span>
             </button>
-            <button
-              onClick={() => navigate('website-builder')}
+            <a
+              href="https://fanal-templetes-app.vercel.app/"
+              target="_blank"
+              rel="noreferrer"
               className="bg-surface border border-outline-variant text-on-surface rounded-[16px] p-3 flex flex-col items-center justify-center gap-2 hover:bg-surface-container active:scale-95 transition-all shadow-sm"
             >
               <Rocket className="w-6 h-6 text-on-surface-variant" />
               <span className="text-[13px] font-semibold">{t('website')}</span>
-            </button>
+            </a>
             <button
               onClick={() => navigate('staff')}
               className="bg-[#FDE7F3] text-primary rounded-[16px] p-3 flex flex-col items-center justify-center gap-2 hover:bg-primary-fixed/80 active:scale-95 transition-all"

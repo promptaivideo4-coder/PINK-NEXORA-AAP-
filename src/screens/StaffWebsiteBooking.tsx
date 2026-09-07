@@ -40,6 +40,7 @@ import {
   type StaffRow,
 } from '../lib/staffRepository';
 
+import Layout from '../components/Layout';
 /* ═══════════════════════════════════════════════════════
    TYPES
    ═══════════════════════════════════════════════════════ */
@@ -419,6 +420,7 @@ export default function StaffWebsiteBooking({ navigate }: NavigationProps) {
   const todayISO = new Date().toISOString().slice(0, 10);
 
   return (
+  <Layout currentScreen="staff-website-booking" navigate={navigate} hideTopBar>
     <div className="min-h-screen bg-[#fcf9f8] text-on-background antialiased">
       {/* ── Header ── */}
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e8e8e8] bg-[#fcf9f8]/95 backdrop-blur-xl">
@@ -504,7 +506,8 @@ export default function StaffWebsiteBooking({ navigate }: NavigationProps) {
         )}
       </AnimatePresence>
     </div>
-  );
+  
+  </Layout>);
 }
 
 /* ═══════════════════════════════════════════════════════

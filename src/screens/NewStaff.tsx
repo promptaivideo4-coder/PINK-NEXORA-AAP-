@@ -37,6 +37,7 @@ import {
   updateStaff as updateStaffRow,
 } from '../lib/shopRepository';
 
+import Layout from '../components/Layout';
 type EmploymentStatus = 'Active' | 'Probation' | 'Inactive' | 'Terminated';
 type AppAccessRole = 'Manager' | 'Service Provider' | 'Receptionist' | 'Custom';
 type PermissionName = 'View' | 'Create' | 'Edit' | 'Delete' | 'Approve';
@@ -887,6 +888,7 @@ export default function NewStaff({ navigate }: NavigationProps) {
   };
 
   return (
+  <Layout currentScreen="new-staff" navigate={navigate} hideTopBar>
     <div className="min-h-screen bg-[#fcf9f8] text-on-background antialiased">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e8e8e8] bg-[#fcf9f8]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-3xl items-center justify-between px-4 sm:px-6">
@@ -906,7 +908,8 @@ export default function NewStaff({ navigate }: NavigationProps) {
 
       <AnimatePresence>{toast && <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="fixed left-1/2 top-20 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#313030] px-4 py-3 text-xs font-semibold text-white shadow-xl"><Check className="h-4 w-4 text-emerald-300" />{toast}</motion.div>}</AnimatePresence>
     </div>
-  );
+  
+  </Layout>);
 }
 
 function validateSchedule(schedule: Record<DayName, DaySchedule>) {

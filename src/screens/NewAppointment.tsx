@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, UserPlus, ArrowRight, Check, X, AlertCircle } from 'lucide-react';
-import TopBar from '../components/TopBar';
 import { NavigationProps } from '../types';
 
 import { queueAction } from '../lib/sync-manager';
 import { supabase } from '../lib/supabase';
 import { fetchMyShop } from '../lib/shopRepository';
+import Layout from '../components/Layout';
 
 const FORM_CACHE_KEY = 'nexora-new-appointment-form';
 
@@ -171,8 +171,8 @@ export default function NewAppointment({ navigate }: NavigationProps) {
   };
 
   return (
+  <Layout currentScreen="new-appointment" navigate={navigate} title="New Appointment" showBack onBack={() => navigate('bookings')}>
     <div className="min-h-screen bg-background text-on-surface font-sans flex flex-col pb-24 md:pb-0">
-      <TopBar showBack onBack={() => navigate('bookings')} navigate={navigate} title="New Appointment" />
       
       <main className="w-full max-w-md mx-auto px-4 pt-6 pb-32 flex-grow">
         <div className="flex flex-col md:flex-row gap-8 items-start">
@@ -471,5 +471,6 @@ export default function NewAppointment({ navigate }: NavigationProps) {
         )}
       </AnimatePresence>
     </div>
+  </Layout>
   );
 }

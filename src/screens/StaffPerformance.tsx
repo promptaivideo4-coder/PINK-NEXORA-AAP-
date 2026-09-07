@@ -37,6 +37,7 @@ import {
   type StaffRow,
 } from '../lib/staffRepository';
 
+import Layout from '../components/Layout';
 /* ───── Types ───── */
 
 type TimePeriod = 'today' | 'this_week' | 'this_month' | 'custom';
@@ -681,6 +682,7 @@ function EmptyState() {
 
 function Unauthorized({ navigate }: NavigationProps) {
   return (
+  <Layout currentScreen="staff-performance" navigate={navigate} hideTopBar>
     <div className="min-h-screen bg-[#fcf9f8] text-on-background">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e8e8e8] bg-[#fcf9f8]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4">
@@ -716,5 +718,6 @@ function Unauthorized({ navigate }: NavigationProps) {
         </section>
       </main>
     </div>
-  );
+  
+  </Layout>);
 }

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { NavigationProps } from '../types';
 import { Search, Plus, Edit, Trash2, Eye, User, Phone, Mail, Clock, SortDesc, SortAsc } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Layout from '../components/Layout';
 
 interface Customer {
   id: string;
@@ -336,6 +337,7 @@ const Customers: React.FC<CustomersProps> = ({ navigate, salonId: propSalonId })
   }
 
   return (
+  <Layout currentScreen="customers" navigate={navigate}>
     <div className="w-full min-h-screen bg-surface p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -562,7 +564,8 @@ const Customers: React.FC<CustomersProps> = ({ navigate, salonId: propSalonId })
         </div>
       )}
     </div>
-  );
+  
+  </Layout>);
 };
 
 export default Customers;

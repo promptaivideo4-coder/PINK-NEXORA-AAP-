@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { NavigationProps } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import Layout from '../components/Layout';
 
 export default function TransactionDetail({ navigate }: NavigationProps) {
   const [status, setStatus] = useState<'Settled' | 'Refunded'>('Settled');
@@ -40,6 +41,7 @@ export default function TransactionDetail({ navigate }: NavigationProps) {
   };
 
   return (
+  <Layout currentScreen="transaction-detail" navigate={navigate} hideTopBar>
     <div id="transaction-detail-screen" className="bg-background text-on-background min-h-screen font-body flex flex-col justify-between items-center pb-24 md:pb-8 w-full relative">
       
       {/* Toast Notification */}
@@ -307,5 +309,6 @@ export default function TransactionDetail({ navigate }: NavigationProps) {
       </AnimatePresence>
 
     </div>
-  );
+  
+  </Layout>);
 }

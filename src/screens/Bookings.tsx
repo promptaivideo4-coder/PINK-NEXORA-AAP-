@@ -4,6 +4,7 @@ import { NavigationProps } from '../types';
 import { Calendar, Clock, User, Phone, IndianRupee, Search, Plus, Edit, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { firstRelation } from '../lib/relation';
+import Layout from '../components/Layout';
 
 interface Booking {
   id: string;
@@ -393,6 +394,7 @@ const Bookings: React.FC<BookingsProps> = ({ navigate, salonId: propSalonId }) =
   }
 
   return (
+  <Layout currentScreen="bookings" navigate={navigate}>
     <div className="w-full min-h-screen bg-surface p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -649,7 +651,8 @@ const Bookings: React.FC<BookingsProps> = ({ navigate, salonId: propSalonId }) =
         </div>
       )}
     </div>
-  );
+  
+  </Layout>);
 };
 
 export default Bookings;

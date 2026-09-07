@@ -282,6 +282,38 @@ export default function App() {
   // second `onAuthStateChange` listener anywhere else in the app.
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    /**
+     * Decides where a freshly authenticated account lands.
+     *
+     * An account with a workspace (an active organization_members row, or a
+     * staff row) goes to the dashboard. An account with NEITHER has nothing to
+     * manage — sending it to the dashboard would show an empty shell with no
+     * way into onboarding, so it is routed to the RoleConflict screen which
+     * offers "Set up my salon" / "Use a different account".
+     *
+     * Fails OPEN: any error resolving the workspace lands on the dashboard —
+     * a network hiccup must never lock a paying owner out.
+     */
+    const resolveLandingScreen = async (userId: string): Promise<ScreenName> => {
+      try {
+        const [membersResult, staffResult] = await Promise.all([
+          supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .limit(1),
+          supabase.from('staff').select('id').eq('user_id', userId).limit(1),
+        ]);
+        const hasOrg = (membersResult.data?.length ?? 0) > 0;
+        const hasStaff = (staffResult.data?.length ?? 0) > 0;
+        return hasOrg || hasStaff ? 'dashboard' : 'role-conflict';
+      } catch (error) {
+        console.warn('[auth] workspace lookup failed, landing on dashboard', error);
+        return 'dashboard';
+      }
+    };
+
     /** Session is valid → initialize authenticated application state. */
     const handleAuthenticated = (event: AuthChangeEvent, nextSession: Session) => {
       signOutHandledRef.current = false;
@@ -291,8 +323,9 @@ export default function App() {
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
         const activeScreen = currentScreenRef.current;
         if (['splash', 'welcome', 'login'].includes(activeScreen)) {
-          // Signed in from an entry screen → straight into the workspace.
-          setCurrentScreen('dashboard');
+          // Signed in from an entry screen → into the workspace (or the
+          // role-conflict screen when the account has no workspace at all).
+          void resolveLandingScreen(nextSession.user.id).then(setCurrentScreen);
         }
       }
     };

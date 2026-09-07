@@ -12,32 +12,38 @@ interface LayoutProps extends NavigationProps {
   showSettings?: boolean;
   showMore?: boolean;
   hideBottomNav?: boolean;
+  /** Screens that render their own header set this so global chrome stays
+   *  single-layered while the BottomNav (and Layout shell) still wrap them. */
+  hideTopBar?: boolean;
   transparentTopBar?: boolean;
 }
 
-export default function Layout({ 
-  children, 
-  currentScreen, 
-  navigate, 
-  title, 
-  showBack, 
+export default function Layout({
+  children,
+  currentScreen,
+  navigate,
+  title,
+  showBack,
   onBack,
   showSettings,
   showMore,
   hideBottomNav = false,
+  hideTopBar = false,
   transparentTopBar = false
 }: LayoutProps) {
   return (
     <div className={`h-full bg-background text-on-surface font-sans flex flex-col ${!hideBottomNav ? 'pb-24 md:pb-0' : 'pb-safe'}`}>
-      <TopBar 
-        title={title} 
-        showBack={showBack} 
-        onBack={onBack}
-        navigate={navigate}
-        showSettings={showSettings}
-        showMore={showMore}
-        transparent={transparentTopBar}
-      />
+      {!hideTopBar && (
+        <TopBar
+          title={title}
+          showBack={showBack}
+          onBack={onBack}
+          navigate={navigate}
+          showSettings={showSettings}
+          showMore={showMore}
+          transparent={transparentTopBar}
+        />
+      )}
       
       <main className="flex-1 w-full px-4 flex flex-col overflow-x-hidden overflow-y-auto">
         {children}

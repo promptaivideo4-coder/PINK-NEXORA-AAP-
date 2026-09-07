@@ -136,6 +136,18 @@ The base schema includes these helper functions for RLS:
 - `user_is_salon_staff(p_salon_id)` - Check if user is staff of a salon
 - `user_is_customer(p_salon_id)` - Check if user is a customer of a salon
 
+## RPCs used by the client (defined in `20260907_audit_fix_salons_and_rpcs.sql`)
+
+- `bootstrap_shop_owner(p_business_name, p_business_category, p_contact_number)` - Creates the caller's organization + owner membership + salon; idempotent, returns the salon id
+- `update_salon_profile_secure(p_salon_id, p_updates)` - Owner-only profile update fallback (whitelisted keys, mirrors into canonical `location_*` columns)
+- `review_salon_setup(p_proposal_id, p_action, p_notes)` - Proposal review/publication bridge: `approve` | `request_changes` | `reject` | `publish`
+
+The `20260907_audit_fix_missing_tables.sql` migration creates the tables the
+app queries but earlier migrations never defined: `staff_schedules`,
+`wallet_transactions`, `owner_payouts`, `offers`, `reviews` and `profiles`
+(with RLS, FKs, indexes, triggers and grants). Both 20260907 files are
+idempotent and safe to re-run.
+
 ## Notes
 
 1. The `20260829_base_schema_core_tables.sql` migration includes backfill logic to migrate existing `salon_profiles` to the new schema

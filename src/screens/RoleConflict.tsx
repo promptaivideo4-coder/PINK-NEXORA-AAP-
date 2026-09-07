@@ -1,18 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
   LogIn, 
-  Mail, 
   HelpCircle, 
   Key, 
   AlertTriangle,
-  UserX
+  UserX,
+  Store
 } from 'lucide-react';
 import { NavigationProps } from '../types';
+import { supabase } from '../lib/supabase';
 
 export default function RoleConflict({ navigate }: NavigationProps) {
-  // Mock data for the existing role
-  const existingRole = "Customer"; 
+  const [signingOut, setSigningOut] = useState(false);
+
+  /**
+   * This screen is shown when a signed-in account has NO workspace in Nexora:
+   * no active organization membership (owner/manager) and no staff row. The
+   * account itself is fine — it just is not linked to a salon yet.
+   */
+  const handleDifferentAccount = async () => {
+    setSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      /* even if sign-out fails, send the user to the login screen */
+    }
+    navigate('login');
+  };
+
 
   return (
     <div className="relative min-h-screen bg-surface-off-white overflow-hidden flex flex-col">
@@ -76,13 +92,14 @@ export default function RoleConflict({ navigate }: NavigationProps) {
           className="flex flex-col gap-3 max-w-[320px]"
         >
           <h1 className="text-xl font-bold text-on-surface">
-            Role Already Assigned
+            No Workspace Found
           </h1>
           <p className="text-sm text-on-surface-variant leading-relaxed">
-            यह email पहले से <span className="text-primary font-bold">[{existingRole}]</span> account से जुड़ी है।
+            This account is signed in, but it is not linked to a salon workspace yet —
+            there is no owner/manager membership and no staff profile for it.
           </p>
           <p className="text-sm text-on-surface-variant/80">
-            एक email से केवल एक role बनाया जा सकता है। दूसरे role के लिए दूसरी email ID इस्तेमाल करें।
+            Set up your salon in a few steps, or sign in with the account your salon owner invited you with.
           </p>
         </motion.div>
 
@@ -94,19 +111,20 @@ export default function RoleConflict({ navigate }: NavigationProps) {
           className="flex flex-col w-full gap-4 mt-10 max-w-sm"
         >
           <button 
-            onClick={() => navigate('login')}
+            onClick={() => navigate('register-stepper')}
             className="w-full h-[56px] bg-primary text-white font-bold rounded-2xl active:scale-[0.98] transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 uppercase tracking-wider text-xs"
           >
-            <LogIn className="w-5 h-5" />
-            Login to Existing Account
+            <Store className="w-5 h-5" />
+            Set Up My Salon
           </button>
           
           <button 
-            onClick={() => navigate('login')}
-            className="w-full h-[56px] bg-secondary-pink text-primary font-bold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs"
+            onClick={handleDifferentAccount}
+            disabled={signingOut}
+            className="w-full h-[56px] bg-secondary-pink text-primary font-bold rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs disabled:opacity-60"
           >
-            <Mail className="w-5 h-5" />
-            Use Another Email
+            <LogIn className="w-5 h-5" />
+            {signingOut ? 'Signing out…' : 'Use a Different Account'}
           </button>
         </motion.div>
 
@@ -115,10 +133,11 @@ export default function RoleConflict({ navigate }: NavigationProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
+          onClick={() => navigate('help-center')}
           className="mt-8 text-xs font-bold text-on-surface-variant flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity"
         >
           <HelpCircle className="w-4 h-4" />
-          Need help merging accounts?
+          Need help? Visit the Help Center
         </motion.button>
       </main>
     </div>
