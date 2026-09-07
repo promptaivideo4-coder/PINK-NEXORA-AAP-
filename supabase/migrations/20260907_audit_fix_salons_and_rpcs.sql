@@ -260,3 +260,107 @@ $$;
 
 REVOKE ALL ON FUNCTION public.review_salon_setup(UUID, TEXT, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.review_salon_setup(UUID, TEXT, TEXT) TO authenticated;
+
+
+-- ----------------------------------------------------------------------------
+-- C3. bootstrap_shop_owner
+-- ----------------------------------------------------------------------------
+-- Called by the registration stepper (shopRepository.bootstrapMyShop) to create
+-- the owner's workspace: one organization, an active owner membership and the
+-- salon row. Idempotent — returns the existing salon id when the caller
+-- already owns a live salon. Returns the salon id as text-friendly UUID.
+CREATE OR REPLACE FUNCTION public.bootstrap_shop_owner(
+  p_business_name TEXT,
+  p_business_category TEXT DEFAULT NULL,
+  p_contact_number TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID := auth.uid();
+  v_email   TEXT;
+  v_org_id  UUID;
+  v_salon_id UUID;
+  v_slug    TEXT;
+  v_base_slug TEXT;
+  v_suffix  INT := 0;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'bootstrap_shop_owner: caller is not authenticated';
+  END IF;
+
+  SELECT COALESCE(u.email, '') INTO v_email FROM auth.users u WHERE u.id = v_user_id;
+
+  -- Idempotency: one live salon per owner.
+  SELECT s.id INTO v_salon_id
+  FROM public.salons s
+  JOIN public.organization_members om ON om.organization_id = s.organization_id
+  WHERE om.user_id = v_user_id
+    AND om.role = 'owner'
+    AND om.status = 'active'
+    AND s.deleted_at IS NULL
+  LIMIT 1;
+  IF v_salon_id IS NOT NULL THEN
+    RETURN v_salon_id;
+  END IF;
+
+  -- Organization (reuse an existing active org membership if present).
+  SELECT om.organization_id INTO v_org_id
+  FROM public.organization_members om
+  WHERE om.user_id = v_user_id AND om.status = 'active'
+  LIMIT 1;
+
+  IF v_org_id IS NULL THEN
+    INSERT INTO public.organizations (name, slug, email, phone)
+    VALUES (
+      COALESCE(NULLIF(p_business_name, ''), 'My Business'),
+      'org-' || substr(md5(v_user_id::text || clock_timestamp()::text), 1, 12),
+      v_email,
+      NULLIF(p_contact_number, '')
+    )
+    RETURNING id INTO v_org_id;
+
+    INSERT INTO public.organization_members (organization_id, user_id, role, status, email)
+    VALUES (v_org_id, v_user_id, 'owner', 'active', v_email);
+  END IF;
+
+  -- Unique slug: business name + incrementing suffix.
+  v_base_slug := lower(regexp_replace(COALESCE(NULLIF(p_business_name, ''), 'salon'), '[^a-z0-9]+', '-', 'g'));
+  v_base_slug := trim(both '-' from v_base_slug);
+  IF v_base_slug = '' THEN
+    v_base_slug := 'salon';
+  END IF;
+  v_base_slug := left(v_base_slug, 40);
+
+  LOOP
+    v_slug := CASE WHEN v_suffix = 0 THEN v_base_slug
+                   ELSE v_base_slug || '-' || v_suffix END;
+    BEGIN
+      INSERT INTO public.salons (
+        organization_id, owner_id, name, slug, business_category,
+        contact_number, phone, email, is_active, verified, is_verified
+      ) VALUES (
+        v_org_id, v_user_id, COALESCE(NULLIF(p_business_name, ''), 'My Salon'),
+        v_slug, COALESCE(NULLIF(p_business_category, ''), 'Salon'),
+        COALESCE(p_contact_number, ''), COALESCE(p_contact_number, ''), v_email,
+        true, false, false
+      )
+      RETURNING id INTO v_salon_id;
+      EXIT;
+    EXCEPTION WHEN unique_violation THEN
+      v_suffix := v_suffix + 1;
+      IF v_suffix > 50 THEN
+        RAISE EXCEPTION 'bootstrap_shop_owner: could not allocate a unique slug';
+      END IF;
+    END;
+  END LOOP;
+
+  RETURN v_salon_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.bootstrap_shop_owner(TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.bootstrap_shop_owner(TEXT, TEXT, TEXT) TO authenticated;
