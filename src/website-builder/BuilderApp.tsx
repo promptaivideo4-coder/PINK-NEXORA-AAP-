@@ -5,7 +5,10 @@
 
 import { useState, useEffect, useRef, Component, type ReactNode, type ErrorInfo, lazy, Suspense } from 'react';
 import Landing from './screens/Landing';
-import TopBar from './components/TopBar';
+// BuilderTopBar lives in the consolidated `src/components/TopBar.tsx` — the
+// builder previously shipped its own duplicate TopBar module. Aliased to the
+// same local name so all call sites stay untouched.
+import { BuilderTopBar as TopBar } from '../components/TopBar';
 import { initialData, SalonData } from './types';
 import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle2, ArrowRight, AlertTriangle, RefreshCw } from 'lucide-react';
