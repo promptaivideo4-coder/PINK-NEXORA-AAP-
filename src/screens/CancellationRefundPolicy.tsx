@@ -2,9 +2,11 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, ShieldCheck, Clock, RefreshCcw, AlertCircle } from 'lucide-react';
 import { NavigationProps } from '../types';
+import Layout from '../components/Layout';
 
 export default function CancellationRefundPolicy({ navigate }: NavigationProps) {
   return (
+  <Layout currentScreen="cancellation-refund-policy" navigate={navigate} hideTopBar>
     <div className="flex flex-col h-screen bg-surface">
       {/* Header */}
       <header className="px-4 py-4 flex items-center gap-4 bg-surface border-b border-outline-variant/40 sticky top-0 z-10">
@@ -100,5 +102,6 @@ export default function CancellationRefundPolicy({ navigate }: NavigationProps) 
         </motion.div>
       </div>
     </div>
-  );
+  
+  </Layout>);
 }

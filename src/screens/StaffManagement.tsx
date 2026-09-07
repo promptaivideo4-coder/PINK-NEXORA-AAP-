@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { firstRelation } from '../lib/relation';
+import Layout from '../components/Layout';
 
 /**
  * Staff workspace shortcuts.
@@ -378,6 +379,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ navigate, salonId: pr
   }
 
   return (
+  <Layout currentScreen="staff" navigate={navigate}>
     <div className="w-full min-h-screen bg-surface p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -623,7 +625,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ navigate, salonId: pr
         </div>
       )}
     </div>
-  );
+  
+  </Layout>);
 };
 
 export default StaffManagement;

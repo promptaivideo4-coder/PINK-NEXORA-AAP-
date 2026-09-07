@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { NavigationProps } from '../types';
+import Layout from '../components/Layout';
 
  type RequestStatus = 'Pending' | 'Approved' | 'Rejected';
 type TabId = 'pending' | 'approved' | 'rejected' | 'calendar';
@@ -311,6 +312,7 @@ export default function LeaveShiftSwap({ navigate }: NavigationProps) {
   };
 
   return (
+  <Layout currentScreen="leave-swap" navigate={navigate} hideTopBar>
     <div className="min-h-screen bg-[#fcf9f8] text-on-background antialiased">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e8e8e8] bg-[#fcf9f8]/95 backdrop-blur-xl"><div className="mx-auto flex h-16 w-full max-w-4xl items-center justify-between px-4 sm:px-6"><button type="button" onClick={() => navigate('staff')} className="rounded-full p-2 text-primary hover:bg-[#fde7f3]" aria-label="Back to staff directory"><ArrowLeft className="h-5 w-5" /></button><div className="text-center"><h1 className="text-lg font-bold tracking-tight text-primary">Leave &amp; Shift Swap Requests</h1><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-on-surface-variant">NexoraOS · Manager workspace</p></div><button type="button" className="rounded-full p-2 text-on-surface-variant hover:bg-[#fde7f3]" aria-label="More options"><MoreVertical className="h-5 w-5" /></button></div></header>
       <div className="pt-16"><div className="mx-auto max-w-4xl px-4 sm:px-6"><p className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-[11px] font-semibold text-amber-800">Leave &amp; shift-swap records for this module are stored on this device; backend sync for this screen is not wired yet (staff_leave_requests / staff_shift_swap_requests tables exist in the database). Entries shown here are only the ones created on this device.</p></div></div>
@@ -329,7 +331,8 @@ export default function LeaveShiftSwap({ navigate }: NavigationProps) {
       <AnimatePresence>{selectedCalendarDate && <CalendarDaySheet date={selectedCalendarDate} leaves={selectedDayLeaves} staffById={staffById} onClose={() => setSelectedCalendarDate(null)} />}</AnimatePresence>
       <AnimatePresence>{conflict && activeTab !== 'pending' && <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="fixed bottom-5 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-full bg-red-700 px-4 py-3 text-xs font-bold text-white shadow-xl"><AlertTriangle className="h-4 w-4" /> Conflict detected</motion.div>}</AnimatePresence>
     </div>
-  );
+  
+  </Layout>);
 }
 
 function LeaveRequestCard({ request, onApprove, onReject, loading }: { request: LeaveRequest; onApprove: () => void; onReject: () => void; loading: boolean }) {

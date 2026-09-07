@@ -6,8 +6,8 @@ import {
   Trash2, PlusCircle, Check, X, Compass, DollarSign, Eye, Clock, 
   Camera, Coffee, VolumeX, Shield, Heart, HelpCircle
 } from 'lucide-react';
-import TopBar from '../components/TopBar';
 import { motion, AnimatePresence } from 'motion/react';
+import Layout from '../components/Layout';
 
 // Default static Neha Gupta profile data if none in localStorage
 /** removed: the NEHA_GUPTA fake default profile (final release audit) */
@@ -173,6 +173,7 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
   };
 
   return (
+  <Layout currentScreen="customer-profile" navigate={navigate} hideTopBar>
     <div className="min-h-screen bg-background text-on-surface pb-32 font-sans flex flex-col items-center">
       
       {/* Header Bar */}
@@ -753,5 +754,6 @@ export default function CustomerProfile({ navigate }: NavigationProps) {
         )}
       </AnimatePresence>
     </div>
+  </Layout>
   );
 }

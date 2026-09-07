@@ -56,6 +56,7 @@ import {
   type StaffRow,
 } from '../lib/staffRepository';
 
+import Layout from '../components/Layout';
 type StaffStatus = 'Active' | 'Probation' | 'Inactive' | 'Terminated';
 type TabId = 'overview' | 'schedule' | 'attendance' | 'earnings' | 'documents' | 'activity';
 
@@ -579,6 +580,7 @@ export default function StaffDetail({ navigate }: NavigationProps) {
   const tabContent = activeTab === 'overview' ? renderOverview() : activeTab === 'schedule' ? renderSchedule() : activeTab === 'attendance' ? renderAttendance() : activeTab === 'earnings' ? renderEarnings() : activeTab === 'documents' ? renderDocuments() : renderActivity();
 
   return (
+  <Layout currentScreen="staff-detail" navigate={navigate} hideTopBar>
     <div className="min-h-screen bg-[#fcf9f8] text-on-background antialiased">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e8e8e8] bg-[#fcf9f8]/95 backdrop-blur-xl"><div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6"><button type="button" onClick={() => navigate('staff')} aria-label="Back to staff directory" className="rounded-full p-2 text-primary transition hover:bg-[#fde7f3]"><ArrowLeft className="h-5 w-5" /></button><div className="text-center"><h1 className="text-lg font-bold tracking-tight text-primary">Staff Profile Detail</h1><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-on-surface-variant">Manager workspace</p></div><button type="button" onClick={() => setShowActions(true)} aria-label="Open manager actions" className="rounded-full p-2 text-on-surface-variant hover:bg-[#fde7f3]"><MoreVertical className="h-5 w-5" /></button></div></header>
 
@@ -599,7 +601,8 @@ export default function StaffDetail({ navigate }: NavigationProps) {
 
       <AnimatePresence>{toast && <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="fixed left-1/2 top-20 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#313030] px-4 py-3 text-xs font-semibold text-white shadow-xl"><Check className="h-4 w-4 text-emerald-300" />{toast}</motion.div>}</AnimatePresence>
     </div>
-  );
+  
+  </Layout>);
 }
 
 function Detail({ label, value, privateValue, wide, badge }: { label: string; value: string; privateValue?: boolean; wide?: boolean; badge?: string }) {
